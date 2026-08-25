@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 5%;
+    --foreground: 45 12% 94%;
+    --card: 40 8% 8%;
+    --card-foreground: 45 12% 94%;
+    --popover: 40 8% 8%;
+    --popover-foreground: 45 12% 94%;
+    --primary: 43 78% 48%;
+    --primary-foreground: 0 0% 6%;
+    --secondary: 40 10% 14%;
+    --secondary-foreground: 45 12% 92%;
+    --muted: 40 8% 12%;
+    --muted-foreground: 45 8% 55%;
+    --accent: 46 82% 58%;
+    --accent-foreground: 0 0% 8%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 12% 18%;
+    --input: 40 10% 16%;
+    --ring: 46 82% 58%;
+    --radius: 0.5rem;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .btn-outline {
+    @apply btn border border-input bg-background hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .btn-ghost {
+    @apply btn hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .btn-sm {
+    @apply h-9 px-3;
+  }
+
+  .input {
+    @apply flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
+  .card {
+    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+  }
+}
