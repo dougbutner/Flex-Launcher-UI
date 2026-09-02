@@ -100,6 +100,7 @@ export function useProton() {
         account: string;
         name: string;
         data: Record<string, unknown>;
+        authorization?: Array<{ actor: string; permission: string }>;
       }>
     ) => {
       if (!activeWallet) throw new Error('Not logged in');

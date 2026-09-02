@@ -12,6 +12,7 @@ export type ChainAction = {
   account: string;
   name: string;
   data: Record<string, unknown>;
+  authorization?: Array<{ actor: string; permission: string }>;
 };
 
 export function buyContractRam(payer: string): ChainAction {

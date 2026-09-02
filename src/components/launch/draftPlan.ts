@@ -1,6 +1,7 @@
 import { QUOTE_PRESETS, XTOKENS } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { validSymbol } from "@/services/assets";
+import { validImageUrl } from "@/services/tokenLogo";
 import type { ExtToken } from "@/services/eosioName";
 import { planLaunch, type LaunchPlan } from "@/services/launchMath";
 
@@ -25,6 +26,7 @@ export function tokenStepValid(draft: LaunchDraft): string | null {
   if (!validSymbol(draft.symbol)) return "Ticker must be 1–7 uppercase letters (A–Z).";
   if (!(Number(draft.maxSupply) > 0)) return "Max supply must be greater than zero.";
   if (draft.precision < 0 || draft.precision > 8) return "Precision must be 0–8.";
+  if (draft.pinFailed && !validImageUrl(draft.imageUrl)) return "Pinata failed — paste a public image URL.";
   return null;
 }
 

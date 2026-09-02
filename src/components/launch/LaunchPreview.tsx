@@ -22,9 +22,9 @@ export function LaunchPreview({ draft }: { draft: LaunchDraft }) {
   return (
     <aside className="card sticky top-20 overflow-hidden">
       <div className="relative h-28 bg-gradient-to-br from-primary/40 via-secondary to-background">
-        {draft.imageDataUrl ? (
+        {draft.imageUrl || draft.imageDataUrl ? (
           <img
-            src={draft.imageDataUrl}
+            src={draft.imageUrl || draft.imageDataUrl}
             alt=""
             className="absolute -bottom-8 left-5 h-20 w-20 rounded-2xl border-4 border-card object-cover shadow-xl"
           />

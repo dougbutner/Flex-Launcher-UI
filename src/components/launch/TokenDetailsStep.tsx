@@ -1,8 +1,14 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { explorerTx, FLEXFOREX_CONTRACT } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
+import { useWallet } from "@/hooks/useWallet";
 import { tokenStepValid } from "@/components/launch/draftPlan";
 import { Field, StepShell } from "@/components/launch/ui";
 import { validSymbol } from "@/services/assets";
+import { pinLogoFile } from "@/services/ipfsPin";
+import { validateTokenLogo, validImageUrl } from "@/services/tokenLogo";
+import { buildTokenProtonLogoAction } from "@/services/tokenProton";
+import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 type Props = {
   draft: LaunchDraft;
@@ -12,17 +18,64 @@ type Props = {
 
 export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const { actor, isLoggedIn, transact } = useWallet();
   const invalid = tokenStepValid(draft);
+  const [pinning, setPinning] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [logoErr, setLogoErr] = useState("");
+  const [urlOpen, setUrlOpen] = useState(Boolean(draft.pinFailed || (draft.imageUrl && !draft.imageCid)));
+  const preview = (urlReady ? draft.imageUrl : "") || draft.imageDataUrl;
+  const showUrl = urlOpen || draft.pinFailed || Boolean(draft.imageUrl && !draft.imageCid);
+  const urlReady = validImageUrl(draft.imageUrl);
+  const canSign = Boolean(isLoggedIn && actor === FLEXFOREX_CONTRACT && urlReady && !invalid);
 
-  const onImage = (file: File | undefined) => {
+  const onImage = async (file: File | undefined) => {
     if (!file) return;
-    if (file.size > 512 * 1024) {
-      alert("Keep the image under 512 KB — it is stored locally in your browser draft.");
+    setLogoErr("");
+    const problem = await validateTokenLogo(file);
+    if (problem) {
+      setLogoErr(problem);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => patch({ imageDataUrl: String(reader.result ?? "") });
-    reader.readAsDataURL(file);
+    if (draft.imageDataUrl.startsWith("blob:")) URL.revokeObjectURL(draft.imageDataUrl);
+    const local = URL.createObjectURL(file);
+    patch({ imageDataUrl: local, imageCid: "", imageUrl: "", logoTx: "", pinFailed: false });
+    setPinning(true);
+    try {
+      const pinned = await pinLogoFile(file);
+      URL.revokeObjectURL(local);
+      patch({ imageCid: pinned.cid, imageUrl: pinned.url, imageDataUrl: "", pinFailed: false });
+    } catch (err) {
+      setLogoErr(txErrorMessage(err));
+      setUrlOpen(true);
+      patch({ pinFailed: true });
+    } finally {
+      setPinning(false);
+    }
+  };
+
+  const signLogo = async () => {
+    if (!canSign || !actor) return;
+    setSigning(true);
+    setLogoErr("");
+    try {
+      const action = await buildTokenProtonLogoAction({
+        tname: draft.name.trim(),
+        url: draft.website.trim(),
+        desc: draft.description.trim(),
+        iconurl: draft.imageUrl.trim(),
+        precision: draft.precision,
+        symbol: draft.symbol,
+      });
+      const result = await transact([action]);
+      patch({ logoTx: txIdFromResult(result) || "ok" });
+    } catch (err) {
+      const msg = txErrorMessage(err);
+      const hint = hintForError(msg);
+      setLogoErr(hint ? `${msg} — ${hint}` : msg);
+    } finally {
+      setSigning(false);
+    }
   };
 
   return (
@@ -44,8 +97,8 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           onClick={() => fileRef.current?.click()}
           className="group relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-input bg-background/60 transition-colors hover:border-primary/60"
         >
-          {draft.imageDataUrl ? (
-            <img src={draft.imageDataUrl} alt="Token" className="h-full w-full object-cover" />
+          {preview ? (
+            <img src={preview} alt="Token" className="h-full w-full object-cover" />
           ) : (
             <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground group-hover:text-primary">
               Upload
@@ -56,9 +109,9 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/png,image/svg+xml"
             className="hidden"
-            onChange={(e) => onImage(e.target.files?.[0])}
+            onChange={(e) => void onImage(e.target.files?.[0])}
           />
         </button>
         <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
@@ -83,6 +136,74 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             ) : null}
           </Field>
         </div>
+      </div>
+
+      <div className="rounded-2xl border bg-background/50 p-4 text-xs">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="font-semibold text-foreground">WebAuth logo</p>
+          {!showUrl ? (
+            <button type="button" className="link shrink-0 text-xs" onClick={() => setUrlOpen(true)}>
+              or paste a URL
+            </button>
+          ) : null}
+        </div>
+        <p className="mt-1 text-muted-foreground">
+          Square PNG or SVG, 256–512px, max 1 MB. Pin to IPFS, or paste a public image URL. Then{" "}
+          <span className="font-mono">token.proton</span> stores that URL. Sign as{" "}
+          <span className="font-mono">{FLEXFOREX_CONTRACT}@active</span>.
+        </p>
+        {showUrl ? (
+          <div className="mt-3">
+            <Field
+              label={draft.pinFailed ? "Image URL (required)" : "Image URL"}
+              hint={
+                draft.pinFailed
+                  ? "Pinata could not pin this file. Paste a public https image URL to continue."
+                  : "Direct link to a PNG or SVG. Used as iconurl on chain."
+              }
+              error={draft.imageUrl && !urlReady ? "Use a full http(s) URL." : undefined}
+            >
+              <input
+                className="input font-mono text-xs"
+                placeholder="https://"
+                value={draft.imageUrl}
+                required={draft.pinFailed}
+                onChange={(e) => patch({ imageUrl: e.target.value, imageCid: "", logoTx: "" })}
+              />
+            </Field>
+          </div>
+        ) : null}
+        {pinning ? <p className="mt-2 text-primary">Pinning to IPFS…</p> : null}
+        {draft.imageCid ? (
+          <p className="mt-2 font-mono text-[11px] break-all">
+            cid {draft.imageCid}
+            <br />
+            <a href={draft.imageUrl} target="_blank" rel="noopener noreferrer" className="link">
+              {draft.imageUrl}
+            </a>
+          </p>
+        ) : null}
+        {draft.logoTx && draft.logoTx !== "ok" ? (
+          <p className="mt-2">
+            <a href={explorerTx(draft.logoTx)} target="_blank" rel="noopener noreferrer" className="link font-mono">
+              tx {draft.logoTx.slice(0, 12)}…
+            </a>
+          </p>
+        ) : null}
+        {logoErr ? <p className="mt-2 font-medium text-destructive">{logoErr}</p> : null}
+        {isLoggedIn && actor !== FLEXFOREX_CONTRACT ? (
+          <p className="mt-2 text-warning">
+            Connected as {actor}. Switch to {FLEXFOREX_CONTRACT} to register the logo.
+          </p>
+        ) : null}
+        <button
+          type="button"
+          className="btn btn-outline btn-sm mt-3"
+          disabled={!canSign || pinning || signing || Boolean(draft.logoTx)}
+          onClick={() => void signLogo()}
+        >
+          {signing ? "Signing…" : draft.logoTx ? "Logo registered" : "Sign token.proton"}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

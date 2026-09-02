@@ -3,6 +3,10 @@ import { formatAsset, validSymbol, zeroAsset } from "@/services/assets";
 import { compareExtTokens, nameToU64, sortPair, symbolCodeToU64 } from "@/services/eosioName";
 import { planLaunch } from "@/services/launchMath";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
+import { protonSymbol, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
+import { tokenStepValid } from "@/components/launch/draftPlan";
+import { emptyDraft } from "@/hooks/useLaunchDraft";
+import { validImageUrl } from "@/services/tokenLogo";
 
 describe("tick math", () => {
   it("tick 0 is 2^64", () => {
@@ -34,6 +38,52 @@ describe("assets", () => {
     expect(zeroAsset(6, "EASY")).toBe("0.000000 EASY");
     expect(validSymbol("FOO")).toBe(true);
     expect(validSymbol("foo")).toBe(false);
+  });
+});
+
+describe("token.proton logo", () => {
+  it("formats symbol as precision,CODE with no spaces", () => {
+    expect(protonSymbol(4, "FOO")).toBe("4,FOO");
+  });
+
+  it("matches contract + symbol from string or object rows", () => {
+    const base = { id: 1, tcontract: "flex.mon3y", tname: "Foo", url: "", desc: "", iconurl: "" };
+    expect(rowMatchesContractSymbol({ ...base, symbol: "4,FOO" }, "flex.mon3y", 4, "FOO")).toBe(true);
+    expect(rowMatchesContractSymbol({ ...base, symbol: { precision: 4, name: "FOO" } }, "flex.mon3y", 4, "FOO")).toBe(true);
+    expect(rowMatchesContractSymbol({ ...base, symbol: "4,FOO" }, "alice", 4, "FOO")).toBe(false);
+    expect(tokenProtonLogoAction({
+      row: null,
+      tcontract: "flex.mon3y",
+      tname: "Foo",
+      url: "https://x",
+      desc: "d",
+      iconurl: "https://gateway.pinata.cloud/ipfs/QmHash",
+      precision: 4,
+      symbol: "FOO",
+    })).toMatchObject({
+      account: "token.proton",
+      name: "reg",
+      data: { symbol: "4,FOO", tcontract: "flex.mon3y" },
+      authorization: [{ actor: "flex.mon3y", permission: "active" }],
+    });
+    expect(tokenProtonLogoAction({
+      row: { ...base, id: 9, symbol: "4,FOO" },
+      tcontract: "flex.mon3y",
+      tname: "Foo",
+      url: "",
+      desc: "",
+      iconurl: "https://gateway.pinata.cloud/ipfs/QmHash",
+      precision: 4,
+      symbol: "FOO",
+    }).name).toBe("update");
+  });
+
+  it("requires a public image URL after a Pinata failure", () => {
+    expect(validImageUrl("https://example.com/logo.png")).toBe(true);
+    expect(validImageUrl("ipfs://Qm")).toBe(false);
+    const draft = { ...emptyDraft(), name: "Foo", symbol: "FOO", pinFailed: true };
+    expect(tokenStepValid(draft)).toMatch(/Pinata failed/);
+    expect(tokenStepValid({ ...draft, imageUrl: "https://example.com/logo.png" })).toBeNull();
   });
 });
 

@@ -70,6 +70,7 @@ export function txErrorMessage(err: unknown): string {
 const HINTS: Array<[string, string]> = [
   ["overdrawn", "Need ≥ 5,000 XPR for contract RAM, plus extra for Alcor."],
   ["insufficient", "Need ≥ 5,000 XPR for contract RAM, plus extra for Alcor."],
+  ["missing authority", "token.proton logos must be signed by the token contract (tcontract@active)."],
   ["unable to retrieve account", "The flex contract is not a live account — check VITE_FLEXFOREX_CONTRACT."],
   ["unknown key", "The flex contract is not a live account — check VITE_FLEXFOREX_CONTRACT."],
   ["Fail to retrieve account", "The flex contract is not deployed yet."],

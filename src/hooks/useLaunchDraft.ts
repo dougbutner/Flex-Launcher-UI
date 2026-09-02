@@ -7,6 +7,10 @@ export type LaunchDraft = {
   precision: number;
   maxSupply: string;
   imageDataUrl: string;
+  imageCid: string;
+  imageUrl: string;
+  pinFailed: boolean;
+  logoTx: string;
   description: string;
   website: string;
   twitter: string;
@@ -43,6 +47,10 @@ export const emptyDraft = (): LaunchDraft => ({
   precision: 4,
   maxSupply: "1000000",
   imageDataUrl: "",
+  imageCid: "",
+  imageUrl: "",
+  pinFailed: false,
+  logoTx: "",
   description: "",
   website: "",
   twitter: "",
