@@ -1,7 +1,7 @@
 import { Chains } from '@wharfkit/common';
 
-export const APP_NAME = 'XPR Network game template';
-export const REQUEST_ACCOUNT = 'xpr.template';
+export const APP_NAME = 'Flex Launcher';
+export const REQUEST_ACCOUNT = 'flex.launcher';
 /** Multiple RPC endpoints for fault tolerance (XPR Network mainnet). */
 export const CHAIN_ENDPOINTS = [
   'https://proton.greymass.com',

@@ -80,12 +80,13 @@ async function connectWebAuthWallet(options: {
       requestAccount: REQUEST_ACCOUNT,
     },
     selectorOptions: options.restoreSession
-      ? { appName: APP_NAME, appLogo: APP_LOGO }
+      ? {}
       : {
-          appName: APP_NAME,
-          appLogo: APP_LOGO,
           enabledWalletTypes: [...WEBAUTH_ENABLED_WALLETS],
         },
+    uiOptions: {
+      appInfo: { name: APP_NAME, logo: APP_LOGO, logoRounded: true },
+    },
   });
 
   if (res?.error) {

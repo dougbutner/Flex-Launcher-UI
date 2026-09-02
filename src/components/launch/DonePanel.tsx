@@ -1,0 +1,55 @@
+import { alcorSwapUrl, explorerAccount, explorerTx, FLEXFOREX_CONTRACT } from "@/config/launch";
+import type { LaunchDraft } from "@/hooks/useLaunchDraft";
+import { quoteFromDraft } from "@/components/launch/draftPlan";
+
+export function DonePanel({ draft, onReset }: { draft: LaunchDraft; onReset: () => void }) {
+  const quote = quoteFromDraft(draft);
+  return (
+    <section className="card p-8 text-center">
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/15">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--success))" strokeWidth="3">
+          <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <h2 className="mt-4 text-2xl font-black tracking-tight">
+        ${draft.symbol} is live
+      </h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+        Stamped and transferable. 100% of supply sits in a locked, one-sided Alcor position — buyers walk the range
+        and reflections flow to holders.
+      </p>
+
+      <div className="mx-auto mt-6 flex max-w-sm flex-col gap-2">
+        <a
+          href={alcorSwapUrl(quote.symbol, quote.contract, draft.symbol)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-accent btn-lg w-full"
+        >
+          Trade ${draft.symbol} on Alcor
+        </a>
+        <div className="flex gap-2">
+          <a
+            href={explorerTx(draft.stampTx)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-outline btn-sm flex-1"
+          >
+            Stamp tx
+          </a>
+          <a
+            href={explorerAccount(FLEXFOREX_CONTRACT)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-outline btn-sm flex-1"
+          >
+            Contract
+          </a>
+          <button type="button" className="btn btn-ghost btn-sm flex-1" onClick={onReset}>
+            Launch another
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}

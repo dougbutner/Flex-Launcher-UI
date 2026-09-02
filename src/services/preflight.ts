@@ -1,0 +1,163 @@
+import { LOCK_MIN_SECONDS, SWAP_ALCOR } from "@/config/launch";
+import { assetAmountNumber, parseAsset } from "@/services/assets";
+import type { LaunchPlan } from "@/services/launchMath";
+import {
+  readAlcorBalance,
+  readAccounts,
+  readLaunch,
+  readLock,
+  readPool,
+  readPositions,
+  readStat,
+} from "@/services/flexTables";
+
+export type PreflightItem = {
+  id: string;
+  label: string;
+  pass: boolean;
+  detail?: string;
+};
+
+function num(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]): unknown {
+  if (!row) return undefined;
+  for (const k of keys) {
+    if (row[k] != null) return row[k];
+  }
+  return undefined;
+}
+
+/** Symbol code from a row value that may be "FOO", "4,FOO", or a symbol object. */
+export function symbolCodeOf(v: unknown): string {
+  if (v && typeof v === "object") {
+    const code = (v as { symbol_code?: string }).symbol_code;
+    if (typeof code === "string") return code;
+  }
+  if (typeof v !== "string") return "";
+  const m = v.match(/[A-Z]{1,7}/);
+  return m ? m[0] : "";
+}
+
+function extMatches(ext: unknown, symbol: string, contract: string): boolean {
+  const e = ext as { quantity?: string; contract?: string } | undefined;
+  if (!e) return false;
+  return e.contract === contract && parseAsset(e.quantity ?? "")?.symbol === symbol;
+}
+
+/** Read-only mirror of the contract's stamp checks (UI-LAUNCH §6). */
+export async function runPreflight(
+  plan: LaunchPlan,
+  poolId: number,
+  issuer: string
+): Promise<PreflightItem[]> {
+  const sym = plan.launched.symbol;
+  const [launch, pool, stat, positions, issuerAlcorRows, swapAcct, issuerAcct] = await Promise.all([
+    readLaunch(sym),
+    readPool(poolId),
+    readStat(sym),
+    readPositions(poolId).catch(() => [] as Record<string, unknown>[]),
+    readAlcorBalance(issuer, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+    readAccounts(SWAP_ALCOR, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+    readAccounts(issuer, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+  ]);
+
+  const items: PreflightItem[] = [];
+  const launched = Boolean(pick(launch, "launched"));
+  items.push({
+    id: "registered",
+    label: "Launch registered, not yet stamped",
+    pass: Boolean(launch) && !launched,
+    detail: !launch ? "No launches row — run register" : launched ? "Already stamped" : "launches row found",
+  });
+
+  const poolActive = Boolean(pick(pool, "active"));
+  items.push({
+    id: "pool-active",
+    label: "Alcor pool is active",
+    pass: poolActive,
+    detail: poolActive ? "active" : "Pay activeFee with memo activepool#" + poolId,
+  });
+
+  const poolFee = num(pick(pool, "fee"));
+  const pairOk =
+    extMatches(pick(pool, "tokenA"), plan.tokenA.symbol, plan.tokenA.contract) &&
+    extMatches(pick(pool, "tokenB"), plan.tokenB.symbol, plan.tokenB.contract);
+  items.push({
+    id: "pair",
+    label: "Pool pair + fee match registration",
+    pass: Boolean(pool) && poolFee === plan.fee && pairOk,
+    detail: pool ? `fee ${poolFee}, ${plan.tokenA.symbol}/${plan.tokenB.symbol}` : "pool not found",
+  });
+
+  const pos = positions.find((p) => {
+    const owner = String(pick(p, "owner") ?? "");
+    const tl = num(pick(p, "tickLower", "tick_lower"));
+    const tu = num(pick(p, "tickUpper", "tick_upper"));
+    return owner === issuer && tl === plan.tickLower && tu === plan.tickUpper;
+  });
+  const liquidity = num(pick(pos, "liquidity"));
+  items.push({
+    id: "position",
+    label: "Issuer position with liquidity at registered ticks",
+    pass: Boolean(pos) && liquidity > 0,
+    detail: pos ? `liquidity ${liquidity}` : "no matching position",
+  });
+
+  let lockPass = false;
+  let lockDetail = "no lock row";
+  const posId = num(pick(pos, "id"));
+  if (pos) {
+    const lock = await readLock(posId).catch(() => null);
+    const unlockTime = num(pick(lock, "unlockTime", "unlock_time"));
+    const minUnlock = Math.floor(Date.now() / 1000) + LOCK_MIN_SECONDS;
+    lockPass = unlockTime >= minUnlock;
+    lockDetail = unlockTime
+      ? `unlocks ${new Date(unlockTime * 1000).toLocaleDateString()}`
+      : lockDetail;
+  }
+  items.push({ id: "lock", label: "Lock ≥ 90 days remaining", pass: lockPass, detail: lockDetail });
+
+  const supply = assetAmountNumber(String(pick(stat, "supply") ?? "0"));
+  const swapBal = assetAmountNumber(String(pick(swapAcct.rows[0], "balance") ?? "0"));
+  items.push({
+    id: "supply-on-alcor",
+    label: "100% of supply sits on swap.alcor",
+    pass: supply > 0 && Math.abs(swapBal - supply) < 10 ** -plan.launched.precision / 2,
+    detail: `${swapBal.toLocaleString()} / ${supply.toLocaleString()} ${sym}`,
+  });
+
+  const issuerBal = assetAmountNumber(String(pick(issuerAcct.rows[0], "balance") ?? "0"));
+  items.push({
+    id: "issuer-empty",
+    label: "Issuer wallet holds none of the token",
+    pass: issuerBal <= 10 ** -plan.launched.precision / 2,
+    detail: issuerBal > 0 ? `${issuerBal} ${sym} still in wallet` : "clean",
+  });
+
+  const leftover = issuerAlcorRows.rows.reduce(
+    (s, r) => s + assetAmountNumber(String(pick(r, "balance") ?? "0")),
+    0
+  );
+  items.push({
+    id: "no-leftover",
+    label: "No unused Alcor balance of the token",
+    pass: leftover <= 10 ** -plan.launched.precision / 2,
+    detail: leftover > 0 ? `${leftover} ${sym} unclaimed in Alcor` : "clean",
+  });
+
+  const slot = pick(pool, "currSlot") as { tick?: unknown } | undefined;
+  const currTick = num(slot?.tick ?? pick(pool, "currSlotTick", "curr_slot_tick"));
+  const oneSided = plan.launchedIsA ? currTick < plan.tickLower : currTick >= plan.tickUpper;
+  items.push({
+    id: "one-sided",
+    label: "Current tick keeps the range one-sided",
+    pass: Boolean(pool) && oneSided,
+    detail: `tick ${currTick} vs ${plan.tickLower}…${plan.tickUpper}`,
+  });
+
+  return items;
+}

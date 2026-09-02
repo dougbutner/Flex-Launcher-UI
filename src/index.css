@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    /* Brand: black & gold. Primary = rich gold; accent = lighter gold (highlights, hovers). */
     --background: 0 0% 5%;
     --foreground: 45 12% 94%;
     --card: 40 8% 8%;
@@ -26,40 +27,96 @@
     --radius: 0.5rem;
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 8%;
+  }
+
+  * {
+    @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: system-ui, -apple-system, sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family:
+      "Inter",
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.4);
   }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-40;
   }
 
   .btn-primary {
-    @apply btn bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground;
+    @apply btn bg-primary text-primary-foreground shadow-[0_0_24px_-8px_hsl(var(--primary)/0.8)] hover:bg-accent hover:text-accent-foreground active:scale-[0.98];
+  }
+
+  .btn-accent {
+    @apply btn bg-accent text-accent-foreground hover:brightness-110 active:scale-[0.98];
   }
 
   .btn-outline {
-    @apply btn border border-input bg-background hover:bg-accent hover:text-accent-foreground;
+    @apply btn border border-input bg-transparent hover:border-accent/60 hover:bg-accent/10 hover:text-accent;
   }
 
   .btn-ghost {
-    @apply btn hover:bg-accent hover:text-accent-foreground;
+    @apply btn text-muted-foreground hover:bg-secondary hover:text-foreground;
   }
 
   .btn-sm {
-    @apply h-9 px-3;
+    @apply h-9 rounded-md px-3 text-xs;
+  }
+
+  .btn-lg {
+    @apply h-12 rounded-md px-6 text-base;
   }
 
   .input {
-    @apply flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply flex w-full rounded-md border border-input bg-background/60 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus-visible:border-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40;
   }
 
   .card {
-    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+    @apply rounded-lg border bg-card text-card-foreground shadow-[0_8px_30px_-12px_rgba(0,0,0,0.8)];
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
+  }
+
+  .chip-success {
+    @apply chip border-success/30 bg-success/10 text-success;
+  }
+
+  .chip-warn {
+    @apply chip border-warning/30 bg-warning/10 text-warning;
+  }
+
+  .chip-muted {
+    @apply chip border-border bg-secondary/60 text-muted-foreground;
+  }
+
+  .chip-primary {
+    @apply chip border-primary/40 bg-primary/15 text-primary;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground;
+  }
+
+  .stat-box {
+    @apply rounded-md border border-border bg-background/50 px-3.5 py-3;
+  }
+
+  .link {
+    @apply font-medium text-primary underline-offset-4 hover:text-accent hover:underline;
   }
 }

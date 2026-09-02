@@ -1,0 +1,83 @@
+---
+description: Antelope / EOSIO CDT C++ smart-contract coding style (tables, actions, comments, inline sends).
+globs: "**/*.{cpp,hpp,h}"
+alwaysApply: false
+---
+
+# Antelope Dev Style
+
+Write CDT contracts like `takeiteasy.hpp`, `invitono.cpp`, `loot.cpp` / `loot.hpp`, and self-contained integration headers like `alcorswap_interface.hpp`. This is contract WASM style, not node/spring C++.
+
+## Files
+
+- Contract header: `#pragma once`, eosio includes, `class [[eosio::contract("name")]] name : public contract`.
+- Contract source: `#include "name.hpp"` then implementations. No logic-only headers without a matching `.cpp` for non-trivial actions.
+- Third-party ABI mirrors: include guards, `namespace`, eosio headers only — no vendor internals.
+
+## Shape
+
+- Public: `using contract::contract;`, `ACTION` decls, `[[eosio::on_notify("*::transfer")]]` handlers, `action_wrapper<"action"_n, &contract::action>` for each public action, static `get_supply` / `get_balance` when this is a token.
+- Private: `TABLE` rows, `typedef` / `using` multi_index / singleton, helpers.
+- Params: `const name&`, `const asset&`, `const string&`, `const symbol&` (and same for other fat types).
+- Names: actions snake_case matching ABI; tables `"tablename"_n` (≤12 chars); row types `foo` or `foo_s`; indexes `foo_t` / `foos`; secondary `by_*()` + `indexed_by<"byname"_n, const_mem_fun<...>>`; constants `static constexpr` UPPER_SNAKE.
+
+## Action body (always this order)
+
+1. Auth (`require_auth` / `has_auth` / app permission).
+2. `is_account` and token/NFT existence (`stat` `require_find`, template exists).
+3. Table reads + invariant `check`s.
+4. `emplace` / `modify` / `erase`.
+5. Inline `action(...).send()` last.
+
+Upsert: `find` then `emplace` or `modify`. RAM payer is explicit: `user`, `get_self()`, or `same_payer`. Field order on live tables is ABI — never reorder or change types on tables that already hold rows.
+
+```cpp
+ACTION loot::addtemplates(const name& user, const uint32_t& template_id, const name& collection, const asset& timeunit_rate) {
+    check(has_auth(user) || has_auth(get_self()), "⚡️ Missing authorization by user.");
+    config_t config_tbl(get_self(), get_self().value);
+    auto config_itr = config_tbl.find(collection.value);
+    check(config_itr != config_tbl.end(), "⚡️ Collection config not found.");
+    template_t template_tbl(get_self(), get_self().value);
+    auto row = template_tbl.find(uint64_t(template_id));
+    if (row == template_tbl.end()) {
+        template_tbl.emplace(get_self(), [&](auto& r) { r.template_id = template_id; r.collection = collection; r.timeunit_rate = timeunit_rate; });
+    } else {
+        template_tbl.modify(row, get_self(), [&](auto& r) { r.timeunit_rate = timeunit_rate; });
+    }
+}
+```
+
+```cpp
+action(permission_level{get_self(), "active"_n}, token_contract, "transfer"_n,
+       std::make_tuple(get_self(), user, quantity, memo)).send();
+```
+
+## Comments
+
+```cpp
+// === Claim Reward === //
+// --- Mints tokens based on invite score --- //
+void invitono::claimreward(name user) {
+  // - User validation
+  // ...
+}//END claimreward()
+```
+
+- `// === Section === //` around actions; `// --- Step --- //` inside; `// - detail` for one-liners; `}//END name()` at closing brace.
+- Table fields: trailing comments for non-obvious meaning.
+- Integration APIs: `/// @notice` / `@dev` / `@param`. User `check` strings may use a short emoji prefix; foreign-table errors use `"scope: reason"`.
+
+## Tables
+
+```cpp
+TABLE flexer {
+   name     owner;
+   asset    balance;
+   bool     is_banned = false;
+   uint64_t primary_key()const { return owner.value; }
+};
+using flexers = eosio::multi_index<"flexers"_n, flexer>;
+```
+
+- Align fields. Default members in-declaration. Singleton for global config (`get_or_default` / `set` with designated initializers).
+- **NEVER** use `EOSLIB_SERIALIZE`. Let CDT default serialization follow member declaration order. Do not add the macro to tables, structs, or nested types.
