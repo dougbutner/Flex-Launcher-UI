@@ -1,4 +1,4 @@
-import { CONTRACT_RAM_QUANT, FEE_TIERS, FLEXFOREX_CONTRACT, SWAP_ALCOR } from "@/config/launch";
+import { CONTRACT_RAM_QUANT, FEE_TIERS, SWAP_ALCOR, flexAccount } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
 import { StepShell } from "@/components/launch/ui";
@@ -32,7 +32,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
   return (
     <StepShell
       title="Review launch"
-      desc="Everything the contract will check. Read it twice — ticks and precision cannot change after forge."
+      desc="Everything the contract will check. Read it twice — ticks and precision cannot change after create."
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -51,6 +51,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
       ) : null}
 
       <div className="rounded-2xl border bg-background/50 px-4 py-2">
+        <Row k="Program" v={`${draft.program} @ ${flexAccount(draft.program)}`} />
         <Row k="Token" v={`${draft.name} (${draft.symbol})`} />
         <Row k="Max supply" v={`${Number(draft.maxSupply || "0").toLocaleString()} ${draft.symbol} · precision ${draft.precision}`} />
         <Row k="Quote" v={`${quote.symbol} @ ${quote.contract}${draft.quoteId === "xtoken" ? ` · proof pool #${draft.proofPoolId}` : ""}`} />
@@ -67,13 +68,13 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
         ) : null}
         <Row k="Deposit" v={`100% of supply → ${SWAP_ALCOR}`} />
         <Row k="Lock" v={`${Math.max(90, draft.lockDays)} days · until ~${unlockDate}`} />
-        <Row k="Contract RAM" v={`${CONTRACT_RAM_QUANT} → ${FLEXFOREX_CONTRACT}`} />
+        <Row k="Contract RAM" v={`${CONTRACT_RAM_QUANT} → ${flexAccount(draft.program)}`} />
       </div>
 
       <div className="space-y-2 rounded-2xl border border-warning/30 bg-warning/5 p-4 text-xs text-warning">
-        <p className="font-semibold">Before stamp, your token cannot transfer anywhere except to {SWAP_ALCOR}.</p>
+        <p className="font-semibold">Before liftoff, your token cannot transfer anywhere except to {SWAP_ALCOR}.</p>
         <p className="text-warning/80">
-          Do not try to send it to a friend first. After stamp, transfers work with the normal flex tax, and the
+          Do not try to send it to a friend first. After liftoff, transfers work with the normal flex tax, and the
           protocol skim ({draft.quoteId === "xtoken" ? "0.25% nyra + 0.25% reflections" : "0%"}) never changes even if
           you later remove liquidity.
         </p>

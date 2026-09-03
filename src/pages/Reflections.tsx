@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { explorerTx, FLEXFOREX_CONTRACT } from "@/config/launch";
+import { FLEX_PROGRAMS, explorerTx, flexAccount } from "@/config/launch";
 import { getActions, type HyperionAction } from "@/services/rpc";
 
 const PAGE = 25;
+
+type Row = HyperionAction & { contract: string; actionName: string };
 
 function ts(a: HyperionAction): string {
   const raw = a["@timestamp"] ?? a.timestamp;
@@ -20,23 +22,33 @@ function dataSummary(data: Record<string, unknown> | undefined): Array<[string, 
 }
 
 export default function Reflections() {
-  const [actions, setActions] = useState<HyperionAction[]>([]);
-  const [total, setTotal] = useState(0);
+  const [actions, setActions] = useState<Row[]>([]);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
 
-  const load = useCallback(async (skip: number) => {
+  const load = useCallback(async () => {
     setBusy(true);
     setError("");
     try {
-      const res = await getActions({
-        account: FLEXFOREX_CONTRACT,
-        filter: `${FLEXFOREX_CONTRACT}:reflect`,
-        limit: PAGE,
-        skip,
+      const pages = await Promise.all(
+        FLEX_PROGRAMS.map(async (p) => {
+          const account = flexAccount(p.id);
+          const actionName = p.payout === "distribute" ? "distribute" : "reflect";
+          const res = await getActions({
+            account,
+            filter: `${account}:${actionName}`,
+            limit: PAGE,
+            skip: 0,
+          });
+          return res.actions.map((a) => ({ ...a, contract: account, actionName }));
+        })
+      );
+      const merged = pages.flat().sort((a, b) => {
+        const ta = Date.parse(String(a["@timestamp"] ?? a.timestamp ?? 0));
+        const tb = Date.parse(String(b["@timestamp"] ?? b.timestamp ?? 0));
+        return tb - ta;
       });
-      setTotal(res.total);
-      setActions((prev) => (skip === 0 ? res.actions : [...prev, ...res.actions]));
+      setActions(merged);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -45,7 +57,7 @@ export default function Reflections() {
   }, []);
 
   useEffect(() => {
-    void load(0);
+    void load();
   }, [load]);
 
   return (
@@ -54,11 +66,11 @@ export default function Reflections() {
         <div>
           <h1 className="text-3xl font-black tracking-tight">Historic reflections</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Every <span className="font-mono">reflect</span> call on{" "}
-            <span className="font-mono">{FLEXFOREX_CONTRACT}</span> — skim first, then the 61.8% splash to holders.
+            <span className="font-mono">distribute</span> on easyflex and{" "}
+            <span className="font-mono">reflect</span> on complexflex / flexforex — skim first, then the 61.8% splash.
           </p>
         </div>
-        <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load(0)}>
+        <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>
           {busy && actions.length === 0 ? "Loading…" : "Refresh"}
         </button>
       </div>
@@ -70,7 +82,8 @@ export default function Reflections() {
       <div className="mt-6 space-y-2">
         {actions.length === 0 && !busy ? (
           <div className="card p-8 text-center text-sm text-muted-foreground">
-            No reflections yet. Once a token is stamped, anyone can poke <span className="font-mono">reflect</span>.
+            No payouts yet. After liftoff, anyone can poke <span className="font-mono">distribute</span> or{" "}
+            <span className="font-mono">reflect</span>.
           </div>
         ) : (
           actions.map((a, i) => {
@@ -80,6 +93,9 @@ export default function Reflections() {
               <article key={`${id}-${i}`} className="card p-4">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold">{ts(a)}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {a.contract}::{a.actionName}
+                  </span>
                   {id ? (
                     <a href={explorerTx(id)} target="_blank" rel="noopener noreferrer" className="link font-mono text-xs">
                       {id.slice(0, 12)}…
@@ -101,14 +117,6 @@ export default function Reflections() {
           })
         )}
       </div>
-
-      {actions.length > 0 && actions.length < total ? (
-        <div className="mt-6 text-center">
-          <button type="button" className="btn btn-outline" disabled={busy} onClick={() => void load(actions.length)}>
-            {busy ? "Loading…" : `Load more (${actions.length}/${total})`}
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

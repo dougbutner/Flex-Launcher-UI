@@ -1,10 +1,4 @@
-import {
-  CONTRACT_RAM_QUANT,
-  EOSIO,
-  EOSIO_TOKEN,
-  FLEXFOREX_CONTRACT,
-  SWAP_ALCOR,
-} from "@/config/launch";
+import { CONTRACT_RAM_QUANT, EOSIO, EOSIO_TOKEN, SWAP_ALCOR } from "@/config/launch";
 import { extendedAsset, zeroAsset } from "@/services/assets";
 import type { LaunchPlan } from "@/services/launchMath";
 
@@ -15,34 +9,39 @@ export type ChainAction = {
   authorization?: Array<{ actor: string; permission: string }>;
 };
 
-export function buyContractRam(payer: string): ChainAction {
+export function buyContractRam(payer: string, tokenContract: string): ChainAction {
   return {
     account: EOSIO,
     name: "buyram",
-    data: { payer, receiver: FLEXFOREX_CONTRACT, quant: CONTRACT_RAM_QUANT },
+    data: { payer, receiver: tokenContract, quant: CONTRACT_RAM_QUANT },
   };
 }
 
-export function forgeAction(issuer: string, maximumSupply: string): ChainAction {
+export function createTokenAction(tokenContract: string, issuer: string, maximumSupply: string): ChainAction {
   return {
-    account: FLEXFOREX_CONTRACT,
-    name: "forge",
+    account: tokenContract,
+    name: "create",
     data: { issuer, maximum_supply: maximumSupply },
   };
 }
 
-export function mintAction(issuer: string, quantity: string): ChainAction {
+export function supplyAction(
+  tokenContract: string,
+  kind: "mint" | "issue",
+  issuer: string,
+  quantity: string
+): ChainAction {
   return {
-    account: FLEXFOREX_CONTRACT,
-    name: "mint",
+    account: tokenContract,
+    name: kind,
     data: { to: issuer, quantity, memo: "initial supply" },
   };
 }
 
-export function reglaunchAction(plan: LaunchPlan, proofPoolId: number): ChainAction {
+export function startlaunchAction(tokenContract: string, plan: LaunchPlan, xtokenProofPoolId: number): ChainAction {
   return {
-    account: FLEXFOREX_CONTRACT,
-    name: "reglaunch",
+    account: tokenContract,
+    name: "startlaunch",
     data: {
       token_symbol: plan.launched.symbol,
       quote: extendedAsset(plan.quoteZero, plan.quote.contract),
@@ -50,7 +49,7 @@ export function reglaunchAction(plan: LaunchPlan, proofPoolId: number): ChainAct
       tick_lower: plan.tickLower,
       tick_upper: plan.tickUpper,
       sqrt_price_x64: plan.sqrtPriceX64,
-      proof_pool_id: proofPoolId,
+      xtoken_proof_pool_id: xtokenProofPoolId,
     },
   };
 }
@@ -69,9 +68,9 @@ export function createpoolAction(issuer: string, plan: LaunchPlan): ChainAction 
   };
 }
 
-export function depositAction(issuer: string, quantity: string): ChainAction {
+export function depositAction(tokenContract: string, issuer: string, quantity: string): ChainAction {
   return {
-    account: FLEXFOREX_CONTRACT,
+    account: tokenContract,
     name: "transfer",
     data: { from: issuer, to: SWAP_ALCOR, quantity, memo: "deposit" },
   };
@@ -109,10 +108,10 @@ export function lockposAction(issuer: string, poolId: number, plan: LaunchPlan, 
   };
 }
 
-export function stampAction(plan: LaunchPlan, poolId: number): ChainAction {
+export function liftoffAction(tokenContract: string, plan: LaunchPlan, poolId: number): ChainAction {
   return {
-    account: FLEXFOREX_CONTRACT,
-    name: "stamp",
+    account: tokenContract,
+    name: "liftoff",
     data: {
       token_symbol: plan.launched.symbol,
       pool_id: poolId,
@@ -130,11 +129,17 @@ export function activepoolTransfer(from: string, quantity: string, contract: str
   };
 }
 
-/** keeper collects the optional crank tip (contract requires its auth when keeper_min > 0). */
-export function reflectAction(tokenSymbol: string, keeper: string): ChainAction {
-  return {
-    account: FLEXFOREX_CONTRACT,
-    name: "reflect",
-    data: { token_symbol: tokenSymbol, keeper },
-  };
+export function payoutAction(
+  tokenContract: string,
+  payout: "distribute" | "reflect",
+  tokenSymbol: string,
+  keeper?: string
+): ChainAction {
+  if (payout === "distribute") {
+    return { account: tokenContract, name: "distribute", data: { token_symbol: tokenSymbol } };
+  }
+  if (keeper) {
+    return { account: tokenContract, name: "reflect", data: { token_symbol: tokenSymbol, keeper } };
+  }
+  return { account: tokenContract, name: "reflect", data: { token_symbol: tokenSymbol } };
 }

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { formatAsset, validSymbol, zeroAsset } from "@/services/assets";
 import { compareExtTokens, nameToU64, sortPair, symbolCodeToU64 } from "@/services/eosioName";
 import { planLaunch } from "@/services/launchMath";
+import { createTokenAction, payoutAction, startlaunchAction, supplyAction } from "@/services/launchActions";
+import { flexAccount } from "@/config/launch";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
 import { protonSymbol, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
 import { tokenStepValid } from "@/components/launch/draftPlan";
@@ -93,6 +95,7 @@ describe("launch plan", () => {
       symbol: "FOO",
       precision: 4,
       maxSupply: "1000000",
+      contract: "flex.mon3y",
       quote: { symbol: "EASY", contract: "mon3y", precision: 6 },
       fee: 3000,
       priceLower: "1",
@@ -102,6 +105,7 @@ describe("launch plan", () => {
     expect(plan.tickLower % 60).toBe(0);
     expect(plan.sqrtPriceX64).toMatch(/^\d+$/);
     expect(plan.fullSupply).toBe("1000000.0000 FOO");
+    expect(plan.launched.contract).toBe("flex.mon3y");
     if (plan.launchedIsA) {
       expect(plan.startTick).toBeLessThan(plan.tickLower);
       expect(plan.tokenBDesired.startsWith("0.")).toBe(true);
@@ -109,5 +113,32 @@ describe("launch plan", () => {
       expect(plan.startTick).toBeGreaterThanOrEqual(plan.tickUpper);
       expect(plan.tokenADesired.startsWith("0.")).toBe(true);
     }
+  });
+
+  it("uses the chosen program contract", () => {
+    const plan = planLaunch({
+      symbol: "BAR",
+      precision: 4,
+      maxSupply: "1",
+      contract: "mon3y",
+      quote: { symbol: "EASY", contract: "mon3y", precision: 6 },
+      fee: 3000,
+      priceLower: "1",
+      priceUpper: "1000",
+    });
+    expect(plan.launched.contract).toBe("mon3y");
+    expect(createTokenAction("mon3y", "alice", plan.fullSupply).name).toBe("create");
+    expect(supplyAction("mon3y", "issue", "alice", plan.fullSupply).name).toBe("issue");
+    expect(supplyAction("flex.mon3y", "mint", "alice", plan.fullSupply).name).toBe("mint");
+    expect(startlaunchAction("mon3y", plan, 0).name).toBe("startlaunch");
+    expect(startlaunchAction("mon3y", plan, 0).data.xtoken_proof_pool_id).toBe(0);
+    expect(payoutAction("mon3y", "distribute", "BAR").name).toBe("distribute");
+    expect(payoutAction("flex.mon3y", "reflect", "BAR", "alice").data).toEqual({
+      token_symbol: "BAR",
+      keeper: "alice",
+    });
+    expect(flexAccount("easyflex")).toBe("mon3y");
+    expect(flexAccount("complexflex")).toBe("gold.mon3y");
+    expect(flexAccount("flexforex")).toBe("flex.mon3y");
   });
 });

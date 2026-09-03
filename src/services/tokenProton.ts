@@ -1,4 +1,3 @@
-import { FLEXFOREX_CONTRACT } from "@/config/launch";
 import type { ChainAction } from "@/services/launchActions";
 import { getAllTableRows } from "@/services/rpc";
 
@@ -94,9 +93,9 @@ export async function buildTokenProtonLogoAction(args: {
   iconurl: string;
   precision: number;
   symbol: string;
-  tcontract?: string;
+  tcontract: string;
 }): Promise<ChainAction> {
-  const tcontract = args.tcontract || FLEXFOREX_CONTRACT;
+  const tcontract = args.tcontract;
   const row = await findProtonTokenRow(tcontract, args.precision, args.symbol);
   return tokenProtonLogoAction({ ...args, tcontract, row });
 }

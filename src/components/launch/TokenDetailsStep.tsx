@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { explorerTx, FLEXFOREX_CONTRACT } from "@/config/launch";
+import { explorerTx, FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { tokenStepValid } from "@/components/launch/draftPlan";
@@ -24,10 +24,12 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   const [signing, setSigning] = useState(false);
   const [logoErr, setLogoErr] = useState("");
   const [urlOpen, setUrlOpen] = useState(Boolean(draft.pinFailed || (draft.imageUrl && !draft.imageCid)));
+  const urlReady = validImageUrl(draft.imageUrl);
   const preview = (urlReady ? draft.imageUrl : "") || draft.imageDataUrl;
   const showUrl = urlOpen || draft.pinFailed || Boolean(draft.imageUrl && !draft.imageCid);
-  const urlReady = validImageUrl(draft.imageUrl);
-  const canSign = Boolean(isLoggedIn && actor === FLEXFOREX_CONTRACT && urlReady && !invalid);
+  const tokenContract = flexAccount(draft.program);
+  const programLocked = Boolean(draft.ramTx || draft.createTx);
+  const canSign = Boolean(isLoggedIn && actor === tokenContract && urlReady && !invalid);
 
   const onImage = async (file: File | undefined) => {
     if (!file) return;
@@ -66,6 +68,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         iconurl: draft.imageUrl.trim(),
         precision: draft.precision,
         symbol: draft.symbol,
+        tcontract: tokenContract,
       });
       const result = await transact([action]);
       patch({ logoTx: txIdFromResult(result) || "ok" });
@@ -81,7 +84,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   return (
     <StepShell
       title="Create a token"
-      desc="The basics. Precision and ticker are permanent once forged."
+      desc="Pick a program, then name and ticker. Precision and ticker are permanent once created."
       footer={
         <>
           <span />
@@ -91,6 +94,30 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         </>
       }
     >
+      <div className="grid grid-cols-1 gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Program</p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {FLEX_PROGRAMS.map((p) => {
+            const selected = draft.program === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                disabled={programLocked}
+                onClick={() => patch({ program: p.id as FlexProgram })}
+                className={`rounded-xl border px-3 py-3 text-left transition-colors ${
+                  selected ? "border-primary bg-primary/10" : "border-border bg-background/40 hover:border-primary/40"
+                } ${programLocked ? "opacity-60" : ""}`}
+              >
+                <div className="font-mono text-sm font-bold">{p.title}</div>
+                <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{flexAccount(p.id)}</div>
+                <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{p.blurb}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="flex items-start gap-5">
         <button
           type="button"
@@ -150,7 +177,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         <p className="mt-1 text-muted-foreground">
           Square PNG or SVG, 256–512px, max 1 MB. Pin to IPFS, or paste a public image URL. Then{" "}
           <span className="font-mono">token.proton</span> stores that URL. Sign as{" "}
-          <span className="font-mono">{FLEXFOREX_CONTRACT}@active</span>.
+          <span className="font-mono">{tokenContract}@active</span>.
         </p>
         {showUrl ? (
           <div className="mt-3">
@@ -191,9 +218,9 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           </p>
         ) : null}
         {logoErr ? <p className="mt-2 font-medium text-destructive">{logoErr}</p> : null}
-        {isLoggedIn && actor !== FLEXFOREX_CONTRACT ? (
+        {isLoggedIn && actor !== tokenContract ? (
           <p className="mt-2 text-warning">
-            Connected as {actor}. Switch to {FLEXFOREX_CONTRACT} to register the logo.
+            Connected as {actor}. Switch to {tokenContract} to register the logo.
           </p>
         ) : null}
         <button
@@ -207,7 +234,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Max supply" hint="100% is minted to you, then deposited into the pool.">
+        <Field label="Max supply" hint="100% is issued or minted to you, then deposited into the pool.">
           <input
             className="input font-mono"
             inputMode="decimal"

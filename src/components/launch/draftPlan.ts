@@ -1,4 +1,4 @@
-import { QUOTE_PRESETS, XTOKENS } from "@/config/launch";
+import { flexAccount, QUOTE_PRESETS, XTOKENS } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { validSymbol } from "@/services/assets";
 import { validImageUrl } from "@/services/tokenLogo";
@@ -56,6 +56,7 @@ export function planFromDraft(draft: LaunchDraft): LaunchPlan | null {
       symbol: draft.symbol,
       precision: draft.precision,
       maxSupply: draft.maxSupply,
+      contract: flexAccount(draft.program),
       quote,
       fee: draft.fee,
       priceLower: draft.priceLower,

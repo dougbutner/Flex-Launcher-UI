@@ -1,7 +1,8 @@
-import { LOCK_MIN_DAYS, QUOTE_PRESETS, type FeeTier } from "@/config/launch";
+import { LOCK_MIN_DAYS, QUOTE_PRESETS, type FeeTier, type FlexProgram } from "@/config/launch";
 import { useCallback, useEffect, useState } from "react";
 
 export type LaunchDraft = {
+  program: FlexProgram;
   name: string;
   symbol: string;
   precision: number;
@@ -25,23 +26,24 @@ export type LaunchDraft = {
   priceUpper: string;
   lockDays: number;
   ramTx: string;
-  forgeTx: string;
+  createTx: string;
   mintTx: string;
-  regTx: string;
+  startTx: string;
   poolId: number | null;
   poolTx: string;
   activateTx: string;
   depositTx: string;
   rangeTx: string;
   lockTx: string;
-  stampTx: string;
+  liftoffTx: string;
 };
 
-const KEY = "flex-launch-draft";
+const KEY = "flex-launch-draft-v2";
 
 const easy = QUOTE_PRESETS[0];
 
 export const emptyDraft = (): LaunchDraft => ({
+  program: "flexforex",
   name: "",
   symbol: "",
   precision: 4,
@@ -65,16 +67,16 @@ export const emptyDraft = (): LaunchDraft => ({
   priceUpper: easy.priceUpper,
   lockDays: LOCK_MIN_DAYS,
   ramTx: "",
-  forgeTx: "",
+  createTx: "",
   mintTx: "",
-  regTx: "",
+  startTx: "",
   poolId: null,
   poolTx: "",
   activateTx: "",
   depositTx: "",
   rangeTx: "",
   lockTx: "",
-  stampTx: "",
+  liftoffTx: "",
 });
 
 function load(): LaunchDraft {

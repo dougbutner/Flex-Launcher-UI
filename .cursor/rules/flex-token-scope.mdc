@@ -1,0 +1,24 @@
+---
+description: Token-contract lingo and table identity when editing src/Project Contracts.
+globs: src/Project Contracts/**
+alwaysApply: false
+---
+
+# Token scope (C++ copies in this UI repo)
+
+Live programs: **complexflex**, **easyflex**, **flexforex** under `src/Project Contracts/`. Do not edit them unless the user asks. Prefer Flex-Forex as the contract repo.
+
+## Lingo
+
+- **Reflect** — pay a holder their share of the reflection pool (same token, unless they flex).
+- **Flex** — the holder opts in so reflection is swapped on Alcor into a different token (`swapexactin`). `choosereward` is how they flex. Native = `flex_reward_pool_id == 0`.
+- **Flex reward token** — the output asset of that swap.
+
+Token identity is always **(contract, symbol)**. Never ticker alone.
+
+## Tables
+
+- `stat` / `settings` / `flexers` / `flexpools` scope = **symbol code**.
+- `launches` scope = **contract**.
+- `addpool` then `choosereward`. Fail copy: `⟁ Only the issuer can add a flex reward token.`
+- Every `check` failure string starts with `⟁`.

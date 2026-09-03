@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CONTRACT_RAM_QUANT, CONTRACT_RAM_XPR, FLEXFOREX_CONTRACT } from "@/config/launch";
+import { CONTRACT_RAM_QUANT, CONTRACT_RAM_XPR, flexAccount } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { buyContractRam } from "@/services/launchActions";
@@ -20,6 +20,7 @@ function kb(bytes: number) {
 
 export function RamStep({ draft, patch, onNext, onBack }: Props) {
   const { actor, isLoggedIn, transact } = useWallet();
+  const tokenContract = flexAccount(draft.program);
   const [balance, setBalance] = useState<number | null>(null);
   const [ram, setRam] = useState<{ quota: number; usage: number } | null>(null);
   const [chainErr, setChainErr] = useState("");
@@ -30,14 +31,14 @@ export function RamStep({ draft, patch, onNext, onBack }: Props) {
     if (!actor) return;
     setChainErr("");
     try {
-      const [bal, info] = await Promise.all([readXprBalance(actor), readContractRam()]);
+      const [bal, info] = await Promise.all([readXprBalance(actor), readContractRam(tokenContract)]);
       setBalance(bal);
       setRam(info);
-      if (!info) setChainErr(`${FLEXFOREX_CONTRACT} is not a live account yet. Set VITE_FLEXFOREX_CONTRACT.`);
+      if (!info) setChainErr(`${tokenContract} is not a live account yet. Set VITE_EASYFLEX / VITE_COMPLEXFLEX / VITE_FLEXFOREX_CONTRACT.`);
     } catch (err) {
       setChainErr(txErrorMessage(err));
     }
-  }, [actor]);
+  }, [actor, tokenContract]);
 
   useEffect(() => {
     void refresh();
@@ -48,7 +49,7 @@ export function RamStep({ draft, patch, onNext, onBack }: Props) {
     setBusy(true);
     setError("");
     try {
-      const res = await transact([buyContractRam(actor)]);
+      const res = await transact([buyContractRam(actor, tokenContract)]);
       const txId = txIdFromResult(res);
       patch({ ramTx: txId || "ok" });
       await refresh();
@@ -65,7 +66,7 @@ export function RamStep({ draft, patch, onNext, onBack }: Props) {
   return (
     <StepShell
       title="Buy contract RAM"
-      desc={`A one-time gift of ${CONTRACT_RAM_QUANT} to ${FLEXFOREX_CONTRACT} pays for the tables your launch creates. Required before Forge.`}
+      desc={`A one-time gift of ${CONTRACT_RAM_QUANT} to ${tokenContract} pays for the tables your launch creates. Required before create.`}
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -99,7 +100,7 @@ export function RamStep({ draft, patch, onNext, onBack }: Props) {
           <div>
             <div className="font-mono text-lg font-bold text-primary">{CONTRACT_RAM_QUANT}</div>
             <div className="text-xs text-muted-foreground">
-              → <span className="font-mono">{FLEXFOREX_CONTRACT}</span> via <span className="font-mono">eosio::buyram</span>
+              → <span className="font-mono">{tokenContract}</span> via <span className="font-mono">eosio::buyram</span>
             </div>
           </div>
           {draft.ramTx ? <span className="chip-success">Paid</span> : <span className="chip-warn">Required</span>}

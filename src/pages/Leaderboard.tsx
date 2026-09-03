@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { alcorSwapUrl, explorerAccount, FLEXFOREX_CONTRACT } from "@/config/launch";
+import { FLEX_PROGRAMS, alcorSwapUrl, explorerAccount, flexAccount, type FlexProgram } from "@/config/launch";
 import { parseAsset } from "@/services/assets";
 import { readFlexers, readLaunches } from "@/services/flexTables";
 import { symbolCodeOf } from "@/services/preflight";
 
 type LaunchRow = Record<string, unknown>;
+
+type LaunchItem = {
+  id: string;
+  program: FlexProgram;
+  code: string;
+  symbol: string;
+  row: LaunchRow;
+};
 
 function pick(row: LaunchRow, ...keys: string[]): unknown {
   for (const k of keys) if (row[k] != null) return row[k];
@@ -27,7 +35,7 @@ function quoteLabel(row: LaunchRow): string {
 }
 
 export default function Leaderboard() {
-  const [launches, setLaunches] = useState<LaunchRow[] | null>(null);
+  const [launches, setLaunches] = useState<LaunchItem[] | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -35,49 +43,58 @@ export default function Leaderboard() {
   const [flexersBusy, setFlexersBusy] = useState(false);
 
   useEffect(() => {
-    readLaunches(200)
-      .then((rows) => {
-        const stamped = rows.filter((r) => Boolean(pick(r, "launched")));
+    Promise.all(
+      FLEX_PROGRAMS.map(async (p) => {
+        const code = flexAccount(p.id);
+        const rows = await readLaunches(code, 200).catch(() => [] as LaunchRow[]);
+        return rows
+          .filter((r) => Boolean(pick(r, "launched")))
+          .map((row) => {
+            const symbol = symbolCodeOf(pick(row, "token_symbol", "symbol"));
+            return { id: `${code}:${symbol}`, program: p.id, code, symbol, row };
+          })
+          .filter((item) => item.symbol);
+      })
+    )
+      .then((groups) => {
+        const stamped = groups.flat();
         setLaunches(stamped);
-        if (stamped.length) {
-          const first = symbolCodeOf(pick(stamped[0], "token_symbol", "symbol"));
-          setSelected(first || null);
-        }
+        if (stamped.length) setSelected(stamped[0].id);
       })
       .catch((e) => {
         const msg = e instanceof Error ? e.message : String(e);
         if (/retrieve account|unknown key|not.*live/i.test(msg)) {
           setLaunches([]);
-          setNotice(`The ${FLEXFOREX_CONTRACT} contract is not live yet — launches will appear here after the first stamp.`);
+          setNotice("Flex contracts are not live yet — launches will appear here after the first liftoff.");
         } else {
           setError(msg);
         }
       });
   }, []);
 
-  const loadFlexers = useCallback((symbol: string) => {
+  const loadFlexers = useCallback((item: LaunchItem) => {
     setFlexersBusy(true);
     setFlexers(null);
-    readFlexers(symbol, 200)
+    readFlexers(item.code, item.symbol, 200)
       .then((rows) => setFlexers([...rows].sort((a, b) => balanceOf(b) - balanceOf(a))))
       .catch(() => setFlexers([]))
       .finally(() => setFlexersBusy(false));
   }, []);
 
-  useEffect(() => {
-    if (selected) loadFlexers(selected);
-  }, [selected, loadFlexers]);
-
   const selectedLaunch = useMemo(
-    () => launches?.find((l) => symbolCodeOf(pick(l, "token_symbol", "symbol")) === selected) ?? null,
+    () => launches?.find((l) => l.id === selected) ?? null,
     [launches, selected]
   );
+
+  useEffect(() => {
+    if (selectedLaunch) loadFlexers(selectedLaunch);
+  }, [selectedLaunch, loadFlexers]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-black tracking-tight">Leaderboard</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Stamped launches on {FLEXFOREX_CONTRACT} and the holders flexing the hardest.
+        Live launches across easyflex, complexflex, and flexforex.
       </p>
 
       {notice ? (
@@ -89,30 +106,31 @@ export default function Leaderboard() {
         <p className="mt-6 text-sm text-muted-foreground">Reading launches…</p>
       ) : launches.length === 0 ? (
         <div className="card mt-6 p-8 text-center text-sm text-muted-foreground">
-          No stamped launches yet. Be the first — hit the Launch wizard.
+          No live launches yet. Be the first — hit the Launch wizard.
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           <ul className="space-y-2">
             {launches.map((l) => {
-              const sym = symbolCodeOf(pick(l, "token_symbol", "symbol"));
-              const active = sym === selected;
+              const active = l.id === selected;
               return (
-                <li key={sym}>
+                <li key={l.id}>
                   <button
                     type="button"
-                    onClick={() => setSelected(sym)}
+                    onClick={() => setSelected(l.id)}
                     className={`card w-full p-4 text-left transition-all ${
                       active ? "border-primary/60 bg-primary/10" : "hover:border-primary/30"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-base font-bold">${sym}</span>
+                      <span className="font-mono text-base font-bold">${l.symbol}</span>
                       <span className="chip-success">live</span>
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground">{quoteLabel(l)}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {l.program} @ {l.code} · {quoteLabel(l.row)}
+                    </div>
                     <div className="mt-1 font-mono text-[10px] text-muted-foreground/70">
-                      pool #{String(pick(l, "pool_id", "poolId") ?? "—")}
+                      pool #{String(pick(l.row, "pure_liquid_alcor_pool_id", "pool_id", "poolId") ?? "—")}
                     </div>
                   </button>
                 </li>
@@ -122,13 +140,14 @@ export default function Leaderboard() {
 
           <section className="card p-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">Top flexers · ${selected}</h2>
+              <h2 className="text-lg font-bold">Top flexers · ${selectedLaunch?.symbol}</h2>
               {selectedLaunch ? (
                 <a
                   href={alcorSwapUrl(
-                    parseAsset((pick(selectedLaunch, "quote") as { quantity?: string })?.quantity ?? "")?.symbol ?? "",
-                    (pick(selectedLaunch, "quote") as { contract?: string })?.contract ?? "",
-                    selected ?? ""
+                    parseAsset((pick(selectedLaunch.row, "quote") as { quantity?: string })?.quantity ?? "")?.symbol ?? "",
+                    (pick(selectedLaunch.row, "quote") as { contract?: string })?.contract ?? "",
+                    selectedLaunch.symbol,
+                    selectedLaunch.code
                   )}
                   target="_blank"
                   rel="noopener noreferrer"

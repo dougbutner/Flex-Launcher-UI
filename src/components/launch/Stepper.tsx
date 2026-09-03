@@ -21,12 +21,12 @@ export function Stepper(props: {
           <li key={step.id}>
             <button
               type="button"
-              disabled={step.locked && !step.done}
+              disabled={step.locked}
               onClick={() => props.onSelect(i)}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
                 active
                   ? "bg-primary/15 text-foreground"
-                  : step.locked && !step.done
+                  : step.locked
                     ? "cursor-not-allowed opacity-40"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}

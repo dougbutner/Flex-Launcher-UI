@@ -1,7 +1,7 @@
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
 import { StatusIcon } from "@/components/launch/ui";
-import { CONTRACT_RAM_XPR } from "@/config/launch";
+import { CONTRACT_RAM_XPR, flexAccount } from "@/config/launch";
 
 export function LaunchPreview({ draft }: { draft: LaunchDraft }) {
   const quote = quoteFromDraft(draft);
@@ -9,14 +9,14 @@ export function LaunchPreview({ draft }: { draft: LaunchDraft }) {
 
   const milestones = [
     { label: `RAM (${CONTRACT_RAM_XPR.toLocaleString()} XPR)`, done: Boolean(draft.ramTx) },
-    { label: "Forged", done: Boolean(draft.forgeTx) },
-    { label: "Minted", done: Boolean(draft.mintTx) },
-    { label: "Registered", done: Boolean(draft.regTx) },
+    { label: "Created", done: Boolean(draft.createTx) },
+    { label: "Supply", done: Boolean(draft.mintTx) },
+    { label: "startlaunch", done: Boolean(draft.startTx) },
     { label: draft.poolId != null ? `Pool #${draft.poolId}` : "Pool created", done: Boolean(draft.poolTx) },
     { label: "Deposited", done: Boolean(draft.depositTx) },
     { label: "Ranged", done: Boolean(draft.rangeTx) },
     { label: "Locked", done: Boolean(draft.lockTx) },
-    { label: "Stamped", done: Boolean(draft.stampTx) },
+    { label: "Liftoff", done: Boolean(draft.liftoffTx) },
   ];
 
   return (
@@ -37,7 +37,7 @@ export function LaunchPreview({ draft }: { draft: LaunchDraft }) {
       <div className="px-5 pb-5 pt-10">
         <div className="text-lg font-bold tracking-tight">{draft.name || "Unnamed token"}</div>
         <div className="font-mono text-xs text-muted-foreground">
-          ${draft.symbol || "?????"} · {quote.symbol} pair
+          ${draft.symbol || "?????"} · {draft.program} @ {flexAccount(draft.program)} · {quote.symbol} pair
         </div>
         {draft.description ? (
           <p className="mt-3 line-clamp-3 text-xs text-muted-foreground">{draft.description}</p>

@@ -1,9 +1,65 @@
 import { CHAIN_ENDPOINTS } from "@/services/walletConstants";
 
+export type FlexProgram = "easyflex" | "complexflex" | "flexforex";
+
 export const FLEXFOREX_CONTRACT =
   import.meta.env.VITE_FLEXFOREX_CONTRACT?.trim() || "flex.mon3y";
+export const EASYFLEX_CONTRACT = import.meta.env.VITE_EASYFLEX?.trim() || "mon3y";
+export const COMPLEXFLEX_CONTRACT = import.meta.env.VITE_COMPLEXFLEX?.trim() || "gold.mon3y";
+export const SWAP_ALCOR = import.meta.env.VITE_SWAP_ALCOR?.trim() || "swap.alcor";
 
-export const SWAP_ALCOR = "swap.alcor";
+export const FLEX_PROGRAMS: Array<{
+  id: FlexProgram;
+  title: string;
+  blurb: string;
+  supply: "issue" | "mint";
+  payout: "distribute" | "reflect";
+  keeper: boolean;
+  vaults: string[];
+}> = [
+  {
+    id: "easyflex",
+    title: "easyflex",
+    blurb: "Simple reflections + burn. Issue supply. No inheritance or luck.",
+    supply: "issue",
+    payout: "distribute",
+    keeper: false,
+    vaults: ["alcor", "mon3y", "swap.alcor"],
+  },
+  {
+    id: "complexflex",
+    title: "complexflex",
+    blurb: "Reflections + project tax + inheritance. Grams-style.",
+    supply: "mint",
+    payout: "reflect",
+    keeper: false,
+    vaults: ["alcor", "gold.mon3y", "swap.alcor"],
+  },
+  {
+    id: "flexforex",
+    title: "flexforex",
+    blurb: "Full stack: inheritance, angel numbers, jackpot, optional keeper.",
+    supply: "mint",
+    payout: "reflect",
+    keeper: true,
+    vaults: ["alcor", "gold.mon3y", "swap.alcor"],
+  },
+];
+
+export function flexAccount(program: FlexProgram): string {
+  if (program === "easyflex") return EASYFLEX_CONTRACT;
+  if (program === "complexflex") return COMPLEXFLEX_CONTRACT;
+  return FLEXFOREX_CONTRACT;
+}
+
+export function flexMeta(program: FlexProgram) {
+  return FLEX_PROGRAMS.find((p) => p.id === program) ?? FLEX_PROGRAMS[2];
+}
+
+export function allFlexAccounts(): string[] {
+  return [...new Set(FLEX_PROGRAMS.map((p) => flexAccount(p.id)))];
+}
+
 export const EOSIO = "eosio";
 export const EOSIO_TOKEN = "eosio.token";
 export const XTOKENS = "xtokens";
@@ -113,8 +169,8 @@ export function explorerTx(id: string) {
   return `${EXPLORER}/transaction/${id}`;
 }
 
-export function alcorSwapUrl(quoteSymbol: string, quoteContract: string, tokenSymbol: string) {
-  return `${ALCOR_UI}/swap?input=${quoteSymbol}-${quoteContract}&output=${tokenSymbol}-${FLEXFOREX_CONTRACT}`;
+export function alcorSwapUrl(quoteSymbol: string, quoteContract: string, tokenSymbol: string, tokenContract: string) {
+  return `${ALCOR_UI}/swap?input=${quoteSymbol}-${quoteContract}&output=${tokenSymbol}-${tokenContract}`;
 }
 
 export function tickSpacing(fee: number) {

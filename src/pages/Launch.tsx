@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FLEXFOREX_CONTRACT } from "@/config/launch";
+import { flexAccount } from "@/config/launch";
 import { useLaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { Stepper, type WizardStep } from "@/components/launch/Stepper";
@@ -30,7 +30,7 @@ export default function Launch() {
       {
         id: "ram",
         title: "Contract RAM",
-        desc: `5,000 XPR gift to ${FLEXFOREX_CONTRACT}`,
+        desc: `5,000 XPR gift to ${flexAccount(draft.program)}`,
         done: Boolean(draft.ramTx),
         locked: Boolean(tokenStepValid(draft)),
       },
@@ -59,14 +59,14 @@ export default function Launch() {
         id: "execute",
         title: "Execute",
         desc: "Sign the launch transactions",
-        done: Boolean(draft.stampTx),
+        done: Boolean(draft.liftoffTx),
         locked: !draft.ramTx,
       },
     ],
     [draft]
   );
 
-  if (draft.stampTx) {
+  if (draft.liftoffTx) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
         <DonePanel draft={draft} onReset={() => { reset(); setStep(0); }} />
@@ -81,8 +81,8 @@ export default function Launch() {
           Deploy a <span className="text-primary">flex token</span>
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Forge on {FLEXFOREX_CONTRACT}, seed a one-sided Alcor pool with 100% of supply, lock it ≥ 90 days, and
-          stamp it transferable. The first on-chain step is a 5,000 XPR RAM gift to the contract.
+          Create on {flexAccount(draft.program)}, seed a one-sided Alcor pool with 100% of supply, lock it ≥ 90 days, and
+          liftoff so it is transferable. The first on-chain step is a 5,000 XPR RAM gift to the chosen contract.
         </p>
       </div>
 

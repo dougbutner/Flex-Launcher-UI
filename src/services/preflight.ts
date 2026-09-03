@@ -48,30 +48,31 @@ function extMatches(ext: unknown, symbol: string, contract: string): boolean {
   return e.contract === contract && parseAsset(e.quantity ?? "")?.symbol === symbol;
 }
 
-/** Read-only mirror of the contract's stamp checks (UI-LAUNCH §6). */
+/** Read-only mirror of the contract's liftoff checks. */
 export async function runPreflight(
   plan: LaunchPlan,
   poolId: number,
   issuer: string
 ): Promise<PreflightItem[]> {
   const sym = plan.launched.symbol;
+  const code = plan.launched.contract;
   const [launch, pool, stat, positions, issuerAlcorRows, swapAcct, issuerAcct] = await Promise.all([
-    readLaunch(sym),
+    readLaunch(code, sym),
     readPool(poolId),
-    readStat(sym),
+    readStat(code, sym),
     readPositions(poolId).catch(() => [] as Record<string, unknown>[]),
     readAlcorBalance(issuer, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
-    readAccounts(SWAP_ALCOR, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
-    readAccounts(issuer, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+    readAccounts(code, SWAP_ALCOR, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+    readAccounts(code, issuer, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
   ]);
 
   const items: PreflightItem[] = [];
   const launched = Boolean(pick(launch, "launched"));
   items.push({
     id: "registered",
-    label: "Launch registered, not yet stamped",
+    label: "startlaunch recorded, not yet liftoff",
     pass: Boolean(launch) && !launched,
-    detail: !launch ? "No launches row — run register" : launched ? "Already stamped" : "launches row found",
+    detail: !launch ? "No launches row — run startlaunch" : launched ? "Already liftoff" : "launches row found",
   });
 
   const poolActive = Boolean(pick(pool, "active"));
@@ -88,7 +89,7 @@ export async function runPreflight(
     extMatches(pick(pool, "tokenB"), plan.tokenB.symbol, plan.tokenB.contract);
   items.push({
     id: "pair",
-    label: "Pool pair + fee match registration",
+    label: "Pool pair + fee match startlaunch",
     pass: Boolean(pool) && poolFee === plan.fee && pairOk,
     detail: pool ? `fee ${poolFee}, ${plan.tokenA.symbol}/${plan.tokenB.symbol}` : "pool not found",
   });
@@ -102,7 +103,7 @@ export async function runPreflight(
   const liquidity = num(pick(pos, "liquidity"));
   items.push({
     id: "position",
-    label: "Issuer position with liquidity at registered ticks",
+    label: "Issuer position with liquidity at startlaunch ticks",
     pass: Boolean(pos) && liquidity > 0,
     detail: pos ? `liquidity ${liquidity}` : "no matching position",
   });

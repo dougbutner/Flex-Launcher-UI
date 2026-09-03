@@ -1,0 +1,28 @@
+---
+description: Flex launcher UI — live contract ABI, tables, and wizard. Ignore stale UI-LAUNCH.md names.
+globs: src/**
+alwaysApply: true
+---
+
+# Flex launcher UI
+
+Read **`AGENTS.md`** before changing this app. Contract source of truth is **`src/Project Contracts/`** (`easyflex` / `complexflex` / `flexforex`), not `UI-LAUNCH.md`. Skill: **`flex-project-contracts`**.
+
+## Stale names (never emit)
+
+`forge` → `create`. `issue` only on **easyflex**. `reglaunch` → `startlaunch`. `stamp` → `liftoff`. `interestoken` / `setflextoken` / `sprouttoken` → `choosereward`. flexforex payout is `reflect(token_symbol, keeper)`, easyflex is `distribute(token_symbol)`. Launch fields are `xtoken_proof_pool_id`, `pure_liquid_alcor_pool_id`, `dev_bps`, `club_bps` — not `proof_pool_id` / `pool_id` / `nyra_bps`.
+
+## Identity and tables
+
+Always pass **symbol + contract**. `stat` / `settings` / `flexers` / `flexpools` scope = **symbol code**. `launches` scope = **contract**. Native flex = `flex_reward_pool_id == 0`. `addpool` then `choosereward(output_symbol, output_contract)`. Empty output contract unflexes.
+
+## Wizard order
+
+`create` → `mint`/`issue` 100% to issuer → `startlaunch` → Alcor `createpool` / `activepool#id` / `transfer` memo `deposit` / one-sided `addliquid` / `lockpos` ≥90d → `liftoff`. Issuer signs Alcor, not the flex contract. Until `launches.launched`, only `to=swap.alcor`.
+
+## Do not
+
+- Call `receiverand` or `setconfig` from the issuer wizard (`setconfig` is contract-only).
+- Treat `stat.angel_numbers_pool` / `jackpot_pool` as live pots.
+- Build tax, inheritance, or luck UI on easyflex.
+- Edit the three token `.cpp`/`.hpp` unless the user asks.

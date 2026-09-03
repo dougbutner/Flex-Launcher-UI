@@ -1,6 +1,5 @@
 import {
   EOSIO_TOKEN,
-  FLEXFOREX_CONTRACT,
   SWAP_ALCOR,
   XPR_SYMBOL,
   XTOKENS,
@@ -19,7 +18,7 @@ export async function readXprBalance(account: string): Promise<number> {
   return rows.reduce((sum, row) => sum + assetAmountNumber(row), 0);
 }
 
-export async function readContractRam(account = FLEXFOREX_CONTRACT) {
+export async function readContractRam(account: string) {
   try {
     const info = await getAccount(account);
     if (!info.account_name && info.ram_quota == null) return null;
@@ -39,10 +38,10 @@ export async function readAlcorSystem() {
   return rows[0] ?? null;
 }
 
-export async function readLaunch(symbol: string) {
+export async function readLaunch(code: string, symbol: string) {
   const { rows } = await getTableRows<Record<string, unknown>>({
-    code: FLEXFOREX_CONTRACT,
-    scope: FLEXFOREX_CONTRACT,
+    code,
+    scope: code,
     table: "launches",
     lower_bound: codeBound(symbol),
     upper_bound: codeBound(symbol),
@@ -52,10 +51,10 @@ export async function readLaunch(symbol: string) {
   return rows[0] ?? null;
 }
 
-export async function readSettings(symbol: string) {
+export async function readSettings(code: string, symbol: string) {
   const { rows } = await getTableRows<Record<string, unknown>>({
-    code: FLEXFOREX_CONTRACT,
-    scope: FLEXFOREX_CONTRACT,
+    code,
+    scope: symbol,
     table: "settings",
     lower_bound: codeBound(symbol),
     upper_bound: codeBound(symbol),
@@ -65,9 +64,9 @@ export async function readSettings(symbol: string) {
   return rows[0] ?? null;
 }
 
-export async function readStat(symbol: string) {
+export async function readStat(code: string, symbol: string) {
   const { rows } = await getTableRows<Record<string, unknown>>({
-    code: FLEXFOREX_CONTRACT,
+    code,
     scope: symbol,
     table: "stat",
     limit: 1,
@@ -75,23 +74,23 @@ export async function readStat(symbol: string) {
   return rows[0] ?? null;
 }
 
-export async function readLaunches(limit = 200) {
+export async function readLaunches(code: string, limit = 200) {
   return getAllTableRows<Record<string, unknown>>(
-    { code: FLEXFOREX_CONTRACT, scope: FLEXFOREX_CONTRACT, table: "launches", limit: 100 },
+    { code, scope: code, table: "launches", limit: 100 },
     limit
   );
 }
 
-export async function readFlexers(symbol: string, limit = 200) {
+export async function readFlexers(code: string, symbol: string, limit = 200) {
   return getAllTableRows<Record<string, unknown>>(
-    { code: FLEXFOREX_CONTRACT, scope: symbol, table: "flexers", limit: 100 },
+    { code, scope: symbol, table: "flexers", limit: 100 },
     limit
   );
 }
 
-export async function readAccounts(owner: string, symbol?: string) {
+export async function readAccounts(code: string, owner: string, symbol?: string) {
   return getTableRows<Record<string, unknown>>({
-    code: FLEXFOREX_CONTRACT,
+    code,
     scope: owner,
     table: "accounts",
     limit: 50,

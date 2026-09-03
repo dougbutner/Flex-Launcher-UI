@@ -1,10 +1,4 @@
-import {
-  ALCOR_MAX_TICK,
-  ALCOR_MIN_TICK,
-  FLEXFOREX_CONTRACT,
-  tickSpacing,
-  type FeeTier,
-} from "@/config/launch";
+import { ALCOR_MAX_TICK, ALCOR_MIN_TICK, tickSpacing, type FeeTier } from "@/config/launch";
 import { formatAsset, zeroAsset } from "@/services/assets";
 import { sortPair, type ExtToken } from "@/services/eosioName";
 import {
@@ -47,12 +41,13 @@ export function planLaunch(input: {
   symbol: string;
   precision: number;
   maxSupply: string;
+  contract: string;
   quote: ExtToken;
   fee: FeeTier;
   priceLower: string;
   priceUpper: string;
 }): LaunchPlan {
-  const launched: ExtToken = { symbol: input.symbol, contract: FLEXFOREX_CONTRACT, precision: input.precision };
+  const launched: ExtToken = { symbol: input.symbol, contract: input.contract, precision: input.precision };
   const quote = input.quote;
   const [tokenA, tokenB] = sortPair(launched, quote);
   const launchedIsA = tokenA.contract === launched.contract && tokenA.symbol === launched.symbol;

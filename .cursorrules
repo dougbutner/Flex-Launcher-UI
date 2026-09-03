@@ -35,9 +35,10 @@ For generating code:
 
 Follow strictly the project parameters in parameters.md
 
-The **`skill/`** folder holds XPR / EOSIO reference markdown synced from **[XPRNetwork/xpr-network-dev-skill](https://github.com/XPRNetwork/xpr-network-dev-skill)** (see **`skill/SKILL.md`**). Local extras (Alcor `/v/xpr/` split, flextokens) stay—do not delete them when syncing. Cursor Agent Skills under **`.agents/skills/`**: **`xpr-network`**, **`smart-contracts`**, **`web-sdk`**, **`rpc-queries`**, **`nfts-atomicassets`**, **`oracles-randomness`**, **`alcor-exchange`**, **`flex-project-contracts`**. Live flex C++ is **`src/Project Contracts/`** (easyflex, complexflex, flexforex) — use **`flex-project-contracts`** when building UI against those contracts. For this app’s UI and wallets, follow **`src/`** and `walletConstants.ts`.
+The **`skill/`** folder holds XPR / EOSIO reference markdown synced from **[XPRNetwork/xpr-network-dev-skill](https://github.com/XPRNetwork/xpr-network-dev-skill)** (see **`skill/SKILL.md`**). Local extras (Alcor `/v/xpr/` split, flextokens) stay—do not delete them when syncing. Cursor Agent Skills under **`.agents/skills/`**: **`xpr-network`**, **`smart-contracts`**, **`web-sdk`**, **`rpc-queries`**, **`nfts-atomicassets`**, **`oracles-randomness`**, **`alcor-exchange`**, **`flex-project-contracts`**. Live flex C++ is **`src/Project Contracts/`**. Completing the launcher UI: follow **`AGENTS.md`**, **`.cursor/rules/flex-launcher-ui.mdc`**, and **`flex-project-contracts`**. Do not use stale `UI-LAUNCH.md` action names (`forge`, `reglaunch`, `stamp`). For wallets, follow **`src/`** and `walletConstants.ts`.
 
 Antelope / EOSIO contract C++: follow `.cursor/rules/antelope-dev-style.mdc`
+
 
 
 

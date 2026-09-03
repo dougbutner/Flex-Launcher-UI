@@ -1,9 +1,10 @@
-import { alcorSwapUrl, explorerAccount, explorerTx, FLEXFOREX_CONTRACT } from "@/config/launch";
+import { alcorSwapUrl, explorerAccount, explorerTx, flexAccount } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { quoteFromDraft } from "@/components/launch/draftPlan";
 
 export function DonePanel({ draft, onReset }: { draft: LaunchDraft; onReset: () => void }) {
   const quote = quoteFromDraft(draft);
+  const tokenContract = flexAccount(draft.program);
   return (
     <section className="card p-8 text-center">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/15">
@@ -15,13 +16,13 @@ export function DonePanel({ draft, onReset }: { draft: LaunchDraft; onReset: () 
         ${draft.symbol} is live
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-        Stamped and transferable. 100% of supply sits in a locked, one-sided Alcor position — buyers walk the range
+        Liftoff complete. 100% of supply sits in a locked, one-sided Alcor position — buyers walk the range
         and reflections flow to holders.
       </p>
 
       <div className="mx-auto mt-6 flex max-w-sm flex-col gap-2">
         <a
-          href={alcorSwapUrl(quote.symbol, quote.contract, draft.symbol)}
+          href={alcorSwapUrl(quote.symbol, quote.contract, draft.symbol, tokenContract)}
           target="_blank"
           rel="noopener noreferrer"
           className="btn btn-accent btn-lg w-full"
@@ -30,15 +31,15 @@ export function DonePanel({ draft, onReset }: { draft: LaunchDraft; onReset: () 
         </a>
         <div className="flex gap-2">
           <a
-            href={explorerTx(draft.stampTx)}
+            href={explorerTx(draft.liftoffTx)}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-outline btn-sm flex-1"
           >
-            Stamp tx
+            Liftoff tx
           </a>
           <a
-            href={explorerAccount(FLEXFOREX_CONTRACT)}
+            href={explorerAccount(tokenContract)}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-outline btn-sm flex-1"
