@@ -137,8 +137,8 @@ describe("launch plan", () => {
       token_symbol: "BAR",
       keeper: "alice",
     });
-    expect(flexAccount("easyflex")).toBe("mon3y");
-    expect(flexAccount("complexflex")).toBe("gold.mon3y");
-    expect(flexAccount("flexforex")).toBe("flex.mon3y");
+    expect(flexAccount("easyflex")).toBe("easyflex");
+    expect(flexAccount("complexflex")).toBe("complexflex");
+    expect(flexAccount("flexforex")).toBe("flexforex");
   });
 });

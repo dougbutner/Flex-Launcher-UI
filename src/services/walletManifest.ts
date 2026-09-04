@@ -5,8 +5,8 @@
  */
 import type { LinkStorage } from '@proton/link';
 
-export const MANIFEST_KEY = 'xpr-forge-wallet-manifest';
-export const ACTIVE_WALLET_ID_KEY = 'xpr-forge-active-wallet-id';
+export const MANIFEST_KEY = 'xpr-testnet-wallet-manifest';
+export const ACTIVE_WALLET_ID_KEY = 'xpr-testnet-active-wallet-id';
 /** Default prefix used by older single-session @proton/web-sdk installs */
 export const LEGACY_STORAGE_PREFIX = 'proton-storage';
 

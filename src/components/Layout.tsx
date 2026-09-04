@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { Header } from "@/components/Header";
+import { NetworkSwitcher } from "@/components/NetworkSwitcher";
 
 export function Layout() {
   return (
@@ -8,13 +9,10 @@ export function Layout() {
       <main className="flex-1">
         <Outlet />
       </main>
-      <footer className="border-t px-6 py-5 text-center text-xs text-muted-foreground">
-        <p>
-          Flex Launcher on{" "}
-          <a href="https://xprnetwork.org" target="_blank" rel="noopener noreferrer" className="link">
-            XPR Network
-          </a>
-          {" · "}Liquidity seeded on{" "}
+      <footer className="relative z-30 overflow-visible border-t px-6 py-4">
+        <NetworkSwitcher />
+        <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
+          Liquidity seeded on{" "}
           <a href="https://alcor.exchange/v/xpr/" target="_blank" rel="noopener noreferrer" className="link">
             Alcor
           </a>

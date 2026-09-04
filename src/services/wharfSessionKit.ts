@@ -35,7 +35,7 @@ export function getWharfSessionKit(): SessionKit {
         walletPlugins: [new WalletPluginAnchor()],
       },
       {
-        storage: new BrowserLocalStorage('xpr-forge-wharf-session'),
+        storage: new BrowserLocalStorage('xpr-testnet-wharf-session'),
       }
     );
   }

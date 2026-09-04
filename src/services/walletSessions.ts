@@ -164,7 +164,7 @@ export async function restoreAllWallets(): Promise<LoadedWallet[]> {
 
 export async function connectNewWebAuthWallet(): Promise<LoadedWebAuthWallet | null> {
   const id = crypto.randomUUID();
-  const storagePrefix = `xpr-forge-${id}`;
+  const storagePrefix = `xpr-testnet-${id}`;
   const storage = new PrefixLinkStorage(storagePrefix);
   const session = await connectWebAuthWallet({ storage, restoreSession: false });
   if (!session) return null;

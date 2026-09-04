@@ -3,9 +3,9 @@ import { CHAIN_ENDPOINTS } from "@/services/walletConstants";
 export type FlexProgram = "easyflex" | "complexflex" | "flexforex";
 
 export const FLEXFOREX_CONTRACT =
-  import.meta.env.VITE_FLEXFOREX_CONTRACT?.trim() || "flex.mon3y";
-export const EASYFLEX_CONTRACT = import.meta.env.VITE_EASYFLEX?.trim() || "mon3y";
-export const COMPLEXFLEX_CONTRACT = import.meta.env.VITE_COMPLEXFLEX?.trim() || "gold.mon3y";
+  import.meta.env.VITE_FLEXFOREX_CONTRACT?.trim() || "flexforex";
+export const EASYFLEX_CONTRACT = import.meta.env.VITE_EASYFLEX?.trim() || "easyflex";
+export const COMPLEXFLEX_CONTRACT = import.meta.env.VITE_COMPLEXFLEX?.trim() || "complexflex";
 export const SWAP_ALCOR = import.meta.env.VITE_SWAP_ALCOR?.trim() || "swap.alcor";
 
 export const FLEX_PROGRAMS: Array<{
@@ -24,7 +24,7 @@ export const FLEX_PROGRAMS: Array<{
     supply: "issue",
     payout: "distribute",
     keeper: false,
-    vaults: ["alcor", "mon3y", "swap.alcor"],
+    vaults: ["alcor", EASYFLEX_CONTRACT, SWAP_ALCOR],
   },
   {
     id: "complexflex",
@@ -33,7 +33,7 @@ export const FLEX_PROGRAMS: Array<{
     supply: "mint",
     payout: "reflect",
     keeper: false,
-    vaults: ["alcor", "gold.mon3y", "swap.alcor"],
+    vaults: ["alcor", COMPLEXFLEX_CONTRACT, SWAP_ALCOR],
   },
   {
     id: "flexforex",
@@ -42,7 +42,7 @@ export const FLEX_PROGRAMS: Array<{
     supply: "mint",
     payout: "reflect",
     keeper: true,
-    vaults: ["alcor", "gold.mon3y", "swap.alcor"],
+    vaults: ["alcor", COMPLEXFLEX_CONTRACT, SWAP_ALCOR],
   },
 ];
 
@@ -67,9 +67,9 @@ export const XPR_SYMBOL = "XPR";
 export const XPR_PRECISION = 4;
 export const XUSDC_SYMBOL = "XUSDC";
 
-export const EXPLORER = "https://explorer.xprnetwork.org";
+export const EXPLORER = "https://testnet.explorer.xprnetwork.org";
 export const ALCOR_UI = "https://alcor.exchange/v/xpr";
-export const ALCOR_API = "https://proton.alcor.exchange/api/v2";
+export const ALCOR_API = "https://proton-test.alcor.exchange/api/v2";
 
 export const CONTRACT_RAM_XPR = 5000;
 export const CONTRACT_RAM_QUANT = "5000.0000 XPR";
@@ -103,7 +103,7 @@ export const QUOTE_PRESETS: QuotePreset[] = [
   {
     id: "easy",
     symbol: "EASY",
-    contract: "mon3y",
+    contract: EASYFLEX_CONTRACT,
     precision: 6,
     priceLower: "0.000001",
     priceUpper: "1000000",
@@ -123,7 +123,7 @@ export const QUOTE_PRESETS: QuotePreset[] = [
   {
     id: "grams",
     symbol: "GRAMS",
-    contract: "gold.mon3y",
+    contract: COMPLEXFLEX_CONTRACT,
     precision: 6,
     priceLower: "1",
     priceUpper: "1000",
@@ -152,13 +152,11 @@ export const QUOTE_PRESETS: QuotePreset[] = [
   },
 ];
 
-export const RPC_ENDPOINTS = [...CHAIN_ENDPOINTS, "https://proton.eosusa.io"];
+export const RPC_ENDPOINTS = [...CHAIN_ENDPOINTS];
 
 export const HYPERION_ENDPOINTS = [
-  "https://proton.eosusa.io",
-  "https://proton.protonuk.io",
-  "https://proton-api.eosiomadrid.io",
-  "https://api-xprnetwork-main.saltant.io",
+  "https://test.proton.eosusa.io",
+  "https://api-xprnetwork-test.saltant.io",
 ];
 
 export function explorerAccount(name: string) {
