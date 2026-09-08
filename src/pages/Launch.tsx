@@ -81,8 +81,8 @@ export default function Launch() {
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Signing against <span className="font-mono">XPR testnet</span>. Create on {flexAccount(draft.program)}, seed
-          one-sided Alcor liquidity, then liftoff. Quote with FOOBAR@xtokens (proof pool #0).{" "}
-          {holdEasyToLaunch(flexMeta(draft.program).launchEasyMin)} — that balance is read from{" "}
+          one-sided Alcor liquidity, then liftoff. Non-flex quotes (XPR / XMD / LOAN / xtoken) need a proof pool id &gt;
+          0. {holdEasyToLaunch(flexMeta(draft.program).launchEasyMin)} — that balance is read from{" "}
           <span className="font-mono">mon3y</span>.
         </p>
       </div>

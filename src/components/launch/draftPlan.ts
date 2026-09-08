@@ -1,4 +1,4 @@
-import { flexAccount, QUOTE_PRESETS, XTOKENS } from "@/config/launch";
+import { flexAccount, quoteNeedsProof, QUOTE_PRESETS, XTOKENS } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { validSymbol } from "@/services/assets";
 import { validImageUrl } from "@/services/tokenLogo";
@@ -31,9 +31,14 @@ export function tokenStepValid(draft: LaunchDraft): string | null {
 }
 
 export function quoteStepValid(draft: LaunchDraft): string | null {
-  if (draft.quoteId !== "xtoken") return null;
-  if (!validSymbol(draft.xtokenSymbol.trim().toUpperCase())) return "Enter a valid xtoken symbol.";
-  if (!/^\d+$/.test(draft.proofPoolId.trim())) return "Paste the Alcor proof pool id.";
+  const preset = presetFromDraft(draft);
+  if (preset.id === "xtoken") {
+    if (!validSymbol(draft.xtokenSymbol.trim().toUpperCase())) return "Enter a valid xtoken symbol.";
+  }
+  if (quoteNeedsProof(preset)) {
+    if (!/^\d+$/.test(draft.proofPoolId.trim())) return "Paste the Alcor proof pool id.";
+    if (Number(draft.proofPoolId) <= 0) return "Proof pool id must be greater than zero.";
+  }
   return null;
 }
 

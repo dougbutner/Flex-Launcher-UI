@@ -30,7 +30,12 @@ export function supplyAction(
   };
 }
 
-export function startlaunchAction(tokenContract: string, plan: LaunchPlan, xtokenProofPoolId: number): ChainAction {
+export function startlaunchAction(
+  tokenContract: string,
+  plan: LaunchPlan,
+  xtokenProofPoolId: number,
+  swapUnderlyingDefault: boolean
+): ChainAction {
   return {
     account: tokenContract,
     name: "startlaunch",
@@ -42,6 +47,7 @@ export function startlaunchAction(tokenContract: string, plan: LaunchPlan, xtoke
       tick_upper: plan.tickUpper,
       sqrt_price_x64: plan.sqrtPriceX64,
       xtoken_proof_pool_id: xtokenProofPoolId,
+      swap_underlying_default: swapUnderlyingDefault,
     },
   };
 }
@@ -155,5 +161,150 @@ export function pulljackpotAction(tokenContract: string, tokenSymbol: string): C
     account: tokenContract,
     name: "pulljackpot",
     data: { token_symbol: tokenSymbol },
+  };
+}
+
+/** ABI `symbol` JSON form: `"4,FOO"`. */
+export function abiSymbol(precision: number, code: string): string {
+  return `${precision},${code}`;
+}
+
+export function ratiosAction(
+  tokenContract: string,
+  tokenSymbol: string,
+  angelNumbersBps: number,
+  jackpotBps: number
+): ChainAction {
+  return {
+    account: tokenContract,
+    name: "ratios",
+    data: {
+      token_symbol: tokenSymbol,
+      angel_numbers_bps: angelNumbersBps,
+      jackpot_bps: jackpotBps,
+    },
+  };
+}
+
+export function setdistAction(
+  tokenContract: string,
+  tokenSymbol: string,
+  args: {
+    angelNumbersBps: number;
+    jackpotBps: number;
+    jackpotWinners: number;
+    jackpotMinHold: number;
+    angelNumbersCooldown: number;
+    keeperMin: number;
+    reflectMin: number;
+  }
+): ChainAction {
+  return {
+    account: tokenContract,
+    name: "setdist",
+    data: {
+      token_symbol: tokenSymbol,
+      angel_numbers_bps: args.angelNumbersBps,
+      jackpot_bps: args.jackpotBps,
+      jackpot_winners: args.jackpotWinners,
+      jackpot_min_hold: args.jackpotMinHold,
+      angel_numbers_cooldown: args.angelNumbersCooldown,
+      keeper_min: args.keeperMin,
+      reflect_min: args.reflectMin,
+    },
+  };
+}
+
+export function setangelnumAction(
+  tokenContract: string,
+  owner: string,
+  tokenSymbol: string,
+  angelNumber: number
+): ChainAction {
+  return {
+    account: tokenContract,
+    name: "setangelnum",
+    data: { owner, token_symbol: tokenSymbol, angel_number: angelNumber },
+  };
+}
+
+export function addpoolAction(
+  tokenContract: string,
+  poolId: number,
+  tokenSymbol: string,
+  outputSymbol: string,
+  outputContract: string
+): ChainAction {
+  return {
+    account: tokenContract,
+    name: "addpool",
+    data: {
+      pool_id: poolId,
+      token_symbol: tokenSymbol,
+      output_symbol: outputSymbol,
+      output_contract: outputContract,
+    },
+  };
+}
+
+/** Empty `outputContract` clears reward → native / underlying-default (`flex_reward_pool_id = 0`). */
+export function chooserewardAction(
+  tokenContract: string,
+  owner: string,
+  tokenSymbol: string,
+  outputSymbol: string,
+  outputContract: string
+): ChainAction {
+  return {
+    account: tokenContract,
+    name: "choosereward",
+    data: {
+      owner,
+      token_symbol: tokenSymbol,
+      output_symbol: outputSymbol,
+      output_contract: outputContract,
+    },
+  };
+}
+
+/** Self may only pass `banStatus: true` (irreversible opt-out). */
+export function feeoptoutAction(
+  tokenContract: string,
+  account: string,
+  banStatus: boolean,
+  tokenSymbol: string
+): ChainAction {
+  return {
+    account: tokenContract,
+    name: "feeoptout",
+    data: { account, ban_status: banStatus, token_symbol: tokenSymbol },
+  };
+}
+
+/** `rate` = bps of splash paid to beneficiary (0–10000). Empty beneficiary → self. */
+export function inheritanceAction(
+  tokenContract: string,
+  flexer: string,
+  beneficiary: string,
+  rate: number,
+  tokenSymbol: string
+): ChainAction {
+  return {
+    account: tokenContract,
+    name: "inheritance",
+    data: { flexer, beneficiary, rate, token_symbol: tokenSymbol },
+  };
+}
+
+export function inheritmemoAction(
+  tokenContract: string,
+  flexer: string,
+  customMemo: string,
+  tokenSymbol: string
+): ChainAction {
+  return {
+    account: tokenContract,
+    name: "inheritmemo",
+    data: { flexer, custom_memo: customMemo, token_symbol: tokenSymbol },
   };
 }

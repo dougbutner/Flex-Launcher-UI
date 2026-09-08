@@ -2,15 +2,17 @@ import { describe, expect, it } from "vitest";
 import { formatAsset, validSymbol, zeroAsset } from "@/services/assets";
 import { compareExtTokens, nameToU64, sortPair, symbolCodeToU64 } from "@/services/eosioName";
 import { planLaunch } from "@/services/launchMath";
-import { createTokenAction, checklockAction, payoutAction, pullangelAction, pulljackpotAction, startlaunchAction, supplyAction } from "@/services/launchActions";
+import { createTokenAction, checklockAction, payoutAction, pullangelAction, pulljackpotAction, startlaunchAction, supplyAction, ratiosAction, setdistAction, setangelnumAction, addpoolAction, chooserewardAction, feeoptoutAction, inheritanceAction, inheritmemoAction, abiSymbol } from "@/services/launchActions";
 import {
   MON3Y,
   QUOTE_PRESETS,
-  TESTNET_PROOF_POOL_ID,
   TESTNET_PROOF_XTOKEN,
   flexAccount,
   flexMeta,
+  hasAngelChannels,
+  hasInheritance,
   holdEasyToLaunch,
+  programFromAccount,
 } from "@/config/launch";
 import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
@@ -139,8 +141,10 @@ describe("launch plan", () => {
     expect(createTokenAction("mon3y", "alice", plan.fullSupply).name).toBe("create");
     expect(supplyAction("mon3y", "issue", "alice", plan.fullSupply).name).toBe("issue");
     expect(supplyAction("flex.mon3y", "mint", "alice", plan.fullSupply).name).toBe("mint");
-    expect(startlaunchAction("mon3y", plan, 0).name).toBe("startlaunch");
-    expect(startlaunchAction("mon3y", plan, 0).data.xtoken_proof_pool_id).toBe(0);
+    expect(startlaunchAction("mon3y", plan, 0, true).name).toBe("startlaunch");
+    expect(startlaunchAction("mon3y", plan, 0, true).data.xtoken_proof_pool_id).toBe(0);
+    expect(startlaunchAction("mon3y", plan, 0, true).data.swap_underlying_default).toBe(true);
+    expect(startlaunchAction("easyflex", plan, 12, false).data.swap_underlying_default).toBe(false);
     expect(payoutAction("mon3y", "BAR", "alice", "sender")).toEqual({
       account: "mon3y",
       name: "makeitrain",
@@ -182,16 +186,86 @@ describe("post-launch poke actions", () => {
   });
 });
 
+describe("holder and issuer manage actions", () => {
+  it("builds flexforex channel + holder preference payloads", () => {
+    expect(ratiosAction("flexforex", "FOO", 1000, 500)).toEqual({
+      account: "flexforex",
+      name: "ratios",
+      data: { token_symbol: "FOO", angel_numbers_bps: 1000, jackpot_bps: 500 },
+    });
+    expect(
+      setdistAction("flexforex", "FOO", {
+        angelNumbersBps: 1000,
+        jackpotBps: 500,
+        jackpotWinners: 3,
+        jackpotMinHold: 0,
+        angelNumbersCooldown: 86400,
+        keeperMin: 0,
+        reflectMin: 0,
+      }).data
+    ).toMatchObject({
+      token_symbol: "FOO",
+      jackpot_winners: 3,
+      angel_numbers_cooldown: 86400,
+    });
+    expect(setangelnumAction("flexforex", "alice", "FOO", 42)).toEqual({
+      account: "flexforex",
+      name: "setangelnum",
+      data: { owner: "alice", token_symbol: "FOO", angel_number: 42 },
+    });
+    expect(addpoolAction("flexforex", 99, "FOO", abiSymbol(6, "EASY"), "mon3y")).toEqual({
+      account: "flexforex",
+      name: "addpool",
+      data: {
+        pool_id: 99,
+        token_symbol: "FOO",
+        output_symbol: "6,EASY",
+        output_contract: "mon3y",
+      },
+    });
+    expect(chooserewardAction("easyflex", "alice", "FOO", abiSymbol(4, "FOO"), "")).toEqual({
+      account: "easyflex",
+      name: "choosereward",
+      data: {
+        owner: "alice",
+        token_symbol: "FOO",
+        output_symbol: "4,FOO",
+        output_contract: "",
+      },
+    });
+    expect(feeoptoutAction("easyflex", "alice", true, "FOO").data).toEqual({
+      account: "alice",
+      ban_status: true,
+      token_symbol: "FOO",
+    });
+    expect(inheritanceAction("complexflex", "alice", "bob", 2500, "FOO").data).toEqual({
+      flexer: "alice",
+      beneficiary: "bob",
+      rate: 2500,
+      token_symbol: "FOO",
+    });
+    expect(inheritmemoAction("flexforex", "alice", "hi @@", "FOO").name).toBe("inheritmemo");
+    expect(hasAngelChannels("flexforex")).toBe(true);
+    expect(hasAngelChannels("easyflex")).toBe(false);
+    expect(hasInheritance("complexflex")).toBe(true);
+    expect(hasInheritance("easyflex")).toBe(false);
+    expect(programFromAccount("flexforex")).toBe("flexforex");
+  });
+});
+
 describe("XPR testnet launcher defaults", () => {
   it("uses a valid WebAuth request account and FOOBAR proof quote", () => {
     expect(REQUEST_ACCOUNT.length).toBeLessThanOrEqual(12);
     expect(REQUEST_ACCOUNT).toBe("flexlaunch");
     expect(QUOTE_PRESETS.find((q) => q.id === "easy")?.contract).toBe(MON3Y);
     expect(QUOTE_PRESETS.find((q) => q.id === "xtoken")?.symbol).toBe(TESTNET_PROOF_XTOKEN);
+    expect(QUOTE_PRESETS.find((q) => q.id === "xpr")?.contract).toBe("eosio.token");
+    expect(QUOTE_PRESETS.find((q) => q.id === "xmd")?.contract).toBe("xmd.token");
+    expect(QUOTE_PRESETS.find((q) => q.id === "loan")?.contract).toBe("loan.token");
     const d = emptyDraft();
     expect(d.quoteId).toBe("xtoken");
     expect(d.xtokenSymbol).toBe(TESTNET_PROOF_XTOKEN);
-    expect(d.proofPoolId).toBe(TESTNET_PROOF_POOL_ID);
+    expect(d.swapUnderlyingDefault).toBe(true);
     expect(d.precision).toBe(6);
   });
 });

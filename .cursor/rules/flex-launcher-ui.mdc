@@ -6,11 +6,11 @@ alwaysApply: true
 
 # Flex launcher UI
 
-Read **`AGENTS.md`** before changing this app. Contract source of truth is **`src/Project Contracts/`** (`easyflex` / `complexflex` / `flexforex`), not `UI-LAUNCH.md`. Skill: **`flex-project-contracts`**.
+Read **`AGENTS.md`** before changing this app. Contract source of truth is **`src/Project Contracts/`** (`easyflex` / `complexflex` / `flexforex`), not `UI-LAUNCH.md`. Skill: **`flex-project-contracts`** (`.cursor/skills/flex-project-contracts/` — also `flexforex-extras.md`, `economics.md`). Token manage UI lives at `/token/:contract/:symbol` (holder + issuer, program-gated). Never put `setconfig` or `receiverand` in the UI.
 
 ## Stale names (never emit)
 
-`forge` → `create`. `issue` only on **easyflex**. `reglaunch` → `startlaunch`. `stamp` → `liftoff`. `interestoken` / `setflextoken` / `sprouttoken` → `choosereward`. `distribute` / `reflect` → `makeitrain` (`sender` on easyflex/complexflex, `keeper` on flexforex). Launch fields are `xtoken_proof_pool_id`, `pure_liquid_alcor_pool_id`, `dev_bps`, `club_bps` — not `proof_pool_id` / `pool_id` / `nyra_bps`.
+`forge` → `create`. `issue` only on **easyflex**. `reglaunch` → `startlaunch`. `stamp` → `liftoff`. `interestoken` / `setflextoken` / `sprouttoken` → `choosereward`. `distribute` / `reflect` → `makeitrain` (`sender` on easyflex/complexflex, `keeper` on flexforex). Launch fields are `xtoken_proof_pool_id`, `pure_liquid_alcor_pool_id`, `dev_bps`, `club_bps`, `swap_underlying_default` — not `proof_pool_id` / `pool_id` / `nyra_bps`.
 
 ## Identity and tables
 

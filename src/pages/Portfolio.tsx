@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { FLEX_PROGRAMS, alcorSwapUrl, explorerTx, flexAccount, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
@@ -18,12 +19,21 @@ type Holding = {
   precision: number;
   quoteSymbol: string;
   quoteContract: string;
+  swapUnderlyingDefault: boolean;
   balance: number;
   flexer: Record<string, unknown> | null;
   reflectionPool: number;
   angelPool: number;
   jackpotPool: number;
   estSplash: number | null;
+};
+
+type Issued = {
+  key: string;
+  program: FlexProgram;
+  contract: string;
+  symbol: string;
+  launched: boolean;
 };
 
 type PokeKind = "rain" | "checklock" | "pullangel" | "pulljackpot";
@@ -42,6 +52,7 @@ export default function Portfolio() {
   const { actor, isLoggedIn, addWebAuthWallet, transact } = useWallet();
   const [xpr, setXpr] = useState<number | null>(null);
   const [holdings, setHoldings] = useState<Holding[] | null>(null);
+  const [issued, setIssued] = useState<Issued[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [poking, setPoking] = useState<string | null>(null);
@@ -56,13 +67,13 @@ export default function Portfolio() {
       .catch(() => setXpr(null));
     try {
       const rows: Holding[] = [];
+      const mine: Issued[] = [];
       await Promise.all(
         FLEX_PROGRAMS.map(async (p) => {
           const code = flexAccount(p.id);
           const launches = await readLaunches(code, 200).catch(() => [] as Record<string, unknown>[]);
-          const live = launches.filter((l) => Boolean(pick(l, "launched")));
           await Promise.all(
-            live.map(async (l) => {
+            launches.map(async (l) => {
               const symbol = symbolCodeOf(pick(l, "token_symbol", "symbol"));
               if (!symbol) return;
               const q = pick(l, "quote") as { quantity?: string; contract?: string } | undefined;
@@ -74,6 +85,17 @@ export default function Portfolio() {
                   readAccounts(code, v, symbol).catch(() => ({ rows: [] as Record<string, unknown>[] }))
                 ),
               ]);
+              const issuer = String(pick(stat, "issuer") ?? "");
+              if (issuer === actor) {
+                mine.push({
+                  key: `${code}:${symbol}`,
+                  program: p.id,
+                  contract: code,
+                  symbol,
+                  launched: Boolean(pick(l, "launched")),
+                });
+              }
+              if (!pick(l, "launched")) return;
               const balAsset = parseAsset(String(pick(acct.rows[0], "balance") ?? ""));
               const flexer = flexers.find((f) => String(pick(f, "owner", "account")) === actor) ?? null;
               if (!balAsset && !flexer) return;
@@ -105,6 +127,7 @@ export default function Portfolio() {
                 precision,
                 quoteSymbol: parseAsset(q?.quantity ?? "")?.symbol ?? "",
                 quoteContract: q?.contract ?? "",
+                swapUnderlyingDefault: Boolean(pick(l, "swap_underlying_default")),
                 balance,
                 flexer,
                 reflectionPool,
@@ -118,10 +141,12 @@ export default function Portfolio() {
       );
       rows.sort((a, b) => b.balance - a.balance);
       setHoldings(rows);
+      setIssued(mine.sort((a, b) => a.symbol.localeCompare(b.symbol)));
     } catch (err) {
       const msg = txErrorMessage(err);
       if (/retrieve account|unknown key|not.*live/i.test(msg)) {
         setHoldings([]);
+        setIssued([]);
       } else {
         setError(msg);
       }
@@ -213,6 +238,30 @@ export default function Portfolio() {
 
       {error ? <p className="mt-6 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">{error}</p> : null}
 
+      {issued.length > 0 ? (
+        <section className="mt-6">
+          <h2 className="text-sm font-bold tracking-tight">Your launches</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Issuer tools (setdist, ratios, addpool) live on each token’s manage page.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {issued.map((t) => (
+              <li key={t.key} className="card flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <div className="font-mono font-bold">${t.symbol}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t.program} @ {t.contract} · {t.launched ? "live" : "in progress"}
+                  </div>
+                </div>
+                <Link to={`/token/${t.contract}/${t.symbol}`} className="btn btn-outline btn-sm">
+                  Manage
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {holdings == null ? (
         <p className="mt-6 text-sm text-muted-foreground">Reading your flex positions…</p>
       ) : holdings.length === 0 ? (
@@ -272,10 +321,15 @@ export default function Portfolio() {
                   {angel !== 1000 ? <span className="chip-muted">angel {angel}</span> : null}
                   {beneficiary ? (
                     <span className="chip-muted">
-                      → {beneficiary} {100 - beneRate / 100}%
+                      → {beneficiary} {(beneRate / 100).toFixed(0)}%
                     </span>
                   ) : null}
                   {flexPool ? <span className="chip-muted">flex pool #{flexPool}</span> : null}
+                  {!flexPool && h.swapUnderlyingDefault && h.quoteSymbol ? (
+                    <span className="chip-muted" title="makeitrain swaps native rewards into the launch quote">
+                      → {h.quoteSymbol} default
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -326,6 +380,9 @@ export default function Portfolio() {
                       Trade
                     </a>
                   ) : null}
+                  <Link to={`/token/${h.contract}/${h.symbol}`} className="btn btn-outline btn-sm">
+                    Manage
+                  </Link>
                   {msg?.tx ? (
                     <a
                       href={explorerTx(msg.tx)}

@@ -1,137 +1,141 @@
 # Tables and actions — `src/Project Contracts`
 
-Copied from Flex-Forex and verified against `src/Project Contracts` headers. Constants: `SWAP_ALCOR = swap.alcor`, `XTOKENS = xtokens`, `MIN_LOCK_SECS = 7776000`, `MIN_TICK/MAX_TICK = ±443636`, `PROTO_BPS_HALF = 25`, `PAY_NUM/PAY_DEN = 382/1000`. flexforex also `RNG = rng`, `RNG_NUMBERS = 1`, `RNG_JACKPOT = 2`.
+Verified against live headers/cpp. Constants: `SWAP_ALCOR=swap.alcor`, `XTOKENS=xtokens`, `MON3Y=mon3y`, `MIN_LOCK_SECS=7776000`, `MIN_TICK/MAX_TICK=±443636`, `PROTO_BPS_HALF=25`, `PAY_NUM/PAY_DEN=382/1000`. flexforex also `RNG=rng`, `RNG_NUMBERS=1`, `RNG_JACKPOT=2`.
 
-## Shared `launch` row (`launches`, scope = contract)
+## RPC scopes
 
-`token_symbol`, `quote` (extended_asset, amount 0), `fee`, `tick_lower`, `tick_upper`, `sqrt_price_x64`, **`xtoken_proof_pool_id`**, `flex_quote`, `launched`, **`pure_liquid_alcor_pool_id`**, **`position_id`**, **`dev_bps`**, **`club_bps`**, **`unlock_time`**.
+| Table | scope | PK |
+|-------|-------|-----|
+| `stat`, `settings`, `flexers`, `flexpools` | **symbol code raw** | symbol / owner / pool id |
+| `accounts` | owner | symbol |
+| `launches` | **contract account** | symbol |
 
-`launched == false` or missing row → wizard in progress. After liftoff, `startlaunch` refuses further edits.
+flexforex `flexers` secondary index: `byangel`.
 
-## Shared `flexpool` row (`flexpools`, scope = symbol)
+## `launches` (contract scope)
 
-`id` (Alcor pool id; upsert may replace id for the same output pair), `input_symbol`, `input_contract` (`get_self()`), `output_symbol`, `output_contract`. One logical route per (this token → output contract+symbol).
+`token_symbol`, `quote` (extended_asset, amount **0**), `fee`, `tick_lower`, `tick_upper`, `sqrt_price_x64`, `xtoken_proof_pool_id`, `flex_quote`, `launched`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`, `unlock_time`, `swap_underlying_default`.
 
-## Shared `account` (`accounts`, scope = owner)
+- Missing / `launched == false` → wizard in progress; transfers only to `swap.alcor` (plus contract self-pays / Alcor-path list).
+- `launched == true` → do not re-seed Alcor; `startlaunch` refuses further edits.
+- Liftoff sets skim: `0` if `flex_quote`, else `25` each. After LP actually unlocks, `checklock` / `makeitrain` may raise both to `PROTO_BPS_HALF` extra (`0→25` or `25→50`).
+- `swap_underlying_default`: unpaid holders (`flex_reward_pool_id == 0`) swap into launch quote via `pure_liquid_alcor_pool_id` on makeitrain.
+
+## `stat` (scope = symbol)
+
+| Field | easy | complex | forex |
+|-------|------|---------|-------|
+| supply, max_supply, issuer | yes | yes | yes |
+| reflection_pool | yes | yes | yes (standard splash only) |
+| burn_pool | yes | yes | yes |
+| project_pool | — | yes | yes |
+| angel_numbers_pool, jackpot_pool | — | — | live pots |
+| angel_numbers_last, flexer_count | — | — | yes |
+
+## `settings` (scope = symbol)
+
+| Field | easy | complex | forex |
+|-------|------|---------|-------|
+| token_symbol, start_key, limit | yes | yes | yes |
+| reflection_rate | default 100 | 100 | 100 |
+| burn_rate | default **100** | 0 | 0 |
+| project_rate, project_account | — | 100 / issuer | 100 / issuer |
+| admin_account | issuer | issuer | issuer |
+| dist_locked, angel_numbers_bps, jackpot_bps, jackpot_winners, jackpot_min_hold, angel_numbers_cooldown, keeper_min, reflect_min, rng_kind, rng_amt | — | — | forex only |
+
+Rates are bps / 10000. `limit` 1–1000 on `setconfig`. Sum of tax rates ≤ 10000. `reflect_min == 0` → treat as 1 whole token (`10^precision`).
+
+## `flexers` (scope = symbol)
+
+| Field | easy | complex | forex |
+|-------|------|---------|-------|
+| owner, balance, fee_opted_out, flex_reward_pool_id | yes | yes | yes |
+| beneficiary, bene_rate, custom_memo | — | yes | yes |
+| angel_number (1000 = unset; pick 0–999) | — | — | yes |
+| secondary `byangel` | — | — | yes |
+
+`flex_reward_pool_id == 0` → native **or** launch-quote swap if `swap_underlying_default`. Else Alcor pool id in `flexpools`.
+
+## `flexpools` (scope = symbol)
+
+`id` (Alcor pool id), `input_symbol`, `input_contract` (`get_self()`), `output_symbol`, `output_contract`. One logical route per (this token → output contract+symbol).
+
+## `accounts` (scope = owner)
 
 `balance` asset. PK = symbol code.
 
-## `stat` (`stat`, scope = symbol)
+---
 
-| Field | easyflex | complexflex | flexforex |
-|-------|----------|-------------|-----------|
-| supply, max_supply, issuer | yes | yes | yes |
-| reflection_pool | yes | yes | yes |
-| burn_pool | yes | yes | yes |
-| project_pool | — | yes | yes |
-| angel_numbers_pool, jackpot_pool | — | — | live pots (`pullangel` / `pulljackpot`) |
-| angel_numbers_last, flexer_count | — | — | yes |
+## Actions — money
 
-## `settings` (`settings`, scope = symbol)
+| Action | Auth | Notes |
+|--------|------|-------|
+| `create(issuer, maximum_supply)` | issuer | Creates `stat` + default `settings` |
+| `issue` / `mint` | issuer | **to must be issuer**; 100% for launch |
+| `burn` | holder | |
+| `transfer` | from (or contract) | Tax unless opted out / contract payout / pre-liftoff Alcor seed |
+| `open` / `close` | ram_payer / owner | |
 
-| Field | easyflex | complexflex | flexforex |
-|-------|----------|-------------|-----------|
-| token_symbol, start_key, limit | yes | yes | yes |
-| reflection_rate | default 100 | default 100 | default 100 |
-| burn_rate | default **100** | default 0 | default 0 |
-| project_rate, project_account | — | default 100 / issuer | default 100 / issuer |
-| admin_account | issuer | issuer | issuer |
-| dist_locked, angel_numbers_bps, jackpot_bps, jackpot_winners, jackpot_min_hold, angel_numbers_cooldown, keeper_min, reflect_min, rng_kind, rng_amt | — | — | flexforex only |
+easyflex supply = `issue`. complexflex + flexforex = `mint`.
 
-`limit` 1–1000 on `setconfig`. Sum of tax rates ≤ 10000.
+Wallet→wallet tax is **on top of** `quantity`. Alcor inbound tax is **taken from** `quantity`.
 
-## `flexer` (`flexers`, scope = symbol)
-
-| Field | easyflex | complexflex | flexforex |
-|-------|----------|-------------|-----------|
-| owner, balance | yes | yes | yes |
-| fee_opted_out | yes | yes | yes |
-| flex_reward_pool_id | yes | yes | yes |
-| beneficiary, bene_rate, custom_memo | — | yes | yes |
-| angel_number (1000 = unset) | — | — | yes |
-| secondary `byangel` | — | — | yes |
-
-## Actions — create / money
-
-**Auth:** create = issuer; issue/mint = issuer, `to` must be issuer; burn = holder; open = ram_payer; close = owner with zero balance.
-
-**easyflex:** `create`, `issue`, `burn`, `transfer`, `open`, `close`  
-**complexflex / flexforex:** `create`, `mint`, `burn`, `transfer`, `open`, `close`
-
-Mint/issue error if token missing: `"create token before issue"`.
-
-## Actions — launch
-
-Identical ABI on all three:
+## Actions — launch (all three)
 
 ```
-startlaunch(token_symbol, quote, fee, tick_lower, tick_upper, sqrt_price_x64, xtoken_proof_pool_id)
+startlaunch(token_symbol, quote, fee, tick_lower, tick_upper, sqrt_price_x64, xtoken_proof_pool_id, swap_underlying_default)
 liftoff(token_symbol, pool_id, tick_lower, tick_upper)
 checklock(token_symbol)
 ```
 
-Auth: **issuer** for startlaunch/liftoff; `checklock` is permissionless. Flex quotes: EASY@mon3y, WON@w3won, MEME@m3m3, GRAMS@gold.mon3y → `xtoken_proof_pool_id` must be 0. Else quote contract must be `xtokens`, proof pool active, contains that xtoken vs XUSDC@xtokens or XPR@eosio.token, Alcor inventory ≥ **10 XUSDC** or **1000 XPR**.
+- Auth: issuer for startlaunch/liftoff; **anyone** for checklock.
+- Flex quotes → proof id **0**. Non-flex → proof id **> 0**, pool active, quote vs XUSDC or XPR, inventory ≥ 10 XUSDC or 1000 XPR valued.
+- Liftoff: issuer EASY@mon3y ≥ base×(prior launched by this issuer + 1). Base raw: easy 5e9, complex 1e10, forex 5e10 (precision 6).
+- Issuer signs Alcor (`createpool`, deposit, `addliquid`, `lockpos` ≥90d) — not the flex contract. Never liftoff in same tx as createpool.
 
-`liftoff` also requires the **issuer** to hold EASY@mon3y (`accounts` on `mon3y`, scope = issuer). Base: **5000** easyflex, **10000** complexflex, **50000** flexforex (`EASY`, precision 6). Count this issuer’s **already `launched`** tokens on *this* contract; need `base * (count + 1)`.
+## Actions — config / holder prefs
 
-Liftoff errors: pool not active (`activepool#id`), fee mismatch, pair mismatch, one-sided tick, no liquidity, lock < 90d, not 100% on swap.alcor, unused Alcor balance, not enough EASY@mon3y. Copies Alcor lock expiry into `launches.unlock_time`. After that time, `checklock` or `makeitrain` may raise `dev_bps`/`club_bps` by another `PROTO_BPS_HALF` each.
-
-## Actions — config / opt-out
-
-| Action | Who | Notes |
-|--------|-----|--------|
-| `setconfig` | **contract only** | easyflex: no project fields. Others: project_rate + project_account. |
-| `feeoptout` | self can only **opt out** (`ban_status` true); admin/issuer/contract can toggle either way | Self cannot restore reflections |
+| Action | Who | Contracts |
+|--------|-----|-----------|
+| `setconfig` | **contract@active only** | all (easy has no project fields) |
+| `feeoptout(account, ban_status, token_symbol)` | self: **true only**; admin/issuer/contract either way | all |
+| `addpool(pool_id, token_symbol, output_symbol, output_contract)` | issuer or contract | all |
+| `choosereward(owner, token_symbol, output_symbol, output_contract)` | owner or issuer/admin/contract; empty output_contract → native (0) | all |
+| `inheritance` / `inheritmemo` | flexer or contract | complex + forex |
+| `ratios` / `setdist` / `setangelnum` / `pullangel` / `pulljackpot` | see [flexforex-extras.md](flexforex-extras.md) | forex only |
+| `receiverand` | `rng` only | forex only |
 
 ## Actions — payout
 
-| Contract | Action | Extra |
+| Contract | Action | Splash |
 |----------|--------|--------|
-| easyflex | `makeitrain(token_symbol, sender)` | `require_auth(sender)`. No inheritance; `flex_reward_pool_id` swap memos; burn_pool flushed after a std pay |
-| complexflex | `makeitrain(token_symbol, sender)` | `require_auth(sender)`. Inheritance split; reward pool; burn flush |
-| flexforex | `makeitrain(token_symbol, keeper)` | `require_auth(keeper)` always. Splashes `reflection_pool` only. Optional keeper tip if `keeper_min > 0`. |
+| easyflex | `makeitrain(token_symbol, sender)` | 38.2% of `reflection_pool`; optional Alcor swap memo |
+| complexflex | `makeitrain(token_symbol, sender)` | + inheritance split |
+| flexforex | `makeitrain(token_symbol, keeper)` | reflection_pool only; optional keeper tip |
 
-Payout requires `launches.launched`. Skim: `dev_bps` → account `nyra`; `club_bps` → account `reflections`. Pagination via `start_key`.
+Requires `launches.launched`. Skim first: `dev_bps` → `nyra`, `club_bps` → `reflections`. Pagination via `settings.start_key` / `limit`.
 
-Standard splash is **38.2%** of `reflection_pool` (`382/1000`). flexforex transfer tax splits `reflection_rate` by `angel_numbers_bps` / `jackpot_bps` into those pots; remainder goes to `reflection_pool`. `reflect_min` default = one whole token unit if unset.
-
-## Actions — flex-to (Alcor output)
-
-Issuer or contract: `addpool(pool_id, token_symbol, output_symbol, output_contract)`.
-
-Holder (or issuer/admin/contract): `choosereward`. Zero `output_contract` clears `flex_reward_pool_id`.
-
-## Actions — inheritance (complexflex + flexforex)
-
-`inheritance(flexer, beneficiary, rate, token_symbol)` — rate ≤ 10000. Empty beneficiary → self.  
-`inheritmemo(flexer, custom_memo, token_symbol)` — memo ≤ 200; `@@` on payout. Auth: flexer or contract.
-
-## Actions — flexforex angel numbers / jackpot only
-
-`ratios(token_symbol, angel_numbers_bps, jackpot_bps)` — issuer or contract; share of `reflection_rate` on transfer.  
-`setdist(...)` — locks issuer after first success.  
-`setangelnum(owner, token_symbol, angel_number)` — 0–999.  
-`pullangel(token_symbol)` / `pulljackpot(token_symbol)` — cooldown / idle `rng_kind`; pay their own `stat` columns.  
-`receiverand(assoc_id, random_value)` — `rng` only.
-
-## Alcor issuer actions (not on these contracts)
-
-`swap.alcor`: `createpool`, `addliquid`, `lockpos`; token `transfer` for deposit / `activepool#id`. Pool id from `logpool`.
+Flex swap memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#reflections`
 
 ## Signing cheatsheet
 
 ```
-create            issuer@active
-issue/mint        issuer@active
-startlaunch       issuer@active
-liftoff           issuer@active
-checklock         anyone
-setconfig         contract@active
-addpool           issuer or contract
-makeitrain         sender@active (easyflex/complexflex); keeper@active (flexforex, always)
-receiverand       rng@active
+create / issue|mint / startlaunch / liftoff   issuer@active
+checklock / pullangel / pulljackpot           anyone (chain gates)
+makeitrain                                    sender|keeper@active
+addpool                                       issuer or contract
+choosereward / feeoptout / setangelnum        holder (see rules)
+inheritance / inheritmemo                     flexer or contract
+ratios                                        issuer or contract
+setdist                                       issuer/admin once, or contract anytime
+setconfig                                     contract@active
+receiverand                                   rng@active
 ```
+
+## Check strings
+
+On-chain fails start with `⟁`. Surface verbatim; map hints in `src/services/txParse.ts`.
 
 ## Old names (do not use)
 
-`forge`, `reglaunch`, `stamp`, `renounce`, `noflexzone`, `setflexpool`, `setflextoken`, `interestoken`, `setratios`, `setnumber`, `pullnumber`, `proof_pool_id`, `pool_id`/`pos_id` on launches, `nyra_bps`/`refl_bps`, `is_banned`, `flextoken`, `numbers_*` / `luck_*` table fields, `bynumber`, `distribute`, `reflect`.
+`forge`, `reglaunch`, `stamp`, `renounce`, `noflexzone`, `setflexpool`, `setflextoken`, `interestoken`, `setratios`, `setnumber`, `pullnumber`, `proof_pool_id`, `nyra_bps`/`refl_bps`, `is_banned`, `distribute`, `reflect`, `numbers_*` / `luck_*` pads.

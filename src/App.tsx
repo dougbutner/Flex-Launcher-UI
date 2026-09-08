@@ -7,6 +7,7 @@ import Launch from "./pages/Launch.tsx";
 import Leaderboard from "./pages/Leaderboard.tsx";
 import Reflections from "./pages/Reflections.tsx";
 import Portfolio from "./pages/Portfolio.tsx";
+import Token from "./pages/Token.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/reflections" element={<Reflections />} />
             <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/token/:contract/:symbol" element={<Token />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

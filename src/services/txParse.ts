@@ -91,7 +91,9 @@ const HINTS: Array<[string, string]> = [
   ["pool fee does not match startlaunch", "Create the pool with the registered fee tier."],
   ["pool must pair this flex token with the registered quote", "Pool pair differs from the registered quote."],
   ["pool quote does not match startlaunch", "Pool quote differs from startlaunch."],
-  ["proof pool", "Pick a deeper xtoken market (≥ 10 XUSDC or ≥ 1,000 XPR inventory)."],
+  ["quote must be a flex token, xtokens, XPR, XMD, or LOAN", "Use EASY/WON/GRAMS/MEME, an xtoken, or XPR/XMD/LOAN."],
+  ["xtoken launches need xtoken_proof_pool_id", "Non-flex quotes need a proof pool id greater than zero."],
+  ["proof pool", "Pick a deeper quote market (≥ 10 XUSDC or ≥ 1,000 XPR inventory)."],
   ["10 XUSDC", "Pick a deeper xtoken market."],
   ["1000 XPR", "Pick a deeper xtoken market."],
   ["pool is not active", "Pay activeFee with memo activepool#id."],
@@ -113,6 +115,14 @@ const HINTS: Array<[string, string]> = [
   ["Jackpot pot empty", "No jackpot pot to pull yet."],
   ["angel numbers cooldown", "Wait for the angel numbers cooldown to finish."],
   ["RNG already pending", "A pull is already waiting on rng — wait for receiverand."],
+  ["Distribute already locked", "Issuer already ran setdist — only the contract can change mins/winners; use ratios for channel bps."],
+  ["Only the issuer can add a flex reward token", "Sign addpool as the token issuer."],
+  ["No flex pool found for that output token", "Issuer must addpool that Alcor route first."],
+  ["you can remove fees, not add them back", "feeoptout is one-way for holders — only admin/issuer can reverse."],
+  ["code 0-999 required", "Pick an angel number from 0 to 999."],
+  ["bad inheritance data", "Beneficiary rate must be 0–10000 bps."],
+  ["bad inheritmemo data", "Custom memo must be ≤ 200 characters."],
+  ["beneficiary account does not exist", "Enter a live XPR account name for the beneficiary."],
 ];
 
 export function hintForError(message: string): string | null {

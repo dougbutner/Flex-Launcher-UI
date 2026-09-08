@@ -21,6 +21,8 @@ export type LaunchDraft = {
   xtokenSymbol: string;
   xtokenPrecision: number;
   proofPoolId: string;
+  /** startlaunch: holders with flex_reward_pool_id==0 get swapped into the launch quote. */
+  swapUnderlyingDefault: boolean;
   fee: FeeTier;
   priceLower: string;
   priceUpper: string;
@@ -37,7 +39,7 @@ export type LaunchDraft = {
   liftoffTx: string;
 };
 
-const KEY = "flex-launch-draft-v3";
+const KEY = "flex-launch-draft-v4";
 
 const xtoken = QUOTE_PRESETS.find((q) => q.id === "xtoken") ?? QUOTE_PRESETS[0];
 
@@ -60,7 +62,8 @@ export const emptyDraft = (): LaunchDraft => ({
   quoteId: "xtoken",
   xtokenSymbol: "FOOBAR",
   xtokenPrecision: 6,
-  proofPoolId: "0",
+  proofPoolId: "",
+  swapUnderlyingDefault: true,
   fee: 3000,
   priceLower: xtoken.priceLower,
   priceUpper: xtoken.priceUpper,

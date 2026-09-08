@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { alcorSwapUrl, explorerAccount, explorerTx, flexAccount } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { quoteFromDraft } from "@/components/launch/draftPlan";
@@ -17,11 +18,20 @@ export function DonePanel({ draft, onReset }: { draft: LaunchDraft; onReset: () 
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
         Liftoff complete. 100% of supply sits in a locked, one-sided Alcor position — buyers walk the range and anyone
-        can call makeitrain to splash holders. After the 90-day lock ends, anyone can call checklock to apply the extra
-        protocol skim.
+        can call makeitrain to splash holders
+        {draft.swapUnderlyingDefault
+          ? ` (unpaid holders receive ${quote.symbol} via the launch pool)`
+          : " (unpaid holders receive the native token)"}
+        . After the 90-day lock ends, anyone can call checklock to apply the extra protocol skim.
+        {draft.program === "flexforex"
+          ? " Open Manage to lock setdist / ratios and add flex reward pools."
+          : " Open Manage to add flex reward pools and holder prefs."}
       </p>
 
       <div className="mx-auto mt-6 flex max-w-sm flex-col gap-2">
+        <Link to={`/token/${tokenContract}/${draft.symbol}`} className="btn btn-primary btn-lg w-full">
+          Manage ${draft.symbol}
+        </Link>
         <a
           href={alcorSwapUrl(quote.symbol, quote.contract, draft.symbol, tokenContract)}
           target="_blank"

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { QUOTE_PRESETS, type QuotePreset } from "@/config/launch";
+import { quoteNeedsProof, QUOTE_PRESETS, type QuotePreset } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
-import { quoteStepValid } from "@/components/launch/draftPlan";
+import { presetFromDraft, quoteFromDraft, quoteStepValid } from "@/components/launch/draftPlan";
 import { Field, StepShell } from "@/components/launch/ui";
-import { xtokenProofOk } from "@/services/flexTables";
+import { quoteProofOk } from "@/services/flexTables";
 import { getAccount } from "@/services/rpc";
 
 type Props = {
@@ -60,10 +60,13 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
   const [checking, setChecking] = useState(false);
   const [live, setLive] = useState<Record<string, boolean>>({});
   const invalid = quoteStepValid(draft);
+  const preset = presetFromDraft(draft);
+  const needsProof = quoteNeedsProof(preset);
   const isXtoken = draft.quoteId === "xtoken";
+  const quote = quoteFromDraft(draft);
 
   useEffect(() => {
-    const contracts = [...new Set(QUOTE_PRESETS.filter((p) => p.flexQuote).map((p) => p.contract))];
+    const contracts = [...new Set(QUOTE_PRESETS.map((p) => p.contract))];
     void Promise.all(
       contracts.map(async (c) => {
         const ok = await getAccount(c)
@@ -75,14 +78,14 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!isXtoken || invalid) {
+    if (!needsProof || invalid) {
       setProof(null);
       return;
     }
     let cancelled = false;
     setChecking(true);
     const t = window.setTimeout(() => {
-      xtokenProofOk(Number(draft.proofPoolId), draft.xtokenSymbol.trim().toUpperCase())
+      quoteProofOk(Number(draft.proofPoolId), quote.symbol, quote.contract)
         .then((r) => {
           if (!cancelled) setProof(r);
         })
@@ -97,16 +100,16 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [isXtoken, invalid, draft.proofPoolId, draft.xtokenSymbol]);
+  }, [needsProof, invalid, draft.proofPoolId, quote.symbol, quote.contract]);
 
   const selected = QUOTE_PRESETS.find((p) => p.id === draft.quoteId);
-  const quoteMissing = Boolean(selected?.flexQuote && live[selected.contract] === false);
-  const blocked = Boolean(invalid) || quoteMissing || (isXtoken && !proof?.ok);
+  const quoteMissing = Boolean(selected && live[selected.contract] === false);
+  const blocked = Boolean(invalid) || quoteMissing || (needsProof && !proof?.ok);
 
   return (
     <StepShell
       title="Pick the quote"
-      desc="What buyers pay in. On XPR testnet, EASY/WON/GRAMS/MEME accounts are not deployed — use an xtoken (FOOBAR pool #0 vs XPR)."
+      desc="What buyers pay in. Flex quotes (EASY/WON/GRAMS/MEME) need no proof pool. XPR, XMD, LOAN, and xtokens need a non-zero Alcor proof pool vs XUSDC or XPR."
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -119,27 +122,29 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
       }
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {QUOTE_PRESETS.map((preset) => {
-            const unavailable = Boolean(preset.flexQuote && live[preset.contract] === false);
-            return (
-          <QuoteCard
-            key={preset.id}
-            preset={preset}
-            selected={draft.quoteId === preset.id}
-            unavailable={unavailable}
-            onSelect={() =>
-              patch({
-                quoteId: preset.id,
-                priceLower: preset.priceLower,
-                priceUpper: preset.priceUpper,
-                ...(preset.id === "xtoken"
-                  ? { xtokenSymbol: preset.symbol, xtokenPrecision: preset.precision, proofPoolId: "0" }
-                  : {}),
-              })
-            }
-          />
-            );
-          })}
+        {QUOTE_PRESETS.map((p) => {
+          const unavailable = live[p.contract] === false;
+          return (
+            <QuoteCard
+              key={p.id}
+              preset={p}
+              selected={draft.quoteId === p.id}
+              unavailable={unavailable}
+              onSelect={() =>
+                patch({
+                  quoteId: p.id,
+                  priceLower: p.priceLower,
+                  priceUpper: p.priceUpper,
+                  ...(p.id === "xtoken"
+                    ? { xtokenSymbol: p.symbol, xtokenPrecision: p.precision, proofPoolId: draft.proofPoolId || "" }
+                    : quoteNeedsProof(p)
+                      ? { proofPoolId: draft.proofPoolId || "" }
+                      : { proofPoolId: "0" }),
+                })
+              }
+            />
+          );
+        })}
       </div>
 
       <p className="text-xs text-muted-foreground">
@@ -147,37 +152,59 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
         +0.25% each to nyra and reflections.
       </p>
 
+      <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={draft.swapUnderlyingDefault}
+          onChange={(e) => patch({ swapUnderlyingDefault: e.target.checked })}
+        />
+        <span>
+          <span className="block text-sm font-semibold">Reflect into the quote (underlying)</span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            When on, makeitrain swaps holders who have not chosen a flex reward into {quote.symbol}@
+            {quote.contract} through the launch Alcor pool. When off, they receive the native token.
+          </span>
+        </span>
+      </label>
+
       {quoteMissing ? (
         <p className="text-xs text-warning">
-          {selected?.symbol}@{selected?.contract} is not on this chain. Pick xtoken (FOOBAR, proof pool 0).
+          {selected?.symbol}@{selected?.contract} is not on this chain. Pick another quote.
         </p>
       ) : null}
 
-      {isXtoken ? (
+      {needsProof ? (
         <div className="space-y-4 rounded-2xl border border-warning/30 bg-warning/5 p-4">
           <p className="text-xs text-warning">
-            xtoken quotes need an existing Alcor pool pairing the xtoken with XUSDC or XPR, with ≥ 10 XUSDC or ≥
-            1,000 XPR of inventory on swap.alcor.
+            Non-flex quotes need an existing Alcor pool pairing the quote with XUSDC or XPR. Contract requires proof
+            pool id &gt; 0 and ≥ 10 XUSDC or ≥ 1,000 XPR of valued inventory on swap.alcor.
           </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="xtoken symbol">
-              <input
-                className="input font-mono uppercase"
-                value={draft.xtokenSymbol}
-                maxLength={7}
-                onChange={(e) => patch({ xtokenSymbol: e.target.value.toUpperCase().replace(/[^A-Z]/g, "") })}
-              />
-            </Field>
-            <Field label="Precision">
-              <input
-                className="input font-mono"
-                inputMode="numeric"
-                value={draft.xtokenPrecision}
-                onChange={(e) =>
-                  patch({ xtokenPrecision: Math.max(0, Math.min(8, Number(e.target.value.replace(/\D/g, "") || 0))) })
-                }
-              />
-            </Field>
+          <div className={`grid grid-cols-1 gap-4 ${isXtoken ? "sm:grid-cols-3" : "sm:grid-cols-1"}`}>
+            {isXtoken ? (
+              <>
+                <Field label="xtoken symbol">
+                  <input
+                    className="input font-mono uppercase"
+                    value={draft.xtokenSymbol}
+                    maxLength={7}
+                    onChange={(e) => patch({ xtokenSymbol: e.target.value.toUpperCase().replace(/[^A-Z]/g, "") })}
+                  />
+                </Field>
+                <Field label="Precision">
+                  <input
+                    className="input font-mono"
+                    inputMode="numeric"
+                    value={draft.xtokenPrecision}
+                    onChange={(e) =>
+                      patch({
+                        xtokenPrecision: Math.max(0, Math.min(8, Number(e.target.value.replace(/\D/g, "") || 0))),
+                      })
+                    }
+                  />
+                </Field>
+              </>
+            ) : null}
             <Field label="Proof pool id">
               <input
                 className="input font-mono"

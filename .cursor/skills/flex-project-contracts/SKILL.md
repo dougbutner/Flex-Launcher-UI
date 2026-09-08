@@ -1,76 +1,77 @@
 ---
 name: flex-project-contracts
 description: >-
-  Source of truth for this repo’s live flex token contracts in src/Project Contracts
-  (easyflex, complexflex, flexforex): create, startlaunch, liftoff, choosereward,
-  feeoptout, tables, taxes, reflections, Alcor wiring. Use when building Flex Launcher
-  UI, launch wizards, reflections/portfolio, RPC table reads, or any easyflex /
-  complexflex / flexforex / flex.mon3y / mon3y / gold.mon3y work. Prefer these files
-  and AGENTS.md over UI-LAUNCH.md.
+  Complete source of truth for this repo’s live flex token contracts in
+  src/Project Contracts (easyflex, complexflex, flexforex): every action, table,
+  tax/payout path, launch law, Alcor wiring, angel numbers, jackpot, inheritance,
+  and UI coverage gaps. Use when building or reviewing Flex Launcher UI, RPC
+  reads, signing payloads, reflections/portfolio, or any easyflex / complexflex /
+  flexforex / flex.mon3y / mon3y / gold.mon3y work. Prefer these files and AGENTS.md
+  over UI-LAUNCH.md.
 ---
 
-# Flex project contracts (this repo)
+# Flex project contracts
+
+Canonical C++: **`src/Project Contracts/`** (`*.hpp` / `*.cpp`). If header and cpp disagree, **cpp wins**. Never invent ABI fields. Never emit stale names.
 
 ## Instructions
 
-1. **Read the C++ first.** Canonical sources: `src/Project Contracts/*.hpp` and `*.cpp`. If header and cpp disagree, the cpp is runtime truth.
-2. Open **[tables-and-actions.md](tables-and-actions.md)** before signing or querying.
-3. For the launcher product (screens, env, wizard order), follow **[AGENTS.md](../../../AGENTS.md)** and `.cursor/rules/flex-launcher-ui.mdc`.
-4. Match Vite patterns in `src/services/`, `src/config/launch.ts`, wallets. Alcor AMM is `swap.alcor` — `alcor-exchange` skill for memos/URLs.
-5. `token_symbol` action args are the **symbol code string** (`FOO`), not `"4,FOO"`.
-6. Never invent ABI fields. Never emit stale names listed below.
+1. Read this file first for product split + UI gap.
+2. Open **[tables-and-actions.md](tables-and-actions.md)** before any `get_table_rows` or signed action.
+3. For flexforex-only (angel / jackpot / setdist / ratios / setangelnum / inheritance): **[flexforex-extras.md](flexforex-extras.md)**.
+4. For tax / skim / makeitrain / underlying swap math: **[economics.md](economics.md)**.
+5. Product screens / env / wizard order: **[AGENTS.md](../../../AGENTS.md)** + `.cursor/rules/flex-launcher-ui.mdc`.
+6. Alcor AMM memos/URLs: `.agents/skills/alcor-exchange`. Wallets: `.agents/skills/web-sdk`, `src/services/walletConstants.ts`.
 
-`UI-LAUNCH.md` is stale (`forge`, `reglaunch`, `stamp`, `settings` contract-scoped). Trust `src/Project Contracts`.
+`token_symbol` action args are the **symbol code string** (`FOO`), not `"4,FOO"`. Identity is always **(contract, symbol)**.
 
-## Three products, one launch law
+## Three products
 
-`create` → mint/issue **100% to issuer** → `startlaunch` → issuer on `swap.alcor` (`createpool`, deposit, one-sided `addliquid`, `lockpos` ≥ 90d) → `liftoff`.
+| | easyflex | complexflex | flexforex |
+|---|---|---|---|
+| Typical account | `mon3y` / testnet `easyflex` | `gold.mon3y` / `complexflex` | `flex.mon3y` / `flexforex` |
+| Supply | `issue` | `mint` | `mint` |
+| Payout | `makeitrain(..., sender)` | `makeitrain(..., sender)` | `makeitrain(..., keeper)` |
+| Project tax | no | yes | yes |
+| Inheritance | no | yes | yes |
+| Angel / jackpot / `rng` | no | no | yes |
+| Default create rates | refl 100, burn 100 | refl 100, project 100 | refl 100, project 100 |
+| Liftoff EASY@`mon3y` | 5,000 × (prior+1) | 10,000 × (prior+1) | 50,000 × (prior+1) |
 
-Until `launches.launched == true`, transfers may only go to `swap.alcor` (plus contract self-pays and the Alcor-path list). After liftoff, skim bps on the launch row are sticky.
+Shared launch law: `create` → mint/issue 100% to issuer → `startlaunch` → issuer seeds `swap.alcor` → `liftoff`. Constants: `PROTO_BPS_HALF=25`, `PAY_NUM/PAY_DEN=382/1000`, `MIN_LOCK_SECS=7776000`, ticks ±443636.
 
-| Contract | Typical account (confirm env / explorer) | Create | Supply | Payout | Opt-out | Flex-to |
-|----------|------------------------------------------|--------|--------|--------|---------|---------|
-| `easyflex` | `mon3y` (EASY) | `create` | `issue` | `makeitrain(token, sender)` | `feeoptout` | `addpool` + `choosereward` |
-| `complexflex` | `gold.mon3y` (GRAMS) | `create` | `mint` | `makeitrain(token, sender)` | `feeoptout` | same |
-| `flexforex` | `flex.mon3y` (`VITE_FLEXFOREX_CONTRACT`) | `create` | `mint` | `makeitrain(token, keeper)` | `feeoptout` | same |
+## UI coverage (honest)
 
-**easyflex:** no inheritance, project tax, angel numbers, or jackpot. Default tax 1% reflect + 1% burn.
+**In the Vite app today**
 
-**complexflex:** inheritance + project tax; no RNG. Default 1% reflect + 1% project.
+- Launch wizard: create / mint|issue / startlaunch (+ `swap_underlying_default`) / Alcor seed / lockpos / liftoff
+- Post-launch poke: `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot chips)
+- Token manage (`/token/:contract/:symbol`): holder `choosereward` / `feeoptout` / `setangelnum` / inheritance; issuer `setdist` / `ratios` / `addpool`
+- Read-only: leaderboard holders, reflection history filter, portfolio balances (+ “Your launches”)
 
-**flexforex:** plus angel numbers, jackpot, `rng`, `setdist` / `ratios`, keeper tip. Default 1% reflect + 1% project.
+**Never in UI**
 
-Rates are bps / 10000 (100 = 1%). Payout sends 38.2% of the standard pool (`PAY_NUM/PAY_DEN` = `382/1000`).
+| Feature | Why |
+|---------|-----|
+| `setconfig` | **contract@active only** |
+| `receiverand` | **rng only** |
+
+Gate angel UI to flexforex; inheritance to complexflex + flexforex. Prefer `launchActions.ts`, `flexTables.ts`, Token page patterns.
 
 ## Stale names (never emit)
 
-`forge` → `create`. `reglaunch` → `startlaunch`. `stamp` → `liftoff`. `interestoken` / `setflextoken` / `setflexpool` → `addpool` / `choosereward`. `renounce` / `noflexzone` → `feeoptout`. `setratios` → `ratios`. `setnumber` / `pullnumber` → `setangelnum` / `pullangel`. `distribute` / `reflect` → `makeitrain`. Launch fields: `xtoken_proof_pool_id`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`. Flexer: `fee_opted_out`, `flex_reward_pool_id`, `angel_number`, index `byangel`.
+`forge` → `create`. `reglaunch` → `startlaunch`. `stamp` → `liftoff`. `interestoken` / `setflextoken` / `setflexpool` / `sprouttoken` → `addpool` / `choosereward`. `renounce` / `noflexzone` → `feeoptout`. `setratios` → `ratios`. `setnumber` / `pullnumber` → `setangelnum` / `pullangel`. `distribute` / `reflect` → `makeitrain`. Launch: `xtoken_proof_pool_id`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`, `unlock_time`, `swap_underlying_default` — not `proof_pool_id` / `nyra_bps`.
 
-## Accounts
+## Accounts / quotes
 
-From `src/config/launch.ts` / env: `VITE_FLEXFOREX_CONTRACT`, `VITE_EASYFLEX`, `VITE_COMPLEXFLEX`. Quotes: EASY@mon3y, WON@w3won, MEME@m3m3, GRAMS@gold.mon3y. xtokens; XPR `eosio.token` p4; XUSDC `xtokens` p6. AMM `swap.alcor`. Alcor UI `https://alcor.exchange/v/xpr`.
+Env: `VITE_FLEXFOREX_CONTRACT`, `VITE_EASYFLEX`, `VITE_COMPLEXFLEX`, `VITE_SWAP_ALCOR`. Liftoff EASY always reads **`mon3y`** (C++ `MON3Y`), not `VITE_EASYFLEX`.
 
-## RPC scopes
+Flex quotes (0% skim, proof id 0): EASY@mon3y, WON@w3won, MEME@m3m3, GRAMS@gold.mon3y.  
+Non-flex (0.5% skim, proof id **> 0** vs XUSDC or XPR): xtokens, XPR@eosio.token, XMD@xmd.token, LOAN@loan.token.
 
-| Table | scope | PK |
-|-------|-------|-----|
-| `stat`, `settings`, `flexers`, `flexpools` | **symbol code raw** | symbol / owner / pool id |
-| `accounts` | owner | symbol |
-| `launches` | **contract name** | symbol |
+## Do not
 
-flexforex `flexers` secondary: `byangel`.
-
-## UI rules
-
-- One wizard, three adapters. Hide ABI the chosen contract lacks.
-- Do not sign `linkauth`. Do not call `setconfig` or `receiverand` from issuer UI.
-- `token.proton` logos still need `tcontract@active` (token **contract** account).
-- Check strings start with `⟁`. Map in `src/services/txParse.ts`.
-- No `on_notify` LP `Col…` forward on these three contracts.
-
-## Related
-
-- Launcher brief: [AGENTS.md](../../../AGENTS.md)
-- Alcor: `.agents/skills/alcor-exchange`
-- Wallets: `.agents/skills/web-sdk`, `src/services/walletConstants.ts`
-- Wire testnet: `.cursor/skills/wire-testnet`
+- Edit the three token `.cpp`/`.hpp` unless the user asks.
+- Call `setconfig` or `receiverand` from issuer/holder UI.
+- Treat `angel_numbers_pool` / `jackpot_pool` as unused pads — they are live pots.
+- Follow `UI-LAUNCH.md` action names.

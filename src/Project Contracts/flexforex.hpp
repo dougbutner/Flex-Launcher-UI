@@ -55,7 +55,8 @@ namespace eosio {
          ACTION inheritmemo(const name& flexer, const string& custom_memo, const string& token_symbol);
          // Record quote + range before paying Alcor RAM. Does not create the pool.
          ACTION startlaunch(const string& token_symbol, const extended_asset& quote, uint32_t fee, int32_t tick_lower,
-                          int32_t tick_upper, const uint128_t& sqrt_price_x64, uint64_t xtoken_proof_pool_id);
+                          int32_t tick_upper, const uint128_t& sqrt_price_x64, uint64_t xtoken_proof_pool_id,
+                          bool swap_underlying_default);
          // One-shot: verify issuer-owned one-sided 100% lock ≥90d on swap.alcor, then unlock transfers.
          ACTION liftoff(const string& token_symbol, uint64_t pool_id, int32_t tick_lower, int32_t tick_upper);
          ACTION checklock(const string& token_symbol);
@@ -134,7 +135,7 @@ namespace eosio {
             name     owner;
             asset    balance;           // mirrored from accounts for fast walks
             bool     fee_opted_out = false;
-            uint64_t flex_reward_pool_id = 0;     // 0 = native; else Alcor pool id in flexpools
+            uint64_t flex_reward_pool_id = 0;     // 0 = native or token swap_underlying_default; else flexpools id
             name     beneficiary;
             uint16_t bene_rate = 10000; // inheritance split (bps of share)
             string   custom_memo;
@@ -195,6 +196,7 @@ namespace eosio {
             uint16_t        dev_bps = 0;
             uint16_t        club_bps = 0;
             uint32_t        unlock_time = 0;  // Alcor lock expiry copied at liftoff
+            bool            swap_underlying_default = false;  // pid 0 → swap into launch quote pool
             uint64_t primary_key()const { return token_symbol.code().raw(); }
          };
 

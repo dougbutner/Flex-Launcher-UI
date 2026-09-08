@@ -76,7 +76,9 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       label: "Start launch",
       detail: `Quote, fee, ticks, sqrtPriceX64 on ${code}`,
       txOf: (d) => d.startTx,
-      build: async ({ plan, draft: d }) => [startlaunchAction(code, plan, Number(d.proofPoolId || 0))],
+      build: async ({ plan, draft: d }) => [
+        startlaunchAction(code, plan, Number(d.proofPoolId || 0), d.swapUnderlyingDefault),
+      ],
     },
     {
       id: "createpool",

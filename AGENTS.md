@@ -1,12 +1,18 @@
 # Flex launcher UI — agent brief
 
-This **Vite app** launches and uses **easyflex**, **complexflex**, and **flexforex**. Contract source of truth: `src/Project Contracts/` (`easyflex.hpp/.cpp`, `complexflex.hpp/.cpp`, `flexforex.hpp/.cpp`). Cursor skill: `flex-project-contracts`. Rule: `.cursor/rules/flex-launcher-ui.mdc`.
+This **Vite app** launches and uses **easyflex**, **complexflex**, and **flexforex**. Contract source of truth: `src/Project Contracts/` (`easyflex.hpp/.cpp`, `complexflex.hpp/.cpp`, `flexforex.hpp/.cpp`). Cursor skill: **`flex-project-contracts`** (`.cursor/skills/flex-project-contracts/` — `SKILL.md`, `tables-and-actions.md`, `flexforex-extras.md`, `economics.md`). Rule: `.cursor/rules/flex-launcher-ui.mdc`.
 
 **Do not follow `UI-LAUNCH.md` action names.** That file is stale (`forge`, `reglaunch`, `stamp`, `interestoken`, `nyra_bps`/`refl_bps`, `settings` scoped to the contract). Use this file.
 
 Do not edit the three token contracts unless the user asks. Token identity is always **(contract, symbol)** — never ticker alone.
 
 App UI and wallets: `src/` and `src/services/walletConstants.ts`.
+
+### UI coverage vs ABI
+
+**Shipped:** launch wizard (incl. `swap_underlying_default`), `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot display), token manage page (`/token/:contract/:symbol`) with `setdist` / `ratios` / `setangelnum`, `inheritance` / `inheritmemo`, `addpool` / `choosereward`, `feeoptout`.
+
+Gate by program: angel channels = flexforex only; inheritance = complexflex + flexforex; flex-to + feeoptout = all three. Never invent `setconfig` or `receiverand` UI.
 
 ---
 
@@ -43,7 +49,7 @@ Let the user pick **easyflex | complexflex | flexforex** before create. Shared l
 | Payout action | `makeitrain(token_symbol, sender)` | `makeitrain(token_symbol, sender)` | `makeitrain(token_symbol, keeper)` |
 | Project tax | no | yes | yes |
 | Inheritance / inheritmemo | no | yes | yes |
-| `setdist` / `ratios` / `setangelnum` / `pullangel` | no | no | yes |
+| `setdist` / `ratios` / `setangelnum` / `pullangel` / `pulljackpot` | no | no | yes |
 | `receiverand` | never in UI | never in UI | never in UI (`rng` only) |
 | Default create fees | refl 100, burn 100 | refl 100, project 100 | refl 100, project 100 |
 | Liftoff EASY@mon3y | 5,000 × (prior + 1) | 10,000 × (prior + 1) | 50,000 × (prior + 1) |
@@ -59,11 +65,12 @@ Code = chosen token contract. Scope for `stat` / `settings` / `flexers` / `flexp
 
 ### `launches` (contract scope)
 
-`token_symbol`, `quote` (extended_asset), `fee`, `tick_lower`, `tick_upper`, `sqrt_price_x64`, `xtoken_proof_pool_id`, `flex_quote`, `launched`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`, `unlock_time`.
+`token_symbol`, `quote` (extended_asset), `fee`, `tick_lower`, `tick_upper`, `sqrt_price_x64`, `xtoken_proof_pool_id`, `flex_quote`, `launched`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`, `unlock_time`, `swap_underlying_default`.
 
 - Missing or `launched == false` → wizard in progress.
 - `launched == true` → do not re-seed Alcor; show dashboard.
 - `unlock_time` is copied from Alcor at liftoff. After it, `checklock` or `makeitrain` may add another `PROTO_BPS_HALF` to `dev_bps` and `club_bps`.
+- `swap_underlying_default`: when true, holders with `flex_reward_pool_id == 0` get makeitrain swapped into the launch quote via `pure_liquid_alcor_pool_id`.
 
 Protocol skim: at liftoff `dev_bps`/`club_bps` = `0` if `flex_quote`, else `25` (0.25% each to `nyra` / `reflections`). May rise once if the LP unlocks.
 
@@ -127,13 +134,15 @@ easyflex: `issue`. Others: `mint`. `to` **must** be issuer.
   "tick_lower": -120,
   "tick_upper": 222000,
   "sqrt_price_x64": "18446744073709551616",
-  "xtoken_proof_pool_id": 0
+  "xtoken_proof_pool_id": 0,
+  "swap_underlying_default": true
 }
 ```
 
 - `token_symbol` = **code string only**. Quote amount **0**.
 - Flex quotes: `(mon3y, EASY)`, `(w3won, WON)`, `(m3m3, MEME)`, `(gold.mon3y, GRAMS)` → `xtoken_proof_pool_id = 0`.
-- Else `quote.contract = xtokens` and proof pool vs XUSDC or XPR; inventory ≥ 10 XUSDC or 1000 XPR.
+- Else quote may be `xtokens`, `XPR@eosio.token`, `XMD@xmd.token`, or `LOAN@loan.token`, with **proof pool id &gt; 0** vs XUSDC or XPR; inventory ≥ 10 XUSDC or 1000 XPR.
+- `swap_underlying_default`: unpaid holders (`flex_reward_pool_id == 0`) get makeitrain swapped into the launch quote.
 - `fee` ∈ {500→10, 3000→60, 10000→200}. Repeatable until `liftoff`.
 
 ### D–H — Alcor (issuer, not the flex contract)
@@ -167,7 +176,7 @@ Split txs. Never `liftoff` in the same tx as `createpool`.
 | `setdist` / `ratios` / `setangelnum` / `pullangel` / `pulljackpot` | see ABI | flexforex only |
 | `inheritance` / `inheritmemo` | flexer or contract | not easyflex |
 
-Flex payout memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#0`
+Flex payout memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#reflections`
 
 Wallet→wallet tax is **on top of** `quantity`; Alcor inbound tax is **taken from** `quantity`.
 
@@ -182,7 +191,7 @@ Check strings start with `⟁`. Surface them verbatim.
 3. Quote: EASY/WON/GRAMS/MEME or xtoken + proof pool.
 4. Range: snap ticks, 90d+ lock.
 5. Execute: create → mint/issue → startlaunch → createpool → activate → deposit → addliquid → lockpos → liftoff.
-6. Token home, holder (`choosereward`, `feeoptout`), keeper, issuer (`addpool`).
+6. Token home (`/token/:contract/:symbol`): poke + holder prefs + issuer tools; Portfolio / Leaderboard link here.
 
 ---
 

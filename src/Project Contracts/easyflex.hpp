@@ -34,7 +34,8 @@ namespace eosio {
          ACTION choosereward(const name& owner, const string& token_symbol, const symbol& output_symbol,
                              const name& output_contract);
          ACTION startlaunch(const string& token_symbol, const extended_asset& quote, uint32_t fee, int32_t tick_lower,
-                          int32_t tick_upper, const uint128_t& sqrt_price_x64, uint64_t xtoken_proof_pool_id);
+                          int32_t tick_upper, const uint128_t& sqrt_price_x64, uint64_t xtoken_proof_pool_id,
+                          bool swap_underlying_default);
          ACTION liftoff(const string& token_symbol, uint64_t pool_id, int32_t tick_lower, int32_t tick_upper);
          ACTION checklock(const string& token_symbol);
 
@@ -93,7 +94,7 @@ namespace eosio {
             name     owner;
             asset    balance;
             bool     fee_opted_out = false;
-            uint64_t flex_reward_pool_id = 0;     // 0 = native; else Alcor pool id in flexpools
+            uint64_t flex_reward_pool_id = 0;     // 0 = native or token swap_underlying_default; else flexpools id
             uint64_t primary_key()const { return owner.value; }
          };
 
@@ -135,6 +136,7 @@ namespace eosio {
             uint16_t        dev_bps = 0;
             uint16_t        club_bps = 0;
             uint32_t        unlock_time = 0;  // Alcor lock expiry copied at liftoff
+            bool            swap_underlying_default = false;  // pid 0 → swap into launch quote pool
             uint64_t primary_key()const { return token_symbol.code().raw(); }
          };
 

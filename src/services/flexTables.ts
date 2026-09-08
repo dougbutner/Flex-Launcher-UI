@@ -78,6 +78,14 @@ export async function readFlexers(code: string, symbol: string, limit = 200) {
   );
 }
 
+/** Scope = symbol code. PK = Alcor pool id. */
+export async function readFlexpools(code: string, symbol: string, limit = 100) {
+  return getAllTableRows<Record<string, unknown>>(
+    { code, scope: symbol, table: "flexpools", limit: 50 },
+    limit
+  );
+}
+
 export async function readAccounts(code: string, owner: string, symbol?: string) {
   return getTableRows<Record<string, unknown>>({
     code,
@@ -166,7 +174,12 @@ export async function readAlcorBalance(owner: string, symbol?: string) {
   });
 }
 
-export async function xtokenProofOk(poolId: number, xtokenSymbol: string): Promise<{ ok: boolean; reason: string }> {
+export async function quoteProofOk(
+  poolId: number,
+  quoteSymbol: string,
+  quoteContract: string
+): Promise<{ ok: boolean; reason: string }> {
+  if (!(poolId > 0)) return { ok: false, reason: "Proof pool id must be greater than zero." };
   const pool = await readPool(poolId);
   if (!pool) return { ok: false, reason: "Proof pool not found." };
   const tokenA = pool.tokenA as { quantity?: string; contract?: string };
@@ -177,16 +190,23 @@ export async function xtokenProofOk(poolId: number, xtokenSymbol: string): Promi
     { symbol: a?.symbol, contract: tokenA?.contract },
     { symbol: b?.symbol, contract: tokenB?.contract },
   ];
-  const hasXt = pair.some((t) => t.contract === XTOKENS && t.symbol === xtokenSymbol);
-  const quote = pair.find((t) => (t.contract === XTOKENS && t.symbol === "XUSDC") || (t.contract === EOSIO_TOKEN && t.symbol === "XPR"));
-  if (!hasXt || !quote) return { ok: false, reason: "Proof pool must pair this xtoken with XUSDC or XPR." };
+  const hasQuote = pair.some((t) => t.contract === quoteContract && t.symbol === quoteSymbol);
+  const other = pair.find(
+    (t) => (t.contract === XTOKENS && t.symbol === "XUSDC") || (t.contract === EOSIO_TOKEN && t.symbol === "XPR")
+  );
+  if (!hasQuote || !other) return { ok: false, reason: "Proof pool must pair this quote with XUSDC or XPR." };
   if (!pool.active) return { ok: false, reason: "Proof pool is not active." };
-  const inv = await getCurrencyBalance(XTOKENS, SWAP_ALCOR, xtokenSymbol);
+  const inv = await getCurrencyBalance(quoteContract, SWAP_ALCOR, quoteSymbol);
   const amount = inv.reduce((s, row) => s + assetAmountNumber(row), 0);
-  if (quote.symbol === "XUSDC" && amount >= 10) return { ok: true, reason: "Inventory looks sufficient vs XUSDC." };
-  if (quote.symbol === "XPR" && amount >= 1000) return { ok: true, reason: "Inventory looks sufficient vs XPR." };
+  if (other.symbol === "XUSDC" && amount >= 10) return { ok: true, reason: "Inventory looks sufficient vs XUSDC." };
+  if (other.symbol === "XPR" && amount >= 1000) return { ok: true, reason: "Inventory looks sufficient vs XPR." };
   return {
     ok: true,
-    reason: `Pair is valid (pool active). On-chain still requires ≥ 10 XUSDC or ≥ 1,000 XPR of valued inventory — ${amount} ${xtokenSymbol} on swap.alcor may be too thin.`,
+    reason: `Pair is valid (pool active). On-chain still requires ≥ 10 XUSDC or ≥ 1,000 XPR of valued inventory — ${amount} ${quoteSymbol} on swap.alcor may be too thin.`,
   };
+}
+
+/** @deprecated use quoteProofOk */
+export async function xtokenProofOk(poolId: number, xtokenSymbol: string): Promise<{ ok: boolean; reason: string }> {
+  return quoteProofOk(poolId, xtokenSymbol, XTOKENS);
 }

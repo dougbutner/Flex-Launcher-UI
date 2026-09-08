@@ -61,6 +61,22 @@ export function flexMeta(program: FlexProgram) {
   return FLEX_PROGRAMS.find((p) => p.id === program) ?? FLEX_PROGRAMS[2];
 }
 
+/** Resolve program from a live contract account (env-aware). */
+export function programFromAccount(code: string): FlexProgram | null {
+  for (const p of FLEX_PROGRAMS) {
+    if (flexAccount(p.id) === code) return p.id;
+  }
+  return null;
+}
+
+export function hasAngelChannels(program: FlexProgram): boolean {
+  return program === "flexforex";
+}
+
+export function hasInheritance(program: FlexProgram): boolean {
+  return program === "complexflex" || program === "flexforex";
+}
+
 export function holdEasyToLaunch(amount: number) {
   return `Hold ${amount.toLocaleString()} EASY to launch`;
 }
@@ -71,9 +87,13 @@ export function allFlexAccounts(): string[] {
 
 export const EOSIO_TOKEN = "eosio.token";
 export const XTOKENS = "xtokens";
+export const XMD_TOKEN = "xmd.token";
+export const LOAN_TOKEN = "loan.token";
 export const XPR_SYMBOL = "XPR";
 export const XPR_PRECISION = 4;
 export const XUSDC_SYMBOL = "XUSDC";
+export const XMD_SYMBOL = "XMD";
+export const LOAN_SYMBOL = "LOAN";
 
 export const EXPLORER = "https://testnet.explorer.xprnetwork.org";
 export const FAUCET_URL = "https://resources.xprnetwork.org/faucet";
@@ -96,12 +116,13 @@ export const FEE_TIERS = [
 export type FeeTier = (typeof FEE_TIERS)[number]["fee"];
 
 export type QuotePreset = {
-  id: "easy" | "won" | "grams" | "meme" | "xtoken";
+  id: "easy" | "won" | "grams" | "meme" | "xpr" | "xmd" | "loan" | "xtoken";
   symbol: string;
   contract: string;
   precision: number;
   priceLower: string;
   priceUpper: string;
+  /** Flex quotes: 0% skim, no proof pool. Else: 0.5% skim + proof pool vs XUSDC/XPR. */
   flexQuote: boolean;
   label: string;
 };
@@ -149,6 +170,36 @@ export const QUOTE_PRESETS: QuotePreset[] = [
     label: "MEME",
   },
   {
+    id: "xpr",
+    symbol: XPR_SYMBOL,
+    contract: EOSIO_TOKEN,
+    precision: XPR_PRECISION,
+    priceLower: "0.0001",
+    priceUpper: "1000000",
+    flexQuote: false,
+    label: "XPR",
+  },
+  {
+    id: "xmd",
+    symbol: XMD_SYMBOL,
+    contract: XMD_TOKEN,
+    precision: 6,
+    priceLower: "0.000001",
+    priceUpper: "1000000",
+    flexQuote: false,
+    label: "XMD",
+  },
+  {
+    id: "loan",
+    symbol: LOAN_SYMBOL,
+    contract: LOAN_TOKEN,
+    precision: 4,
+    priceLower: "0.0001",
+    priceUpper: "1000000",
+    flexQuote: false,
+    label: "LOAN",
+  },
+  {
     id: "xtoken",
     symbol: "FOOBAR",
     contract: XTOKENS,
@@ -159,6 +210,11 @@ export const QUOTE_PRESETS: QuotePreset[] = [
     label: "xtoken",
   },
 ];
+
+/** Non-flex quotes need a non-zero Alcor proof pool (C++ `check(xtoken_proof_pool_id)`). */
+export function quoteNeedsProof(preset: QuotePreset | undefined): boolean {
+  return Boolean(preset && !preset.flexQuote);
+}
 
 export const RPC_ENDPOINTS = [...CHAIN_ENDPOINTS];
 

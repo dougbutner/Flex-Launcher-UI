@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { FLEX_PROGRAMS, alcorSwapUrl, explorerAccount, explorerTx, flexAccount, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
@@ -214,22 +215,30 @@ export default function Leaderboard() {
           </ul>
 
           <section className="card space-y-5 p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg font-bold">Top flexers · ${selectedLaunch?.symbol}</h2>
               {selectedLaunch ? (
-                <a
-                  href={alcorSwapUrl(
-                    parseAsset((pick(selectedLaunch.row, "quote") as { quantity?: string })?.quantity ?? "")?.symbol ?? "",
-                    (pick(selectedLaunch.row, "quote") as { contract?: string })?.contract ?? "",
-                    selectedLaunch.symbol,
-                    selectedLaunch.code
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-outline btn-sm"
-                >
-                  Trade
-                </a>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    to={`/token/${selectedLaunch.code}/${selectedLaunch.symbol}`}
+                    className="btn btn-outline btn-sm"
+                  >
+                    Manage
+                  </Link>
+                  <a
+                    href={alcorSwapUrl(
+                      parseAsset((pick(selectedLaunch.row, "quote") as { quantity?: string })?.quantity ?? "")?.symbol ?? "",
+                      (pick(selectedLaunch.row, "quote") as { contract?: string })?.contract ?? "",
+                      selectedLaunch.symbol,
+                      selectedLaunch.code
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-outline btn-sm"
+                  >
+                    Trade
+                  </a>
+                </div>
               ) : null}
             </div>
 
@@ -243,6 +252,13 @@ export default function Leaderboard() {
                   <span className="chip-muted">
                     LP unlock {unlockLabel(pick(selectedLaunch.row, "unlock_time"))}
                   </span>
+                  {Boolean(pick(selectedLaunch.row, "swap_underlying_default")) ? (
+                    <span className="chip-muted">
+                      reflect → {parseAsset((pick(selectedLaunch.row, "quote") as { quantity?: string })?.quantity ?? "")?.symbol ?? "quote"}
+                    </span>
+                  ) : (
+                    <span className="chip-muted">reflect native</span>
+                  )}
                   {selectedLaunch.program === "flexforex" && pots ? (
                     <>
                       <span className={pots.angelPool > 0 ? "chip-primary" : "chip-muted"}>

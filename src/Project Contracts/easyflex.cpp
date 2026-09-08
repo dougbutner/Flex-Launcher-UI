@@ -367,17 +367,27 @@ ACTION easyflex::makeitrain(const string& token_symbol, const name& sender) {
                     string memo = "Reflection · flex.forex  · ";
                     name to = itr->owner;
                     uint64_t pid = itr->flex_reward_pool_id;
-                    if(pid) {
-                        auto pit = pools.find(pid);
-                        if(pit != pools.end() && !(pit->output_contract == get_self() && pit->output_symbol == sym)) {
-                            uint8_t prec = pit->output_symbol.precision();
-                            string min_amount = prec == 0 ? string("1") : ("0" + std::string(prec - 1, '0') + "1");
-                            if(prec) min_amount.insert(1, ".");
-                            memo = "swapexactin#" + std::to_string(pit->id) + "#" + itr->owner.to_string() + "#" +
-                                   min_amount + " " + pit->output_symbol.code().to_string() + "@" +
-                                   pit->output_contract.to_string() + "#0#0";
-                            to = "swap.alcor"_n;
-                        }
+                    if(!pid && launch_it->swap_underlying_default) pid = launch_it->pure_liquid_alcor_pool_id;
+                    auto pit = pools.find(pid);
+                    const symbol* out = nullptr;
+                    name ocon;
+                    uint64_t oid = pid;
+                    if(pit != pools.end()) {
+                        out = &pit->output_symbol;
+                        ocon = pit->output_contract;
+                        oid = pit->id;
+                    } else if(pid && pid == launch_it->pure_liquid_alcor_pool_id) {
+                        out = &launch_it->quote.quantity.symbol;
+                        ocon = launch_it->quote.contract;
+                    }
+                    if(out && !(ocon == get_self() && *out == sym)) {
+                        uint8_t prec = out->precision();
+                        string min_amount = prec == 0 ? string("1") : ("0" + std::string(prec - 1, '0') + "1");
+                        if(prec) min_amount.insert(1, ".");
+                        memo = "swapexactin#" + std::to_string(oid) + "#" + itr->owner.to_string() + "#" +
+                               min_amount + " " + out->code().to_string() + "@" +
+                               ocon.to_string() + "#0#reflections";
+                        to = "swap.alcor"_n;
                     }
                     check(memo.size() <= 256, "⟁ memo has more than 256 bytes");
                     open_holder_ram(to, sym, sender);
@@ -418,7 +428,8 @@ ACTION easyflex::makeitrain(const string& token_symbol, const name& sender) {
 }//END makeitrain()
 
 ACTION easyflex::startlaunch(const string& token_symbol, const extended_asset& quote, uint32_t fee, int32_t tick_lower,
-                           int32_t tick_upper, const uint128_t& sqrt_price_x64, uint64_t xtoken_proof_pool_id) {
+                           int32_t tick_upper, const uint128_t& sqrt_price_x64, uint64_t xtoken_proof_pool_id,
+                           bool swap_underlying_default) {
     check(!token_symbol.empty(), "⟁ Token symbol is required");
     symbol_code code(token_symbol);
     stats statstable(get_self(), code.raw());
@@ -528,6 +539,7 @@ ACTION easyflex::startlaunch(const string& token_symbol, const extended_asset& q
         row.dev_bps = 0;
         row.club_bps = 0;
         row.unlock_time = 0;
+        row.swap_underlying_default = swap_underlying_default;
     };
     if(itr == launches.end()) launches.emplace(st.issuer, write);
     else launches.modify(itr, same_payer, write);
