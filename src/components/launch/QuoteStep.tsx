@@ -49,7 +49,7 @@ function QuoteCard({
       </div>
       <div className="mt-1 font-mono text-xs text-muted-foreground">@{preset.contract}</div>
       <div className="mt-2 text-xs text-muted-foreground">
-        Cap: {preset.priceLower} – {preset.priceUpper} {preset.symbol} / token
+        Cap: {preset.priceLower} - {preset.priceUpper} {preset.symbol} / token
       </div>
     </button>
   );
@@ -135,6 +135,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
                   quoteId: p.id,
                   priceLower: p.priceLower,
                   priceUpper: p.priceUpper,
+                  rangeWidthId: null,
                   ...(p.id === "xtoken"
                     ? { xtokenSymbol: p.symbol, xtokenPrecision: p.precision, proofPoolId: draft.proofPoolId || "" }
                     : quoteNeedsProof(p)

@@ -1,4 +1,4 @@
-import { LOCK_MIN_DAYS, QUOTE_PRESETS, type FeeTier, type FlexProgram } from "@/config/launch";
+import { LOCK_MIN_DAYS, QUOTE_PRESETS, type FeeTier, type FlexProgram, type RangeWidthId } from "@/config/launch";
 import { useCallback, useEffect, useState } from "react";
 
 export type LaunchDraft = {
@@ -26,6 +26,8 @@ export type LaunchDraft = {
   fee: FeeTier;
   priceLower: string;
   priceUpper: string;
+  /** Width preset last applied; cleared when prices are typed by hand. */
+  rangeWidthId: RangeWidthId | null;
   lockDays: number;
   createTx: string;
   mintTx: string;
@@ -67,6 +69,7 @@ export const emptyDraft = (): LaunchDraft => ({
   fee: 3000,
   priceLower: xtoken.priceLower,
   priceUpper: xtoken.priceUpper,
+  rangeWidthId: null,
   lockDays: LOCK_MIN_DAYS,
   createTx: "",
   mintTx: "",

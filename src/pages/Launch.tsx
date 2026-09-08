@@ -82,7 +82,7 @@ export default function Launch() {
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Signing against <span className="font-mono">XPR testnet</span>. Create on {flexAccount(draft.program)}, seed
           one-sided Alcor liquidity, then liftoff. Non-flex quotes (XPR / XMD / LOAN / xtoken) need a proof pool id &gt;
-          0. {holdEasyToLaunch(flexMeta(draft.program).launchEasyMin)} — that balance is read from{" "}
+          0. {holdEasyToLaunch(flexMeta(draft.program).launchEasyMin)} - that balance is read from{" "}
           <span className="font-mono">mon3y</span>.
         </p>
       </div>
@@ -92,7 +92,7 @@ export default function Launch() {
           <p className="font-semibold">
             {chain.contracts.flexforex && chain.contracts.easyflex && chain.contracts.complexflex && chain.contracts.swap
               ? "flexforex, easyflex, complexflex, and swap.alcor are live on this chain."
-              : "One or more flex / Alcor accounts are missing — check VITE_* env."}
+              : "One or more flex / Alcor accounts are missing - check VITE_* env."}
           </p>
           {!chain.lockpos ? (
             <p className="text-warning">

@@ -1,4 +1,4 @@
-import { flexAccount, quoteNeedsProof, QUOTE_PRESETS, XTOKENS } from "@/config/launch";
+import { flexAccount, quoteNeedsProof, QUOTE_PRESETS, RANGE_WIDTH_PRESETS, XTOKENS, type RangeWidthId } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { validSymbol } from "@/services/assets";
 import { validImageUrl } from "@/services/tokenLogo";
@@ -21,12 +21,61 @@ export function presetFromDraft(draft: LaunchDraft) {
   return QUOTE_PRESETS.find((q) => q.id === draft.quoteId) ?? QUOTE_PRESETS[0];
 }
 
+/** Decimal string safe for price inputs (digits + optional dot only). */
+export function formatPriceInput(n: number): string {
+  if (!(n > 0) || !Number.isFinite(n)) return "1";
+  if (n >= 1) {
+    if (n >= 1e15) return n.toFixed(0);
+    if (Math.abs(n - Math.round(n)) < n * 1e-12) return String(Math.round(n));
+    const s = n.toFixed(8).replace(/\.?0+$/, "");
+    return s || String(Math.round(n));
+  }
+  const s = n.toFixed(12).replace(/\.?0+$/, "");
+  return s || "0.000001";
+}
+
+export function applyRangeWidth(draft: LaunchDraft, id: RangeWidthId): Pick<LaunchDraft, "priceLower" | "priceUpper" | "rangeWidthId"> {
+  const width = RANGE_WIDTH_PRESETS.find((w) => w.id === id) ?? RANGE_WIDTH_PRESETS[0];
+  const quotePreset = presetFromDraft(draft);
+  const loNum = Number(draft.priceLower);
+  const base = loNum > 0 ? loNum : Number(quotePreset.priceLower) || 1;
+  const priceLower = formatPriceInput(base);
+
+  if (width.kind === "mult" && width.mult != null) {
+    return {
+      priceLower,
+      priceUpper: formatPriceInput(base * width.mult),
+      rangeWidthId: id,
+    };
+  }
+
+  const quote = quoteFromDraft(draft);
+  const symbol = validSymbol(draft.symbol) ? draft.symbol : "AAAAAAA";
+  const quoteSym = validSymbol(quote.symbol) ? quote.symbol : "EASY";
+  const probe = planLaunch({
+    symbol,
+    precision: draft.precision,
+    maxSupply: draft.maxSupply || "1",
+    contract: flexAccount(draft.program),
+    quote: { ...quote, symbol: quoteSym },
+    fee: draft.fee,
+    priceLower,
+    priceUpper: `1${"0".repeat(48)}`,
+  });
+  const hi = Math.max(probe.quotePerTokenLower, probe.quotePerTokenUpper);
+  return {
+    priceLower,
+    priceUpper: formatPriceInput(hi > base ? hi : base * 1e12),
+    rangeWidthId: id,
+  };
+}
+
 export function tokenStepValid(draft: LaunchDraft): string | null {
   if (!draft.name.trim()) return "Give the token a display name.";
-  if (!validSymbol(draft.symbol)) return "Ticker must be 1–7 uppercase letters (A–Z).";
+  if (!validSymbol(draft.symbol)) return "Ticker must be 1-7 uppercase letters (A-Z).";
   if (!(Number(draft.maxSupply) > 0)) return "Max supply must be greater than zero.";
-  if (draft.precision < 0 || draft.precision > 8) return "Precision must be 0–8.";
-  if (draft.pinFailed && !validImageUrl(draft.imageUrl)) return "Pinata failed — paste a public image URL.";
+  if (draft.precision < 0 || draft.precision > 8) return "Precision must be 0-8.";
+  if (draft.pinFailed && !validImageUrl(draft.imageUrl)) return "Pinata failed - paste a public image URL.";
   return null;
 }
 

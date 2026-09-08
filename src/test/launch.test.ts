@@ -17,7 +17,7 @@ import {
 import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
 import { protonSymbol, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
-import { tokenStepValid } from "@/components/launch/draftPlan";
+import { applyRangeWidth, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { validImageUrl } from "@/services/tokenLogo";
 
@@ -250,6 +250,41 @@ describe("holder and issuer manage actions", () => {
     expect(hasInheritance("complexflex")).toBe(true);
     expect(hasInheritance("easyflex")).toBe(false);
     expect(programFromAccount("flexforex")).toBe("flexforex");
+  });
+});
+
+describe("range width presets", () => {
+  it("fills Slow 100x and EASY 10M x from start price", () => {
+    const d = { ...emptyDraft(), priceLower: "1", priceUpper: "2", symbol: "FOO" };
+    expect(applyRangeWidth(d, "slow")).toMatchObject({
+      priceLower: "1",
+      priceUpper: "100",
+      rangeWidthId: "slow",
+    });
+    expect(applyRangeWidth(d, "easy")).toMatchObject({
+      priceLower: "1",
+      priceUpper: "10000000",
+      rangeWidthId: "easy",
+    });
+  });
+
+  it("Fast clamps to Alcor max-tick sell side", () => {
+    const d = { ...emptyDraft(), priceLower: "1", symbol: "FOO", precision: 4 };
+    const fast = applyRangeWidth(d, "fast");
+    expect(fast.rangeWidthId).toBe("fast");
+    expect(Number(fast.priceUpper)).toBeGreaterThan(Number(fast.priceLower));
+    const plan = planLaunch({
+      symbol: "FOO",
+      precision: 4,
+      maxSupply: "1000000",
+      contract: "flexforex",
+      quote: { symbol: "FOOBAR", contract: "xtokens", precision: 6 },
+      fee: 3000,
+      priceLower: fast.priceLower,
+      priceUpper: fast.priceUpper,
+    });
+    expect(plan.tickUpper).toBeLessThanOrEqual(443636);
+    expect(plan.tickLower).toBeLessThan(plan.tickUpper);
   });
 });
 

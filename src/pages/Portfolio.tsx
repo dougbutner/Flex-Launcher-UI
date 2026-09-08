@@ -179,7 +179,7 @@ export default function Portfolio() {
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
-      setPokeMsg((m) => ({ ...m, [h.key]: { err: hint ? `${msg} — ${hint}` : msg } }));
+      setPokeMsg((m) => ({ ...m, [h.key]: { err: hint ? `${msg} - ${hint}` : msg } }));
     } finally {
       setPoking(null);
     }

@@ -97,7 +97,7 @@ export async function runPreflight(
     id: "registered",
     label: "startlaunch recorded, not yet liftoff",
     pass: Boolean(launch) && !launched,
-    detail: !launch ? "No launches row — run startlaunch" : launched ? "Already liftoff" : "launches row found",
+    detail: !launch ? "No launches row - run startlaunch" : launched ? "Already liftoff" : "launches row found",
   });
 
   const poolActive = Boolean(pick(pool, "active"));

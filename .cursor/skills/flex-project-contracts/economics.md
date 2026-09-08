@@ -1,4 +1,4 @@
-# Economics — tax, skim, splash, underlying
+# Economics  -  tax, skim, splash, underlying
 
 Source: `src/Project Contracts/*.cpp` transfer + makeitrain + liftoff paths.
 
@@ -10,7 +10,7 @@ Unless sender is the contract (distribution), fee-opted-out, or pre-liftoff Alco
 |------------|----------|-------------------------|
 | `reflection_rate` | → `reflection_pool` | → split (forex) or pool (complex) |
 | `burn_rate` | → `burn_pool` | usually 0 at create |
-| `project_rate` | — | → `project_pool` / `project_account` |
+| `project_rate` |  -  | → `project_pool` / `project_account` |
 
 Defaults at create: easy 1% reflect + 1% burn; complex/forex 1% reflect + 1% project.
 
@@ -34,7 +34,7 @@ On makeitrain (and optionally via `checklock`):
 5. Optional keeper tip if `keeper_min > 0` (flexforex)
 6. Flush `burn_pool` after a successful standard pay (easy/complex)
 
-Eligible denom excludes vault accounts (program-specific: `alcor`, token contract, `swap.alcor`, etc. — see `FLEX_PROGRAMS[].vaults` in `src/config/launch.ts`).
+Eligible denom excludes vault accounts (program-specific: `alcor`, token contract, `swap.alcor`, etc.  -  see `FLEX_PROGRAMS[].vaults` in `src/config/launch.ts`).
 
 UI estimate: `reflection_pool * 0.382 * (balance / (supply - vaults))`.
 

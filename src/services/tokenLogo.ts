@@ -26,7 +26,7 @@ export async function validateTokenLogo(file: File): Promise<string | null> {
   try {
     const { w, h } = await rasterSize(file);
     if (w !== h) return "Logo must be square.";
-    if (w < MIN_PX || w > MAX_PX) return `PNG must be ${MIN_PX}–${MAX_PX}px.`;
+    if (w < MIN_PX || w > MAX_PX) return `PNG must be ${MIN_PX}-${MAX_PX}px.`;
   } catch (err) {
     return err instanceof Error ? err.message : "Invalid image.";
   }

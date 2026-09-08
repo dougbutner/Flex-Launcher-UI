@@ -202,7 +202,7 @@ export async function quoteProofOk(
   if (other.symbol === "XPR" && amount >= 1000) return { ok: true, reason: "Inventory looks sufficient vs XPR." };
   return {
     ok: true,
-    reason: `Pair is valid (pool active). On-chain still requires ≥ 10 XUSDC or ≥ 1,000 XPR of valued inventory — ${amount} ${quoteSymbol} on swap.alcor may be too thin.`,
+    reason: `Pair is valid (pool active). On-chain still requires ≥ 10 XUSDC or ≥ 1,000 XPR of valued inventory - ${amount} ${quoteSymbol} on swap.alcor may be too thin.`,
   };
 }
 

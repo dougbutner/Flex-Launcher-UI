@@ -8,6 +8,7 @@ const NAV = [
   { to: "/leaderboard", label: "Leaderboard" },
   { to: "/reflections", label: "Reflections" },
   { to: "/portfolio", label: "Portfolio" },
+  { to: "/preview", label: "Preview" },
 ];
 
 export function Header() {

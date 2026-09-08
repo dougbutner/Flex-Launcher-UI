@@ -281,7 +281,7 @@ export function feeoptoutAction(
   };
 }
 
-/** `rate` = bps of splash paid to beneficiary (0–10000). Empty beneficiary → self. */
+/** `rate` = bps of splash paid to beneficiary (0-10000). Empty beneficiary → self. */
 export function inheritanceAction(
   tokenContract: string,
   flexer: string,

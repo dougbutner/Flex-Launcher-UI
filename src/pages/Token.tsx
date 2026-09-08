@@ -128,7 +128,7 @@ export default function Token() {
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
-      setPokeMsg({ err: hint ? `${msg} — ${hint}` : msg });
+      setPokeMsg({ err: hint ? `${msg} - ${hint}` : msg });
     } finally {
       setPoking(null);
     }

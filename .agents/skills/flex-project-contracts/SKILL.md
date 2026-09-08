@@ -13,9 +13,9 @@ description: >-
 
 1. Open **[`.cursor/skills/flex-project-contracts/SKILL.md`](../../../.cursor/skills/flex-project-contracts/SKILL.md)** (product split + UI gap).
 2. Then the matching reference:
-   - **[tables-and-actions.md](../../../.cursor/skills/flex-project-contracts/tables-and-actions.md)** — ABI / RPC
-   - **[flexforex-extras.md](../../../.cursor/skills/flex-project-contracts/flexforex-extras.md)** — setdist, ratios, angel, jackpot, inheritance
-   - **[economics.md](../../../.cursor/skills/flex-project-contracts/economics.md)** — tax, skim, splash, underlying
+   - **[tables-and-actions.md](../../../.cursor/skills/flex-project-contracts/tables-and-actions.md)**  -  ABI / RPC
+   - **[flexforex-extras.md](../../../.cursor/skills/flex-project-contracts/flexforex-extras.md)**  -  setdist, ratios, angel, jackpot, inheritance
+   - **[economics.md](../../../.cursor/skills/flex-project-contracts/economics.md)**  -  tax, skim, splash, underlying
 3. Wizard / env / screens: **[AGENTS.md](../../../AGENTS.md)** + **`.cursor/rules/flex-launcher-ui.mdc`**.
 4. Canonical C++ is **`src/Project Contracts/`**. Never emit `forge` / `reglaunch` / `stamp`.
 

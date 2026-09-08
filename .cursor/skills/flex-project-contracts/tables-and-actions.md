@@ -1,4 +1,4 @@
-# Tables and actions — `src/Project Contracts`
+# Tables and actions  -  `src/Project Contracts`
 
 Verified against live headers/cpp. Constants: `SWAP_ALCOR=swap.alcor`, `XTOKENS=xtokens`, `MON3Y=mon3y`, `MIN_LOCK_SECS=7776000`, `MIN_TICK/MAX_TICK=±443636`, `PROTO_BPS_HALF=25`, `PAY_NUM/PAY_DEN=382/1000`. flexforex also `RNG=rng`, `RNG_NUMBERS=1`, `RNG_JACKPOT=2`.
 
@@ -28,9 +28,9 @@ flexforex `flexers` secondary index: `byangel`.
 | supply, max_supply, issuer | yes | yes | yes |
 | reflection_pool | yes | yes | yes (standard splash only) |
 | burn_pool | yes | yes | yes |
-| project_pool | — | yes | yes |
-| angel_numbers_pool, jackpot_pool | — | — | live pots |
-| angel_numbers_last, flexer_count | — | — | yes |
+| project_pool |  -  | yes | yes |
+| angel_numbers_pool, jackpot_pool |  -  |  -  | live pots |
+| angel_numbers_last, flexer_count |  -  |  -  | yes |
 
 ## `settings` (scope = symbol)
 
@@ -39,20 +39,20 @@ flexforex `flexers` secondary index: `byangel`.
 | token_symbol, start_key, limit | yes | yes | yes |
 | reflection_rate | default 100 | 100 | 100 |
 | burn_rate | default **100** | 0 | 0 |
-| project_rate, project_account | — | 100 / issuer | 100 / issuer |
+| project_rate, project_account |  -  | 100 / issuer | 100 / issuer |
 | admin_account | issuer | issuer | issuer |
-| dist_locked, angel_numbers_bps, jackpot_bps, jackpot_winners, jackpot_min_hold, angel_numbers_cooldown, keeper_min, reflect_min, rng_kind, rng_amt | — | — | forex only |
+| dist_locked, angel_numbers_bps, jackpot_bps, jackpot_winners, jackpot_min_hold, angel_numbers_cooldown, keeper_min, reflect_min, rng_kind, rng_amt |  -  |  -  | forex only |
 
-Rates are bps / 10000. `limit` 1–1000 on `setconfig`. Sum of tax rates ≤ 10000. `reflect_min == 0` → treat as 1 whole token (`10^precision`).
+Rates are bps / 10000. `limit` 1-1000 on `setconfig`. Sum of tax rates ≤ 10000. `reflect_min == 0` → treat as 1 whole token (`10^precision`).
 
 ## `flexers` (scope = symbol)
 
 | Field | easy | complex | forex |
 |-------|------|---------|-------|
 | owner, balance, fee_opted_out, flex_reward_pool_id | yes | yes | yes |
-| beneficiary, bene_rate, custom_memo | — | yes | yes |
-| angel_number (1000 = unset; pick 0–999) | — | — | yes |
-| secondary `byangel` | — | — | yes |
+| beneficiary, bene_rate, custom_memo |  -  | yes | yes |
+| angel_number (1000 = unset; pick 0-999) |  -  |  -  | yes |
+| secondary `byangel` |  -  |  -  | yes |
 
 `flex_reward_pool_id == 0` → native **or** launch-quote swap if `swap_underlying_default`. Else Alcor pool id in `flexpools`.
 
@@ -66,7 +66,7 @@ Rates are bps / 10000. `limit` 1–1000 on `setconfig`. Sum of tax rates ≤ 100
 
 ---
 
-## Actions — money
+## Actions  -  money
 
 | Action | Auth | Notes |
 |--------|------|-------|
@@ -80,7 +80,7 @@ easyflex supply = `issue`. complexflex + flexforex = `mint`.
 
 Wallet→wallet tax is **on top of** `quantity`. Alcor inbound tax is **taken from** `quantity`.
 
-## Actions — launch (all three)
+## Actions  -  launch (all three)
 
 ```
 startlaunch(token_symbol, quote, fee, tick_lower, tick_upper, sqrt_price_x64, xtoken_proof_pool_id, swap_underlying_default)
@@ -91,9 +91,9 @@ checklock(token_symbol)
 - Auth: issuer for startlaunch/liftoff; **anyone** for checklock.
 - Flex quotes → proof id **0**. Non-flex → proof id **> 0**, pool active, quote vs XUSDC or XPR, inventory ≥ 10 XUSDC or 1000 XPR valued.
 - Liftoff: issuer EASY@mon3y ≥ base×(prior launched by this issuer + 1). Base raw: easy 5e9, complex 1e10, forex 5e10 (precision 6).
-- Issuer signs Alcor (`createpool`, deposit, `addliquid`, `lockpos` ≥90d) — not the flex contract. Never liftoff in same tx as createpool.
+- Issuer signs Alcor (`createpool`, deposit, `addliquid`, `lockpos` ≥90d)  -  not the flex contract. Never liftoff in same tx as createpool.
 
-## Actions — config / holder prefs
+## Actions  -  config / holder prefs
 
 | Action | Who | Contracts |
 |--------|-----|-----------|
@@ -105,7 +105,7 @@ checklock(token_symbol)
 | `ratios` / `setdist` / `setangelnum` / `pullangel` / `pulljackpot` | see [flexforex-extras.md](flexforex-extras.md) | forex only |
 | `receiverand` | `rng` only | forex only |
 
-## Actions — payout
+## Actions  -  payout
 
 | Contract | Action | Splash |
 |----------|--------|--------|

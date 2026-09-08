@@ -1,6 +1,13 @@
-import { FEE_TIERS, LOCK_MIN_DAYS } from "@/config/launch";
+import { FEE_TIERS, LOCK_MIN_DAYS, RANGE_WIDTH_PRESETS } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
-import { fmtPrice, planFromDraft, presetFromDraft, quoteFromDraft, rangeStepValid } from "@/components/launch/draftPlan";
+import {
+  applyRangeWidth,
+  fmtPrice,
+  planFromDraft,
+  presetFromDraft,
+  quoteFromDraft,
+  rangeStepValid,
+} from "@/components/launch/draftPlan";
 import { Field, StepShell } from "@/components/launch/ui";
 
 type Props = {
@@ -51,13 +58,38 @@ export function RangeStep({ draft, patch, onNext, onBack }: Props) {
         </div>
       </Field>
 
+      <Field label="Range width" hint="Keeps your start price. Sets max from the multiplier (or Alcor max tick for Fast).">
+        <div className="grid grid-cols-3 gap-2">
+          {RANGE_WIDTH_PRESETS.map((w) => {
+            const selected = draft.rangeWidthId === w.id;
+            return (
+              <button
+                key={w.id}
+                type="button"
+                title={w.title}
+                onClick={() => patch(applyRangeWidth(draft, w.id))}
+                className={`rounded-xl border px-3 py-5 text-center transition-all ${
+                  selected
+                    ? "border-primary bg-primary/10 shadow-[0_0_24px_-8px_hsl(var(--primary)/0.8)]"
+                    : "border-input bg-background/50 hover:border-primary/40"
+                }`}
+              >
+                <div className={`text-lg font-black tracking-tight ${selected ? "text-primary" : ""}`}>{w.label}</div>
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label={`Start price (${quote.symbol} / ${draft.symbol || "TOKEN"})`} hint={`Suggested cap: ${preset.priceLower} – ${preset.priceUpper}.`}>
+        <Field label={`Start price (${quote.symbol} / ${draft.symbol || "TOKEN"})`} hint={`Suggested cap: ${preset.priceLower} - ${preset.priceUpper}.`}>
           <input
             className="input font-mono"
             inputMode="decimal"
             value={draft.priceLower}
-            onChange={(e) => patch({ priceLower: e.target.value.replace(/[^\d.]/g, "") })}
+            onChange={(e) =>
+              patch({ priceLower: e.target.value.replace(/[^\d.]/g, ""), rangeWidthId: null })
+            }
           />
         </Field>
         <Field label={`Max price (${quote.symbol} / ${draft.symbol || "TOKEN"})`} hint="Where the range tops out.">
@@ -65,7 +97,9 @@ export function RangeStep({ draft, patch, onNext, onBack }: Props) {
             className="input font-mono"
             inputMode="decimal"
             value={draft.priceUpper}
-            onChange={(e) => patch({ priceUpper: e.target.value.replace(/[^\d.]/g, "") })}
+            onChange={(e) =>
+              patch({ priceUpper: e.target.value.replace(/[^\d.]/g, ""), rangeWidthId: null })
+            }
           />
         </Field>
       </div>
@@ -115,7 +149,7 @@ export function RangeStep({ draft, patch, onNext, onBack }: Props) {
           <p className="text-xs text-muted-foreground">
             Buyers pay between{" "}
             <span className="font-mono font-semibold text-foreground">
-              {fmtPrice(plan.quotePerTokenLower)} – {fmtPrice(plan.quotePerTokenUpper)} {quote.symbol}
+              {fmtPrice(plan.quotePerTokenLower)} - {fmtPrice(plan.quotePerTokenUpper)} {quote.symbol}
             </span>{" "}
             per {draft.symbol} as they walk the range.
           </p>

@@ -47,7 +47,7 @@ Typical first-run issuer flow after launch: `setdist` with desired channel ops, 
 ## `setangelnum(owner, token_symbol, angel_number)`
 
 - Auth: **owner**
-- `angel_number` ∈ **0–999** (1000 on the flexer row means unset)
+- `angel_number` ∈ **0-999** (1000 on the flexer row means unset)
 - Requires `settings.angel_numbers_bps > 0` (“angel numbers not enabled”)
 - Ensures flexer row; indexed by `byangel` for payout matching
 
@@ -70,7 +70,7 @@ Typical first-run issuer flow after launch: `setdist` with desired channel ops, 
 
 ## `receiverand(assoc_id, random_value)`
 
-- Auth: **`rng` only** — never from UI
+- Auth: **`rng` only**  -  never from UI
 - `assoc_id` = token symbol code raw
 - Clears `rng_kind` / `rng_amt` then pays reserved pot
 

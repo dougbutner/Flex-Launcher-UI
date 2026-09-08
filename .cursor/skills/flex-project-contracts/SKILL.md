@@ -60,7 +60,7 @@ Gate angel UI to flexforex; inheritance to complexflex + flexforex. Prefer `laun
 
 ## Stale names (never emit)
 
-`forge` → `create`. `reglaunch` → `startlaunch`. `stamp` → `liftoff`. `interestoken` / `setflextoken` / `setflexpool` / `sprouttoken` → `addpool` / `choosereward`. `renounce` / `noflexzone` → `feeoptout`. `setratios` → `ratios`. `setnumber` / `pullnumber` → `setangelnum` / `pullangel`. `distribute` / `reflect` → `makeitrain`. Launch: `xtoken_proof_pool_id`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`, `unlock_time`, `swap_underlying_default` — not `proof_pool_id` / `nyra_bps`.
+`forge` → `create`. `reglaunch` → `startlaunch`. `stamp` → `liftoff`. `interestoken` / `setflextoken` / `setflexpool` / `sprouttoken` → `addpool` / `choosereward`. `renounce` / `noflexzone` → `feeoptout`. `setratios` → `ratios`. `setnumber` / `pullnumber` → `setangelnum` / `pullangel`. `distribute` / `reflect` → `makeitrain`. Launch: `xtoken_proof_pool_id`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`, `unlock_time`, `swap_underlying_default`  -  not `proof_pool_id` / `nyra_bps`.
 
 ## Accounts / quotes
 
@@ -73,5 +73,5 @@ Non-flex (0.5% skim, proof id **> 0** vs XUSDC or XPR): xtokens, XPR@eosio.token
 
 - Edit the three token `.cpp`/`.hpp` unless the user asks.
 - Call `setconfig` or `receiverand` from issuer/holder UI.
-- Treat `angel_numbers_pool` / `jackpot_pool` as unused pads — they are live pots.
+- Treat `angel_numbers_pool` / `jackpot_pool` as unused pads  -  they are live pots.
 - Follow `UI-LAUNCH.md` action names.

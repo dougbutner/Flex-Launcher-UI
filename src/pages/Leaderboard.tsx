@@ -48,13 +48,13 @@ function quoteLabel(row: LaunchRow): string {
 
 function fmtBps(bps: unknown): string {
   const n = Number(bps);
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   return `${(n / 100).toFixed(2)}%`;
 }
 
 function unlockLabel(unlock: unknown): string {
   const n = Number(unlock);
-  if (!Number.isFinite(n) || n <= 0) return "—";
+  if (!Number.isFinite(n) || n <= 0) return "-";
   return new Date(n * 1000).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
@@ -97,7 +97,7 @@ export default function Leaderboard() {
         const msg = e instanceof Error ? e.message : String(e);
         if (/retrieve account|unknown key|not.*live/i.test(msg)) {
           setLaunches([]);
-          setNotice("Flex contracts are not live yet — launches will appear here after the first liftoff.");
+          setNotice("Flex contracts are not live yet - launches will appear here after the first liftoff.");
         } else {
           setError(msg);
         }
@@ -160,7 +160,7 @@ export default function Leaderboard() {
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
-      setPokeMsg({ err: hint ? `${msg} — ${hint}` : msg });
+      setPokeMsg({ err: hint ? `${msg} - ${hint}` : msg });
     } finally {
       setPoking(null);
     }
@@ -182,7 +182,7 @@ export default function Leaderboard() {
         <p className="mt-6 text-sm text-muted-foreground">Reading launches…</p>
       ) : launches.length === 0 ? (
         <div className="card mt-6 p-8 text-center text-sm text-muted-foreground">
-          No live launches yet. Be the first — hit the Launch wizard.
+          No live launches yet. Be the first - hit the Launch wizard.
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -206,7 +206,7 @@ export default function Leaderboard() {
                       {l.program} @ {l.code} · {quoteLabel(l.row)}
                     </div>
                     <div className="mt-1 font-mono text-[10px] text-muted-foreground/70">
-                      pool #{String(pick(l.row, "pure_liquid_alcor_pool_id", "pool_id", "poolId") ?? "—")}
+                      pool #{String(pick(l.row, "pure_liquid_alcor_pool_id", "pool_id", "poolId") ?? "-")}
                     </div>
                   </button>
                 </li>
@@ -334,7 +334,7 @@ export default function Leaderboard() {
                 </thead>
                 <tbody>
                   {flexers.slice(0, 50).map((f, i) => {
-                    const owner = String(pick(f, "owner", "account") ?? "—");
+                    const owner = String(pick(f, "owner", "account") ?? "-");
                     return (
                       <tr key={owner} className="border-b border-border/50 last:border-0">
                         <td className="py-2.5 pr-2 font-mono text-muted-foreground">{i + 1}</td>

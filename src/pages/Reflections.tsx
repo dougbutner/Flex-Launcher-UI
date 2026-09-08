@@ -8,7 +8,7 @@ type Row = HyperionAction & { contract: string; actionName: string };
 
 function ts(a: HyperionAction): string {
   const raw = a["@timestamp"] ?? a.timestamp;
-  if (!raw) return "—";
+  if (!raw) return "-";
   const d = new Date(raw);
   return Number.isNaN(d.getTime()) ? raw : d.toLocaleString();
 }
@@ -66,7 +66,7 @@ export default function Reflections() {
         <div>
           <h1 className="text-3xl font-black tracking-tight">Historic reflections</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            <span className="font-mono">makeitrain</span> on all three programs — skim first, then the 38.2% splash.
+            <span className="font-mono">makeitrain</span> on all three programs - skim first, then the 38.2% splash.
           </p>
         </div>
         <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>

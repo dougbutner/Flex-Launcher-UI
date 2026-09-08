@@ -82,7 +82,7 @@ export function HolderPrefs({
     } catch (err) {
       const text = txErrorMessage(err);
       const hint = hintForError(text);
-      setMsg({ err: hint ? `${text} — ${hint}` : text });
+      setMsg({ err: hint ? `${text} - ${hint}` : text });
     } finally {
       setSigning(false);
     }
@@ -106,7 +106,7 @@ export function HolderPrefs({
         hint={
           pools.length
             ? "Native uses flex_reward_pool_id 0 (or launch quote if swap_underlying_default)."
-            : "Issuer has not addpool’d any routes yet — only native is available."
+            : "Issuer has not addpool’d any routes yet - only native is available."
         }
       >
         <div className="flex flex-wrap gap-2">
@@ -152,7 +152,7 @@ export function HolderPrefs({
 
       <Field
         label="Transfer fees"
-        hint={optedOut ? "Already opted out — irreversible for self." : "Self can only opt out (ban_status true)."}
+        hint={optedOut ? "Already opted out - irreversible for self." : "Self can only opt out (ban_status true)."}
       >
         <button
           type="button"
@@ -168,7 +168,7 @@ export function HolderPrefs({
       </Field>
 
       {angelEnabled ? (
-        <Field label="Angel number" hint="0–999. Required for angel pot draws.">
+        <Field label="Angel number" hint="0-999. Required for angel pot draws.">
           <div className="flex flex-wrap gap-2">
             <input
               className="input w-28"
@@ -197,7 +197,7 @@ export function HolderPrefs({
         <>
           <Field
             label="Inheritance"
-            hint="Percent of your splash paid to the beneficiary (0–100). Leave account blank for self."
+            hint="Percent of your splash paid to the beneficiary (0-100). Leave account blank for self."
           >
             <div className="flex flex-wrap gap-2">
               <input
@@ -222,7 +222,7 @@ export function HolderPrefs({
                 onClick={() => {
                   const pct = Number(ratePct);
                   if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
-                    setMsg({ err: "Rate must be 0–100%." });
+                    setMsg({ err: "Rate must be 0-100%." });
                     return;
                   }
                   void run(inheritanceAction(contract, actor, bene, Math.round(pct * 100), symbol));

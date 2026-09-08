@@ -1,0 +1,21 @@
+---
+description: Never use em dashes or en dashes in UI copy, docs, or agent-written text.
+alwaysApply: true
+---
+
+# No em dash / en dash
+
+Never write Unicode em dash (U+2014) or en dash (U+2013) in user-facing copy, docs, skills, comments meant as prose, error hints, or labels.
+
+Use instead:
+- Comma, period, colon, or parentheses for breaks
+- ASCII hyphen `-` for ranges (`0-999`, `1-7`) and empty placeholders
+- Prefer a new sentence over a long aside
+
+Examples:
+- Bad: `Liftoff complete` + em dash + `buyers walk the range`
+- Good: `Liftoff complete. Buyers walk the range.`
+- Bad: en dash between `0` and `999`
+- Good: `0-999`
+- Bad: em dash as empty cell
+- Good: `-` or `n/a`

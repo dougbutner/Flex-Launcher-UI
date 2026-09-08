@@ -10,7 +10,7 @@ description: >-
 ## Instructions
 
 1. Open and follow **[`skill/rpc-queries.md`](../../../skill/rpc-queries.md)**.
-2. Use endpoints from **`src/services/walletConstants.ts`** (or documented public RPCs)—do not hardcode stale hosts.
+2. Use endpoints from **`src/services/walletConstants.ts`** (or documented public RPCs) - do not hardcode stale hosts.
 3. For live events / pushes, see **[`skill/real-time-events.md`](../../../skill/real-time-events.md)**.
 
 ## Related

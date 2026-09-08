@@ -34,7 +34,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
   return (
     <StepShell
       title="Review launch"
-      desc="Everything the contract will check. Read it twice — ticks and precision cannot change after create."
+      desc="Everything the contract will check. Read it twice - ticks and precision cannot change after create."
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -66,7 +66,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
             <Row k="Ticks" v={`${plan.tickLower} → ${plan.tickUpper} (start ${plan.startTick})`} />
             <Row
               k="Buyer price walk"
-              v={`${fmtPrice(plan.quotePerTokenLower)} – ${fmtPrice(plan.quotePerTokenUpper)} ${quote.symbol}`}
+              v={`${fmtPrice(plan.quotePerTokenLower)} - ${fmtPrice(plan.quotePerTokenUpper)} ${quote.symbol}`}
             />
           </>
         ) : null}

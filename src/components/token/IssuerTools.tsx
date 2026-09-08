@@ -60,7 +60,7 @@ export function IssuerTools({ program, contract, symbol, settings, busy, transac
     } catch (err) {
       const text = txErrorMessage(err);
       const hint = hintForError(text);
-      setMsg({ err: hint ? `${text} — ${hint}` : text });
+      setMsg({ err: hint ? `${text} - ${hint}` : text });
     } finally {
       setSigning(false);
     }
@@ -122,7 +122,7 @@ export function IssuerTools({ program, contract, symbol, settings, busy, transac
             label="Distribution ops (setdist)"
             hint={
               distLocked
-                ? "Already locked — issuer cannot re-run. Use ratios for channel bps; contract can still reset ops."
+                ? "Already locked - issuer cannot re-run. Use ratios for channel bps; contract can still reset ops."
                 : "One-shot for issuer: channel bps + winners, cooldown, keeper/reflect mins. Locks after success."
             }
           >

@@ -75,7 +75,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
-      setLogoErr(hint ? `${msg} — ${hint}` : msg);
+      setLogoErr(hint ? `${msg} - ${hint}` : msg);
     } finally {
       setSigning(false);
     }
@@ -150,7 +150,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
               onChange={(e) => patch({ name: e.target.value })}
             />
           </Field>
-          <Field label="Ticker" hint="1–7 uppercase letters. Fixed forever.">
+          <Field label="Ticker" hint="1-7 uppercase letters. Fixed forever.">
             <input
               className="input font-mono uppercase"
               placeholder="FOO"
@@ -175,7 +175,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           ) : null}
         </div>
         <p className="mt-1 text-muted-foreground">
-          Square PNG or SVG, 256–512px, max 1 MB. Pin to IPFS, or paste a public image URL. Then{" "}
+          Square PNG or SVG, 256-512px, max 1 MB. Pin to IPFS, or paste a public image URL. Then{" "}
           <span className="font-mono">token.proton</span> stores that URL. Sign as{" "}
           <span className="font-mono">{tokenContract}@active</span>.
         </p>
@@ -243,7 +243,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             onChange={(e) => patch({ maxSupply: e.target.value.replace(/[^\d.]/g, "") })}
           />
         </Field>
-        <Field label="Precision" hint="Decimal places (0–8). Flex tokens usually use 6.">
+        <Field label="Precision" hint="Decimal places (0-8). Flex tokens usually use 6.">
           <input
             className="input font-mono"
             inputMode="numeric"
@@ -256,7 +256,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         </Field>
       </div>
 
-      <Field label="Description" hint="Optional — shown on the token page.">
+      <Field label="Description" hint="Optional - shown on the token page.">
         <textarea
           className="input min-h-[88px] resize-y"
           placeholder="What is this token? Why does it flex?"

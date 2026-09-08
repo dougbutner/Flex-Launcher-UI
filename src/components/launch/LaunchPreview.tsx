@@ -56,7 +56,7 @@ export function LaunchPreview({ draft }: { draft: LaunchDraft }) {
 
         {plan ? (
           <p className="mt-3 text-center text-[11px] text-muted-foreground">
-            {fmtPrice(plan.quotePerTokenLower)} – {fmtPrice(plan.quotePerTokenUpper)} {quote.symbol} / {draft.symbol}
+            {fmtPrice(plan.quotePerTokenLower)} - {fmtPrice(plan.quotePerTokenUpper)} {quote.symbol} / {draft.symbol}
           </p>
         ) : null}
 

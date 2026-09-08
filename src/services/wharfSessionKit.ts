@@ -1,5 +1,5 @@
 /**
- * WharfKit SessionKit for Anchor only — default WebRenderer UI, no custom modals.
+ * WharfKit SessionKit for Anchor only - default WebRenderer UI, no custom modals.
  */
 import type { AnyAction } from '@wharfkit/antelope';
 import { Checksum256 } from '@wharfkit/antelope';

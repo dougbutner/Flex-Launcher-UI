@@ -8,7 +8,7 @@ export const EASYFLEX_CONTRACT = import.meta.env.VITE_EASYFLEX?.trim() || "easyf
 export const COMPLEXFLEX_CONTRACT = import.meta.env.VITE_COMPLEXFLEX?.trim() || "complexflex";
 export const SWAP_ALCOR = import.meta.env.VITE_SWAP_ALCOR?.trim() || "swap.alcor";
 
-/** Hardcoded in all three contracts as MON3Y — liftoff reads EASY here, not VITE_EASYFLEX. */
+/** Hardcoded in all three contracts as MON3Y - liftoff reads EASY here, not VITE_EASYFLEX. */
 export const MON3Y = "mon3y";
 export const EASY_SYMBOL = "EASY";
 export const EASY_PRECISION = 6;
@@ -114,6 +114,33 @@ export const FEE_TIERS = [
 ] as const;
 
 export type FeeTier = (typeof FEE_TIERS)[number]["fee"];
+
+/** One-sided launch width presets (quote-per-token max / start). */
+export const RANGE_WIDTH_PRESETS = [
+  {
+    id: "slow",
+    label: "Slow",
+    title: "100x range. Price walks from start to 100x start. Steeper curve, sells out sooner.",
+    kind: "mult" as const,
+    mult: 100,
+  },
+  {
+    id: "easy",
+    label: "EASY",
+    title: "10 million x range. Very wide band from start to 10,000,000x start.",
+    kind: "mult" as const,
+    mult: 10_000_000,
+  },
+  {
+    id: "fast",
+    label: "Fast",
+    title: "Infinity on the sell side. Range tops out at Alcor max tick so buyers can keep walking.",
+    kind: "inf" as const,
+    mult: null,
+  },
+] as const;
+
+export type RangeWidthId = (typeof RANGE_WIDTH_PRESETS)[number]["id"];
 
 export type QuotePreset = {
   id: "easy" | "won" | "grams" | "meme" | "xpr" | "xmd" | "loan" | "xtoken";

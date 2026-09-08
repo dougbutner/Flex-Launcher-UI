@@ -1,5 +1,5 @@
 /**
- * XPR Network Web SDK loader — dynamic import of @proton/web-sdk + @proton/link.
+ * XPR Network Web SDK loader - dynamic import of @proton/web-sdk + @proton/link.
  * @proton/link must load before ConnectWallet so mobile deep-link transport registers.
  * @see https://docs.xprnetwork.org/client-sdks/web.html
  */

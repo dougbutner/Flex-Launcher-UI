@@ -1,12 +1,12 @@
-# Flex launcher UI — agent brief
+# Flex launcher UI - agent brief
 
-This **Vite app** launches and uses **easyflex**, **complexflex**, and **flexforex**. Contract source of truth: `src/Project Contracts/` (`easyflex.hpp/.cpp`, `complexflex.hpp/.cpp`, `flexforex.hpp/.cpp`). Cursor skill: **`flex-project-contracts`** (`.cursor/skills/flex-project-contracts/` — `SKILL.md`, `tables-and-actions.md`, `flexforex-extras.md`, `economics.md`). Rule: `.cursor/rules/flex-launcher-ui.mdc`.
+This **Vite app** launches and uses **easyflex**, **complexflex**, and **flexforex**. Contract source of truth: `src/Project Contracts/` (`easyflex.hpp/.cpp`, `complexflex.hpp/.cpp`, `flexforex.hpp/.cpp`). Cursor skill: **`flex-project-contracts`** (`.cursor/skills/flex-project-contracts/` - `SKILL.md`, `tables-and-actions.md`, `flexforex-extras.md`, `economics.md`). Rule: `.cursor/rules/flex-launcher-ui.mdc`.
 
 **Do not follow `UI-LAUNCH.md` action names.** That file is stale (`forge`, `reglaunch`, `stamp`, `interestoken`, `nyra_bps`/`refl_bps`, `settings` scoped to the contract). Use this file.
 
-Do not edit the three token contracts unless the user asks. Token identity is always **(contract, symbol)** — never ticker alone.
+Do not edit the three token contracts unless the user asks. Token identity is always **(contract, symbol)** - never ticker alone.
 
-App UI and wallets: `src/` and `src/services/walletConstants.ts`.
+App UI and wallets: `src/` and `src/services/walletConstants.ts`. Faux UI shapes (no RPC): `/preview`.
 
 ### UI coverage vs ABI
 
@@ -88,7 +88,7 @@ Rates are **bps / 10000**. `reflect_min` / `keeper_min` / `jackpot_min_hold` are
 
 `owner`, `balance`, `fee_opted_out`, `flex_reward_pool_id` (`0` = native).  
 complexflex + flexforex: `beneficiary`, `bene_rate`, `custom_memo`.  
-flexforex: `angel_number` (`1000` = unset; valid pick `0–999`). Secondary index `byangel`.
+flexforex: `angel_number` (`1000` = unset; valid pick `0-999`). Secondary index `byangel`.
 
 ### `flexpools`
 
@@ -98,7 +98,7 @@ PK = Alcor `pool_id`. Fields: `id`, `input_symbol`, `input_contract`, `output_sy
 
 easyflex: `supply`, `max_supply`, `issuer`, `reflection_pool`, `burn_pool`.  
 complexflex: + `project_pool`.  
-flexforex: + `angel_numbers_pool`, `jackpot_pool` (live pots — `pullangel` / `pulljackpot`), `angel_numbers_last`, `flexer_count`.
+flexforex: + `angel_numbers_pool`, `jackpot_pool` (live pots - `pullangel` / `pulljackpot`), `angel_numbers_last`, `flexer_count`.
 
 ### `swap.alcor`
 
@@ -114,17 +114,17 @@ Suggested quote caps (not on-chain): EASY 1e6 / token, WON 1e4, GRAMS 1e3, MEME 
 
 Issuer pays **5,000.0000 XPR** RAM to the **token contract** (`eosio::buyram`) before `create`. That is not Alcor pool RAM.
 
-### A — `create`
+### A - `create`
 
 ```json
 { "issuer": "alice", "maximum_supply": "1000000.0000 FOO" }
 ```
 
-### B — mint / issue 100% to issuer
+### B - mint / issue 100% to issuer
 
 easyflex: `issue`. Others: `mint`. `to` **must** be issuer.
 
-### C — `startlaunch` (not `reglaunch`)
+### C - `startlaunch` (not `reglaunch`)
 
 ```json
 {
@@ -145,7 +145,7 @@ easyflex: `issue`. Others: `mint`. `to` **must** be issuer.
 - `swap_underlying_default`: unpaid holders (`flex_reward_pool_id == 0`) get makeitrain swapped into the launch quote.
 - `fee` ∈ {500→10, 3000→60, 10000→200}. Repeatable until `liftoff`.
 
-### D–H — Alcor (issuer, not the flex contract)
+### D-H - Alcor (issuer, not the flex contract)
 
 1. `createpool` zero amounts, same `sqrtPriceX64` and `fee`.
 2. If inactive, pay `activeFee` memo `activepool#<poolId>`.
@@ -155,7 +155,7 @@ easyflex: `issue`. Others: `mint`. `to` **must** be issuer.
 
 Split txs. Never `liftoff` in the same tx as `createpool`.
 
-### I — `liftoff` (not `stamp`)
+### I - `liftoff` (not `stamp`)
 
 ```json
 { "token_symbol": "FOO", "pool_id": 1234, "tick_lower": -120, "tick_upper": 222000 }

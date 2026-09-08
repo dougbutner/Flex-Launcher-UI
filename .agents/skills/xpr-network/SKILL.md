@@ -14,7 +14,7 @@ description: >-
 1. Open **[`skill/SKILL.md`](../../../skill/SKILL.md)** (upstream routing table + AI-agent signing policy).
 2. Then open the matching topic file under **`skill/`** (do not invent chain APIs from memory).
 3. For **on-chain contracts**, prefer the **`smart-contracts`** skill and **`skill/safety-guidelines.md`** (testnet first).
-4. For **Alcor DEX/AMM**, prefer the **`alcor-exchange`** skill — not MetalX.
+4. For **Alcor DEX/AMM**, prefer the **`alcor-exchange`** skill  -  not MetalX.
 5. Local-only extras (flextokens, Alcor `/v/xpr/` split) are listed at the bottom of **`skill/SKILL.md`** and in **[`skill/README.md`](../../../skill/README.md)**.
 
 ## Quick map
@@ -29,4 +29,4 @@ description: >-
 | Alcor swap / orderbook | **`alcor-exchange`** skill → [`skill/alcor-dex.md`](../../../skill/alcor-dex.md) |
 | Safety | [`skill/safety-guidelines.md`](../../../skill/safety-guidelines.md) |
 
-App UI and wallet wiring live in **`src/`** and **`src/services/walletConstants.ts`** — keep those intact unless fixing a wallet bug.
+App UI and wallet wiring live in **`src/`** and **`src/services/walletConstants.ts`**  -  keep those intact unless fixing a wallet bug.

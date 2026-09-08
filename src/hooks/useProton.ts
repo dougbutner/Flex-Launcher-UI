@@ -1,5 +1,5 @@
 /**
- * useProton — WebAuth / mobile (XPR Network Web SDK) + Anchor (WharfKit), multi-account, one active signer.
+ * useProton - WebAuth / mobile (XPR Network Web SDK) + Anchor (WharfKit), multi-account, one active signer.
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { LoadedWallet } from '@/services/walletSessions';

@@ -92,7 +92,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
           const found = await findPool(plan.tokenA, plan.tokenB, plan.fee);
           poolId = found ? Number(found.id) : null;
         }
-        if (poolId == null) throw new Error("Pool created but id not detected — enter it manually below.");
+        if (poolId == null) throw new Error("Pool created but id not detected - enter it manually below.");
         patch({ poolId });
       },
     },
@@ -131,7 +131,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
     {
       id: "lockpos",
       label: "Lock position",
-      detail: `≥ ${LOCK_MIN_DAYS} days — collect still works, subliquid fails`,
+      detail: `≥ ${LOCK_MIN_DAYS} days - collect still works, subliquid fails`,
       txOf: (d) => d.lockTx,
       build: async ({ actor, plan, draft: d }) => {
         if (d.poolId == null) throw new Error("Missing pool id.");
@@ -172,7 +172,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
-      setErrors((e) => ({ ...e, [step.id]: hint ? `${msg} — ${hint}` : msg }));
+      setErrors((e) => ({ ...e, [step.id]: hint ? `${msg} - ${hint}` : msg }));
     } finally {
       setBusyId(null);
     }
@@ -207,7 +207,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
-      setLiftoffError(hint ? `${msg} — ${hint}` : msg);
+      setLiftoffError(hint ? `${msg} - ${hint}` : msg);
     } finally {
       setBusyId(null);
     }
@@ -216,7 +216,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
   if (!plan) {
     return (
       <StepShell title="Execute" desc="Finish the earlier steps first." footer={<button type="button" className="btn btn-ghost" onClick={onBack}>Back</button>}>
-        <p className="text-sm text-warning">The launch plan is incomplete — go back and fill in token, quote, and range.</p>
+        <p className="text-sm text-warning">The launch plan is incomplete - go back and fill in token, quote, and range.</p>
       </StepShell>
     );
   }
@@ -328,7 +328,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
             disabled={!preflightOk || busyId != null}
             onClick={() => void liftoff()}
           >
-            {busyId === "liftoff" ? "Signing…" : "Liftoff — make it transferable"}
+            {busyId === "liftoff" ? "Signing…" : "Liftoff - make it transferable"}
           </button>
         </div>
       ) : null}

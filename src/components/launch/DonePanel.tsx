@@ -17,7 +17,7 @@ export function DonePanel({ draft, onReset }: { draft: LaunchDraft; onReset: () 
         ${draft.symbol} is live
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-        Liftoff complete. 100% of supply sits in a locked, one-sided Alcor position — buyers walk the range and anyone
+        Liftoff complete. 100% of supply sits in a locked, one-sided Alcor position. Buyers walk the range and anyone
         can call makeitrain to splash holders
         {draft.swapUnderlyingDefault
           ? ` (unpaid holders receive ${quote.symbol} via the launch pool)`

@@ -1,5 +1,5 @@
 /**
- * Proton Web SDK — transaction signing for an active session.
+ * Proton Web SDK - transaction signing for an active session.
  * Connection / multi-account orchestration lives in walletSessions.ts.
  */
 
@@ -10,7 +10,7 @@ export interface ProtonSession {
 }
 
 /**
- * Transact — push one or more actions to the blockchain.
+ * Transact - push one or more actions to the blockchain.
  */
 export async function transact(
   session: ProtonSession,

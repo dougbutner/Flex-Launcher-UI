@@ -3,7 +3,7 @@ name: oracles-randomness
 description: >-
   Guides on-chain randomness and oracle patterns on XPR/EOSIO (commit-reveal, oracles).
   Use for dice rolls, fair games, RNG-backed contract actions, or when the user mentions
-  oracles/randomness—not for betting or payout products.
+  oracles/randomness - not for betting or payout products.
 ---
 
 # Oracles / randomness
