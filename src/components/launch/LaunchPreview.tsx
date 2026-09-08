@@ -1,14 +1,14 @@
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
 import { StatusIcon } from "@/components/launch/ui";
-import { CONTRACT_RAM_XPR, flexAccount } from "@/config/launch";
+import { flexAccount, flexMeta } from "@/config/launch";
 
 export function LaunchPreview({ draft }: { draft: LaunchDraft }) {
   const quote = quoteFromDraft(draft);
   const plan = planFromDraft(draft);
 
   const milestones = [
-    { label: `RAM (${CONTRACT_RAM_XPR.toLocaleString()} XPR)`, done: Boolean(draft.ramTx) },
+    { label: `Hold ${flexMeta(draft.program).launchEasyMin.toLocaleString()} EASY`, done: false },
     { label: "Created", done: Boolean(draft.createTx) },
     { label: "Supply", done: Boolean(draft.mintTx) },
     { label: "startlaunch", done: Boolean(draft.startTx) },

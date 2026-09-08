@@ -1,4 +1,4 @@
-import { CONTRACT_RAM_QUANT, FEE_TIERS, SWAP_ALCOR, flexAccount } from "@/config/launch";
+import { FEE_TIERS, SWAP_ALCOR, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
 import { StepShell } from "@/components/launch/ui";
@@ -38,18 +38,12 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
           <button type="button" className="btn btn-ghost" onClick={onBack}>
             Back
           </button>
-          <button type="button" className="btn btn-primary" disabled={!plan || !draft.ramTx} onClick={onNext}>
+          <button type="button" className="btn btn-primary" disabled={!plan} onClick={onNext}>
             Go to execute
           </button>
         </>
       }
     >
-      {!draft.ramTx ? (
-        <p className="rounded-xl bg-warning/10 p-3 text-xs font-medium text-warning">
-          Contract RAM ({CONTRACT_RAM_QUANT}) has not been purchased for this draft — go back to the RAM step.
-        </p>
-      ) : null}
-
       <div className="rounded-2xl border bg-background/50 px-4 py-2">
         <Row k="Program" v={`${draft.program} @ ${flexAccount(draft.program)}`} />
         <Row k="Token" v={`${draft.name} (${draft.symbol})`} />
@@ -68,15 +62,18 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
         ) : null}
         <Row k="Deposit" v={`100% of supply → ${SWAP_ALCOR}`} />
         <Row k="Lock" v={`${Math.max(90, draft.lockDays)} days · until ~${unlockDate}`} />
-        <Row k="Contract RAM" v={`${CONTRACT_RAM_QUANT} → ${flexAccount(draft.program)}`} />
+        <Row
+          k="EASY to launch"
+          v={`${holdEasyToLaunch(flexMeta(draft.program).launchEasyMin)}; more after each prior launch`}
+        />
       </div>
 
       <div className="space-y-2 rounded-2xl border border-warning/30 bg-warning/5 p-4 text-xs text-warning">
         <p className="font-semibold">Before liftoff, your token cannot transfer anywhere except to {SWAP_ALCOR}.</p>
         <p className="text-warning/80">
-          Do not try to send it to a friend first. After liftoff, transfers work with the normal flex tax, and the
-          protocol skim ({draft.quoteId === "xtoken" ? "0.25% nyra + 0.25% reflections" : "0%"}) never changes even if
-          you later remove liquidity.
+          Do not try to send it to a friend first. After liftoff, transfers work with the normal flex tax. Protocol skim
+          starts at {draft.quoteId === "xtoken" ? "0.25% nyra + 0.25% reflections" : "0%"} and rises by +0.25% each if
+          the Alcor lock expires (via checklock or makeitrain).
         </p>
       </div>
     </StepShell>

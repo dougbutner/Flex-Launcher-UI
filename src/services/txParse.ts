@@ -68,8 +68,8 @@ export function txErrorMessage(err: unknown): string {
 
 /** Needles mirror check() strings (they ship with a ⟁ prefix). */
 const HINTS: Array<[string, string]> = [
-  ["overdrawn", "Need ≥ 5,000 XPR for contract RAM, plus extra for Alcor."],
-  ["insufficient", "Need ≥ 5,000 XPR for contract RAM, plus extra for Alcor."],
+  ["overdrawn", "Not enough balance for this transaction."],
+  ["insufficient", "Not enough balance for this transaction."],
   ["missing authority", "token.proton logos must be signed by the token contract (tcontract@active)."],
   ["unable to retrieve account", "The flex contract is not a live account — check VITE_EASYFLEX / VITE_COMPLEXFLEX / VITE_FLEXFOREX_CONTRACT."],
   ["unknown key", "The flex contract is not a live account — check VITE_EASYFLEX / VITE_COMPLEXFLEX / VITE_FLEXFOREX_CONTRACT."],
@@ -101,8 +101,18 @@ const HINTS: Array<[string, string]> = [
   ["lock ≥ 90 days", "Increase unlockTime."],
   ["one-sided launch", "Start price is inside the range or on the wrong side of tokenA/tokenB."],
   ["fee must be 500, 3000, or 10000", "Invalid fee tier."],
-  ["keeper required", "Sign reflect with the account collecting the keeper tip."],
+  ["keeper required", "Sign makeitrain as the keeper collecting the tip."],
+  ["keeper account does not exist", "The keeper name is not a live account."],
+  ["sender account does not exist", "The sender name is not a live account."],
   ["no reflections to distribute", "Pools are below threshold — wait for more volume."],
+  ["Hold ", "Hold enough EASY to launch (base × already-launched tokens + 1)."],
+  ["EASY on mon3y", "Hold enough EASY to launch."],
+  ["angel numbers not enabled", "Issuer must enable angel numbers via setdist / ratios first."],
+  ["jackpot not enabled", "Issuer must enable jackpot via setdist / ratios first."],
+  ["Angel numbers pot empty", "No angel numbers pot to pull yet."],
+  ["Jackpot pot empty", "No jackpot pot to pull yet."],
+  ["angel numbers cooldown", "Wait for the angel numbers cooldown to finish."],
+  ["RNG already pending", "A pull is already waiting on rng — wait for receiverand."],
 ];
 
 export function hintForError(message: string): string | null {

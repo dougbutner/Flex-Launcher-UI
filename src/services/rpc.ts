@@ -71,6 +71,17 @@ export async function getAllTableRows<T = Record<string, unknown>>(
   return rows;
 }
 
+export async function getInfo() {
+  return rpcPost<{ chain_id?: string; head_block_num?: number }>("/v1/chain/get_info", {});
+}
+
+export async function getAbi(accountName: string) {
+  const data = await rpcPost<{ abi?: { actions?: Array<{ name: string }> } }>("/v1/chain/get_abi", {
+    account_name: accountName,
+  });
+  return data.abi ?? { actions: [] };
+}
+
 export async function getAccount(name: string) {
   return rpcPost<{
     account_name?: string;

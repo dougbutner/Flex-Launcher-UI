@@ -7,7 +7,6 @@ import { StatusIcon, StepShell, TxLink } from "@/components/launch/ui";
 import {
   activepoolTransfer,
   addliquidAction,
-  buyContractRam,
   createTokenAction,
   createpoolAction,
   depositAction,
@@ -44,7 +43,6 @@ type ExecDef = {
 };
 
 const TX_KEY: Record<string, keyof LaunchDraft> = {
-  ram: "ramTx",
   create: "createTx",
   supply: "mintTx",
   startlaunch: "startTx",
@@ -59,13 +57,6 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
   const code = flexAccount(draft.program);
   const meta = flexMeta(draft.program);
   return [
-    {
-      id: "ram",
-      label: "Buy contract RAM",
-      detail: `5,000.0000 XPR → ${code}`,
-      txOf: (d) => d.ramTx,
-      build: async ({ actor }) => [buyContractRam(actor, code)],
-    },
     {
       id: "create",
       label: "Create token",
@@ -167,7 +158,8 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
     try {
       const actions = await step.build({ actor, plan, draft });
       if (actions === "skip") {
-        patch({ activateTx: "skipped" });
+        const key = TX_KEY[step.id];
+        if (key) patch({ [key]: "skipped" } as Partial<LaunchDraft>);
         return;
       }
       const result = await transact(actions);
@@ -188,7 +180,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
     if (!actor || !plan || draft.poolId == null) return;
     setPreflightBusy(true);
     try {
-      setPreflight(await runPreflight(plan, draft.poolId, actor));
+      setPreflight(await runPreflight(plan, draft.poolId, actor, draft.program));
     } catch (err) {
       setPreflight(null);
       setLiftoffError(txErrorMessage(err));

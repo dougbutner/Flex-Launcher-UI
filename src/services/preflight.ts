@@ -1,10 +1,19 @@
-import { LOCK_MIN_SECONDS, SWAP_ALCOR } from "@/config/launch";
+import {
+  EASY_SYMBOL,
+  LOCK_MIN_SECONDS,
+  MON3Y,
+  SWAP_ALCOR,
+  flexMeta,
+  holdEasyToLaunch,
+  type FlexProgram,
+} from "@/config/launch";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import type { LaunchPlan } from "@/services/launchMath";
 import {
   readAlcorBalance,
   readAccounts,
   readLaunch,
+  readLaunches,
   readLock,
   readPool,
   readPositions,
@@ -48,15 +57,29 @@ function extMatches(ext: unknown, symbol: string, contract: string): boolean {
   return e.contract === contract && parseAsset(e.quantity ?? "")?.symbol === symbol;
 }
 
+export async function countIssuerLaunched(code: string, issuer: string): Promise<number> {
+  const rows = await readLaunches(code, 400).catch(() => [] as Record<string, unknown>[]);
+  let prior = 0;
+  for (const row of rows) {
+    if (!pick(row, "launched")) continue;
+    const symbol = symbolCodeOf(pick(row, "token_symbol", "symbol"));
+    if (!symbol) continue;
+    const stat = await readStat(code, symbol).catch(() => null);
+    if (String(pick(stat, "issuer") ?? "") === issuer) prior += 1;
+  }
+  return prior;
+}
+
 /** Read-only mirror of the contract's liftoff checks. */
 export async function runPreflight(
   plan: LaunchPlan,
   poolId: number,
-  issuer: string
+  issuer: string,
+  program: FlexProgram
 ): Promise<PreflightItem[]> {
   const sym = plan.launched.symbol;
   const code = plan.launched.contract;
-  const [launch, pool, stat, positions, issuerAlcorRows, swapAcct, issuerAcct] = await Promise.all([
+  const [launch, pool, stat, positions, issuerAlcorRows, swapAcct, issuerAcct, easyAcct, prior] = await Promise.all([
     readLaunch(code, sym),
     readPool(poolId),
     readStat(code, sym),
@@ -64,6 +87,8 @@ export async function runPreflight(
     readAlcorBalance(issuer, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
     readAccounts(code, SWAP_ALCOR, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
     readAccounts(code, issuer, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+    readAccounts(MON3Y, issuer, EASY_SYMBOL).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+    countIssuerLaunched(code, issuer),
   ]);
 
   const items: PreflightItem[] = [];
@@ -118,7 +143,7 @@ export async function runPreflight(
     lockPass = unlockTime >= minUnlock;
     lockDetail = unlockTime
       ? `unlocks ${new Date(unlockTime * 1000).toLocaleDateString()}`
-      : lockDetail;
+      : "Need ≥ 90 days remaining on the Alcor lock";
   }
   items.push({ id: "lock", label: "Lock ≥ 90 days remaining", pass: lockPass, detail: lockDetail });
 
@@ -158,6 +183,17 @@ export async function runPreflight(
     label: "Current tick keeps the range one-sided",
     pass: Boolean(pool) && oneSided,
     detail: `tick ${currTick} vs ${plan.tickLower}…${plan.tickUpper}`,
+  });
+
+  const need = flexMeta(program).launchEasyMin * (prior + 1);
+  const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
+  items.push({
+    id: "easy-stake",
+    label: holdEasyToLaunch(need),
+    pass: easyBal + 1e-12 >= need,
+    detail: easyBal + 1e-12 >= need
+      ? `${easyBal.toLocaleString()} / ${need.toLocaleString()} EASY · ${prior} prior launch${prior === 1 ? "" : "es"}`
+      : `Need ${need.toLocaleString()} EASY @ mon3y`,
   });
 
   return items;

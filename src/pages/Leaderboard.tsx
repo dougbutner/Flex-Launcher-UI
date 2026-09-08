@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FLEX_PROGRAMS, alcorSwapUrl, explorerAccount, flexAccount, type FlexProgram } from "@/config/launch";
-import { parseAsset } from "@/services/assets";
-import { readFlexers, readLaunches } from "@/services/flexTables";
+import { FLEX_PROGRAMS, alcorSwapUrl, explorerAccount, explorerTx, flexAccount, type FlexProgram } from "@/config/launch";
+import { useWallet } from "@/hooks/useWallet";
+import { assetAmountNumber, parseAsset } from "@/services/assets";
+import { readFlexers, readLaunches, readStat } from "@/services/flexTables";
+import { checklockAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
 import { symbolCodeOf } from "@/services/preflight";
+import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 type LaunchRow = Record<string, unknown>;
 
@@ -13,6 +16,14 @@ type LaunchItem = {
   symbol: string;
   row: LaunchRow;
 };
+
+type StatPots = {
+  angelPool: number;
+  jackpotPool: number;
+  precision: number;
+};
+
+type PokeKind = "checklock" | "pullangel" | "pulljackpot";
 
 function pick(row: LaunchRow, ...keys: string[]): unknown {
   for (const k of keys) if (row[k] != null) return row[k];
@@ -34,13 +45,33 @@ function quoteLabel(row: LaunchRow): string {
   return `${sym} @ ${q?.contract ?? "?"}`;
 }
 
+function fmtBps(bps: unknown): string {
+  const n = Number(bps);
+  if (!Number.isFinite(n)) return "—";
+  return `${(n / 100).toFixed(2)}%`;
+}
+
+function unlockLabel(unlock: unknown): string {
+  const n = Number(unlock);
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  return new Date(n * 1000).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export default function Leaderboard() {
+  const { isLoggedIn, transact } = useWallet();
   const [launches, setLaunches] = useState<LaunchItem[] | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [flexers, setFlexers] = useState<LaunchRow[] | null>(null);
   const [flexersBusy, setFlexersBusy] = useState(false);
+  const [pots, setPots] = useState<StatPots | null>(null);
+  const [poking, setPoking] = useState<PokeKind | null>(null);
+  const [pokeMsg, setPokeMsg] = useState<{ tx?: string; err?: string }>({});
 
   useEffect(() => {
     Promise.all(
@@ -81,14 +112,58 @@ export default function Leaderboard() {
       .finally(() => setFlexersBusy(false));
   }, []);
 
+  const loadPots = useCallback((item: LaunchItem) => {
+    setPots(null);
+    readStat(item.code, item.symbol)
+      .then((stat) => {
+        if (!stat) {
+          setPots({ angelPool: 0, jackpotPool: 0, precision: 4 });
+          return;
+        }
+        const supply = parseAsset(String(pick(stat, "supply") ?? ""));
+        setPots({
+          angelPool: assetAmountNumber(String(pick(stat, "angel_numbers_pool") ?? "0")),
+          jackpotPool: assetAmountNumber(String(pick(stat, "jackpot_pool") ?? "0")),
+          precision: supply?.precision ?? 4,
+        });
+      })
+      .catch(() => setPots({ angelPool: 0, jackpotPool: 0, precision: 4 }));
+  }, []);
+
   const selectedLaunch = useMemo(
     () => launches?.find((l) => l.id === selected) ?? null,
     [launches, selected]
   );
 
   useEffect(() => {
-    if (selectedLaunch) loadFlexers(selectedLaunch);
-  }, [selectedLaunch, loadFlexers]);
+    if (!selectedLaunch) return;
+    loadFlexers(selectedLaunch);
+    loadPots(selectedLaunch);
+    setPokeMsg({});
+  }, [selectedLaunch, loadFlexers, loadPots]);
+
+  const poke = async (kind: PokeKind) => {
+    if (!selectedLaunch || !isLoggedIn) return;
+    setPoking(kind);
+    setPokeMsg({});
+    try {
+      const action =
+        kind === "checklock"
+          ? checklockAction(selectedLaunch.code, selectedLaunch.symbol)
+          : kind === "pullangel"
+            ? pullangelAction(selectedLaunch.code, selectedLaunch.symbol)
+            : pulljackpotAction(selectedLaunch.code, selectedLaunch.symbol);
+      const res = await transact([action]);
+      setPokeMsg({ tx: txIdFromResult(res) || "ok" });
+      loadPots(selectedLaunch);
+    } catch (err) {
+      const msg = txErrorMessage(err);
+      const hint = hintForError(msg);
+      setPokeMsg({ err: hint ? `${msg} — ${hint}` : msg });
+    } finally {
+      setPoking(null);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -138,7 +213,7 @@ export default function Leaderboard() {
             })}
           </ul>
 
-          <section className="card p-6">
+          <section className="card space-y-5 p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold">Top flexers · ${selectedLaunch?.symbol}</h2>
               {selectedLaunch ? (
@@ -158,12 +233,82 @@ export default function Leaderboard() {
               ) : null}
             </div>
 
+            {selectedLaunch ? (
+              <div className="space-y-3 rounded-xl border border-border/60 bg-background/40 p-4">
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="chip-muted">
+                    skim nyra {fmtBps(pick(selectedLaunch.row, "dev_bps"))} · club{" "}
+                    {fmtBps(pick(selectedLaunch.row, "club_bps"))}
+                  </span>
+                  <span className="chip-muted">
+                    LP unlock {unlockLabel(pick(selectedLaunch.row, "unlock_time"))}
+                  </span>
+                  {selectedLaunch.program === "flexforex" && pots ? (
+                    <>
+                      <span className={pots.angelPool > 0 ? "chip-primary" : "chip-muted"}>
+                        angel pot {pots.angelPool.toLocaleString(undefined, { maximumFractionDigits: pots.precision })}
+                      </span>
+                      <span className={pots.jackpotPool > 0 ? "chip-primary" : "chip-muted"}>
+                        jackpot {pots.jackpotPool.toLocaleString(undefined, { maximumFractionDigits: pots.precision })}
+                      </span>
+                    </>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    disabled={!isLoggedIn || poking != null}
+                    title="Raises protocol skim if the LP lock has expired."
+                    onClick={() => void poke("checklock")}
+                  >
+                    {poking === "checklock" ? "Signing…" : "Check lock"}
+                  </button>
+                  {selectedLaunch.program === "flexforex" ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        disabled={!isLoggedIn || poking != null || (pots?.angelPool ?? 0) <= 0}
+                        onClick={() => void poke("pullangel")}
+                      >
+                        {poking === "pullangel" ? "Signing…" : "Pull angel"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        disabled={!isLoggedIn || poking != null || (pots?.jackpotPool ?? 0) <= 0}
+                        onClick={() => void poke("pulljackpot")}
+                      >
+                        {poking === "pulljackpot" ? "Signing…" : "Pull jackpot"}
+                      </button>
+                    </>
+                  ) : null}
+                  {!isLoggedIn ? (
+                    <span className="text-xs text-muted-foreground">Connect a wallet to poke.</span>
+                  ) : null}
+                  {pokeMsg.tx ? (
+                    <a
+                      href={explorerTx(pokeMsg.tx)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs text-success"
+                    >
+                      tx {pokeMsg.tx.slice(0, 10)}…
+                    </a>
+                  ) : null}
+                  {pokeMsg.err ? <span className="text-xs text-destructive">{pokeMsg.err}</span> : null}
+                </div>
+              </div>
+            ) : null}
+
             {flexersBusy ? (
-              <p className="mt-4 text-sm text-muted-foreground">Reading flexers…</p>
+              <p className="text-sm text-muted-foreground">Reading flexers…</p>
             ) : !flexers || flexers.length === 0 ? (
-              <p className="mt-4 text-sm text-muted-foreground">No holder rows yet.</p>
+              <p className="text-sm text-muted-foreground">No holder rows yet.</p>
             ) : (
-              <table className="mt-4 w-full text-sm">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <th className="py-2 pr-2 font-medium">#</th>

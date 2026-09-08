@@ -8,40 +8,45 @@ export const EASYFLEX_CONTRACT = import.meta.env.VITE_EASYFLEX?.trim() || "easyf
 export const COMPLEXFLEX_CONTRACT = import.meta.env.VITE_COMPLEXFLEX?.trim() || "complexflex";
 export const SWAP_ALCOR = import.meta.env.VITE_SWAP_ALCOR?.trim() || "swap.alcor";
 
+/** Hardcoded in all three contracts as MON3Y — liftoff reads EASY here, not VITE_EASYFLEX. */
+export const MON3Y = "mon3y";
+export const EASY_SYMBOL = "EASY";
+export const EASY_PRECISION = 6;
+
 export const FLEX_PROGRAMS: Array<{
   id: FlexProgram;
   title: string;
   blurb: string;
   supply: "issue" | "mint";
-  payout: "distribute" | "reflect";
-  keeper: boolean;
+  payoutSigner: "sender" | "keeper";
+  launchEasyMin: number;
   vaults: string[];
 }> = [
   {
     id: "easyflex",
     title: "easyflex",
-    blurb: "Simple reflections + burn. Issue supply. No inheritance or luck.",
+    blurb: "Simple reflections + burn. Issue supply. No inheritance or luck. Hold 5,000 EASY to launch.",
     supply: "issue",
-    payout: "distribute",
-    keeper: false,
+    payoutSigner: "sender",
+    launchEasyMin: 5_000,
     vaults: ["alcor", EASYFLEX_CONTRACT, SWAP_ALCOR],
   },
   {
     id: "complexflex",
     title: "complexflex",
-    blurb: "Reflections + project tax + inheritance. Grams-style.",
+    blurb: "Reflections + project tax + inheritance. Grams-style. Hold 10,000 EASY to launch.",
     supply: "mint",
-    payout: "reflect",
-    keeper: false,
+    payoutSigner: "sender",
+    launchEasyMin: 10_000,
     vaults: ["alcor", COMPLEXFLEX_CONTRACT, SWAP_ALCOR],
   },
   {
     id: "flexforex",
     title: "flexforex",
-    blurb: "Full stack: inheritance, angel numbers, jackpot, optional keeper.",
+    blurb: "Full stack: inheritance, angel numbers, jackpot, optional keeper. Hold 50,000 EASY to launch.",
     supply: "mint",
-    payout: "reflect",
-    keeper: true,
+    payoutSigner: "keeper",
+    launchEasyMin: 50_000,
     vaults: ["alcor", COMPLEXFLEX_CONTRACT, SWAP_ALCOR],
   },
 ];
@@ -56,11 +61,14 @@ export function flexMeta(program: FlexProgram) {
   return FLEX_PROGRAMS.find((p) => p.id === program) ?? FLEX_PROGRAMS[2];
 }
 
+export function holdEasyToLaunch(amount: number) {
+  return `Hold ${amount.toLocaleString()} EASY to launch`;
+}
+
 export function allFlexAccounts(): string[] {
   return [...new Set(FLEX_PROGRAMS.map((p) => flexAccount(p.id)))];
 }
 
-export const EOSIO = "eosio";
 export const EOSIO_TOKEN = "eosio.token";
 export const XTOKENS = "xtokens";
 export const XPR_SYMBOL = "XPR";
@@ -68,11 +76,11 @@ export const XPR_PRECISION = 4;
 export const XUSDC_SYMBOL = "XUSDC";
 
 export const EXPLORER = "https://testnet.explorer.xprnetwork.org";
-export const ALCOR_UI = "https://alcor.exchange/v/xpr";
-export const ALCOR_API = "https://proton-test.alcor.exchange/api/v2";
+export const FAUCET_URL = "https://resources.xprnetwork.org/faucet";
+export const XPR_TESTNET_CHAIN_ID = "71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd";
+export const TESTNET_PROOF_XTOKEN = "FOOBAR";
+export const TESTNET_PROOF_POOL_ID = "0";
 
-export const CONTRACT_RAM_XPR = 5000;
-export const CONTRACT_RAM_QUANT = "5000.0000 XPR";
 export const LOCK_MIN_SECONDS = 7_776_000;
 export const LOCK_MIN_DAYS = 90;
 
@@ -98,12 +106,12 @@ export type QuotePreset = {
   label: string;
 };
 
-/** Live mainnet precisions (get_currency_stats). Caps from UI-LAUNCH.md. */
+/** Flex-quote contracts match C++ (`mon3y` / `w3won` / `m3m3` / `gold.mon3y`), not VITE_EASYFLEX. */
 export const QUOTE_PRESETS: QuotePreset[] = [
   {
     id: "easy",
     symbol: "EASY",
-    contract: EASYFLEX_CONTRACT,
+    contract: MON3Y,
     precision: 6,
     priceLower: "0.000001",
     priceUpper: "1000000",
@@ -123,7 +131,7 @@ export const QUOTE_PRESETS: QuotePreset[] = [
   {
     id: "grams",
     symbol: "GRAMS",
-    contract: COMPLEXFLEX_CONTRACT,
+    contract: "gold.mon3y",
     precision: 6,
     priceLower: "1",
     priceUpper: "1000",
@@ -142,7 +150,7 @@ export const QUOTE_PRESETS: QuotePreset[] = [
   },
   {
     id: "xtoken",
-    symbol: "XUSDC",
+    symbol: "FOOBAR",
     contract: XTOKENS,
     precision: 6,
     priceLower: "0.000001",
@@ -167,8 +175,8 @@ export function explorerTx(id: string) {
   return `${EXPLORER}/transaction/${id}`;
 }
 
-export function alcorSwapUrl(quoteSymbol: string, quoteContract: string, tokenSymbol: string, tokenContract: string) {
-  return `${ALCOR_UI}/swap?input=${quoteSymbol}-${quoteContract}&output=${tokenSymbol}-${tokenContract}`;
+export function alcorSwapUrl(_quoteSymbol: string, _quoteContract: string, _tokenSymbol: string, tokenContract: string) {
+  return explorerAccount(tokenContract);
 }
 
 export function tickSpacing(fee: number) {

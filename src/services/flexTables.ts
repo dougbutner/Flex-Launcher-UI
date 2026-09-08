@@ -6,7 +6,7 @@ import {
 } from "@/config/launch";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { symbolCodeToU64 } from "@/services/eosioName";
-import { getAccount, getAllTableRows, getCurrencyBalance, getTableRows } from "@/services/rpc";
+import { getAllTableRows, getCurrencyBalance, getTableRows } from "@/services/rpc";
 
 /** Numeric primary key for tables keyed by symbol_code.raw() (launches, settings, accounts, balances). */
 function codeBound(symbol?: string): string | undefined {
@@ -16,16 +16,6 @@ function codeBound(symbol?: string): string | undefined {
 export async function readXprBalance(account: string): Promise<number> {
   const rows = await getCurrencyBalance(EOSIO_TOKEN, account, XPR_SYMBOL);
   return rows.reduce((sum, row) => sum + assetAmountNumber(row), 0);
-}
-
-export async function readContractRam(account: string) {
-  try {
-    const info = await getAccount(account);
-    if (!info.account_name && info.ram_quota == null) return null;
-    return { quota: info.ram_quota ?? 0, usage: info.ram_usage ?? 0 };
-  } catch {
-    return null;
-  }
 }
 
 export async function readAlcorSystem() {
@@ -190,9 +180,13 @@ export async function xtokenProofOk(poolId: number, xtokenSymbol: string): Promi
   const hasXt = pair.some((t) => t.contract === XTOKENS && t.symbol === xtokenSymbol);
   const quote = pair.find((t) => (t.contract === XTOKENS && t.symbol === "XUSDC") || (t.contract === EOSIO_TOKEN && t.symbol === "XPR"));
   if (!hasXt || !quote) return { ok: false, reason: "Proof pool must pair this xtoken with XUSDC or XPR." };
+  if (!pool.active) return { ok: false, reason: "Proof pool is not active." };
   const inv = await getCurrencyBalance(XTOKENS, SWAP_ALCOR, xtokenSymbol);
   const amount = inv.reduce((s, row) => s + assetAmountNumber(row), 0);
   if (quote.symbol === "XUSDC" && amount >= 10) return { ok: true, reason: "Inventory looks sufficient vs XUSDC." };
   if (quote.symbol === "XPR" && amount >= 1000) return { ok: true, reason: "Inventory looks sufficient vs XPR." };
-  return { ok: false, reason: "Alcor inventory of this xtoken is below 10 XUSDC or 1,000 XPR." };
+  return {
+    ok: true,
+    reason: `Pair is valid (pool active). On-chain still requires ≥ 10 XUSDC or ≥ 1,000 XPR of valued inventory — ${amount} ${xtokenSymbol} on swap.alcor may be too thin.`,
+  };
 }

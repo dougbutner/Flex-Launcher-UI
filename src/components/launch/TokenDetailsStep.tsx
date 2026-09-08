@@ -28,7 +28,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   const preview = (urlReady ? draft.imageUrl : "") || draft.imageDataUrl;
   const showUrl = urlOpen || draft.pinFailed || Boolean(draft.imageUrl && !draft.imageCid);
   const tokenContract = flexAccount(draft.program);
-  const programLocked = Boolean(draft.ramTx || draft.createTx);
+  const programLocked = Boolean(draft.createTx);
   const canSign = Boolean(isLoggedIn && actor === tokenContract && urlReady && !invalid);
 
   const onImage = async (file: File | undefined) => {
@@ -243,7 +243,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             onChange={(e) => patch({ maxSupply: e.target.value.replace(/[^\d.]/g, "") })}
           />
         </Field>
-        <Field label="Precision" hint="Decimal places (0–8). Flex tokens usually use 4.">
+        <Field label="Precision" hint="Decimal places (0–8). Flex tokens usually use 6.">
           <input
             className="input font-mono"
             inputMode="numeric"

@@ -25,7 +25,6 @@ export type LaunchDraft = {
   priceLower: string;
   priceUpper: string;
   lockDays: number;
-  ramTx: string;
   createTx: string;
   mintTx: string;
   startTx: string;
@@ -38,15 +37,15 @@ export type LaunchDraft = {
   liftoffTx: string;
 };
 
-const KEY = "flex-launch-draft-v2";
+const KEY = "flex-launch-draft-v3";
 
-const easy = QUOTE_PRESETS[0];
+const xtoken = QUOTE_PRESETS.find((q) => q.id === "xtoken") ?? QUOTE_PRESETS[0];
 
 export const emptyDraft = (): LaunchDraft => ({
   program: "flexforex",
   name: "",
   symbol: "",
-  precision: 4,
+  precision: 6,
   maxSupply: "1000000",
   imageDataUrl: "",
   imageCid: "",
@@ -58,15 +57,14 @@ export const emptyDraft = (): LaunchDraft => ({
   twitter: "",
   telegram: "",
   farcaster: "",
-  quoteId: "easy",
-  xtokenSymbol: "XUSDC",
+  quoteId: "xtoken",
+  xtokenSymbol: "FOOBAR",
   xtokenPrecision: 6,
-  proofPoolId: "",
+  proofPoolId: "0",
   fee: 3000,
-  priceLower: easy.priceLower,
-  priceUpper: easy.priceUpper,
+  priceLower: xtoken.priceLower,
+  priceUpper: xtoken.priceUpper,
   lockDays: LOCK_MIN_DAYS,
-  ramTx: "",
   createTx: "",
   mintTx: "",
   startTx: "",
@@ -83,7 +81,14 @@ function load(): LaunchDraft {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return emptyDraft();
-    return { ...emptyDraft(), ...JSON.parse(raw) };
+    const saved = { ...emptyDraft(), ...JSON.parse(raw) } as LaunchDraft;
+    if (!saved.createTx && saved.precision === 4) saved.precision = 6;
+    if (!saved.createTx && saved.quoteId === "easy") {
+      saved.quoteId = "xtoken";
+      saved.xtokenSymbol = saved.xtokenSymbol || "FOOBAR";
+      saved.proofPoolId = saved.proofPoolId || "0";
+    }
+    return saved;
   } catch {
     return emptyDraft();
   }

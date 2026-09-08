@@ -16,8 +16,9 @@ export function DonePanel({ draft, onReset }: { draft: LaunchDraft; onReset: () 
         ${draft.symbol} is live
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-        Liftoff complete. 100% of supply sits in a locked, one-sided Alcor position — buyers walk the range
-        and reflections flow to holders.
+        Liftoff complete. 100% of supply sits in a locked, one-sided Alcor position — buyers walk the range and anyone
+        can call makeitrain to splash holders. After the 90-day lock ends, anyone can call checklock to apply the extra
+        protocol skim.
       </p>
 
       <div className="mx-auto mt-6 flex max-w-sm flex-col gap-2">

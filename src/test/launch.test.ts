@@ -2,8 +2,17 @@ import { describe, expect, it } from "vitest";
 import { formatAsset, validSymbol, zeroAsset } from "@/services/assets";
 import { compareExtTokens, nameToU64, sortPair, symbolCodeToU64 } from "@/services/eosioName";
 import { planLaunch } from "@/services/launchMath";
-import { createTokenAction, payoutAction, startlaunchAction, supplyAction } from "@/services/launchActions";
-import { flexAccount } from "@/config/launch";
+import { createTokenAction, checklockAction, payoutAction, pullangelAction, pulljackpotAction, startlaunchAction, supplyAction } from "@/services/launchActions";
+import {
+  MON3Y,
+  QUOTE_PRESETS,
+  TESTNET_PROOF_POOL_ID,
+  TESTNET_PROOF_XTOKEN,
+  flexAccount,
+  flexMeta,
+  holdEasyToLaunch,
+} from "@/config/launch";
+import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
 import { protonSymbol, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
 import { tokenStepValid } from "@/components/launch/draftPlan";
@@ -132,13 +141,57 @@ describe("launch plan", () => {
     expect(supplyAction("flex.mon3y", "mint", "alice", plan.fullSupply).name).toBe("mint");
     expect(startlaunchAction("mon3y", plan, 0).name).toBe("startlaunch");
     expect(startlaunchAction("mon3y", plan, 0).data.xtoken_proof_pool_id).toBe(0);
-    expect(payoutAction("mon3y", "distribute", "BAR").name).toBe("distribute");
-    expect(payoutAction("flex.mon3y", "reflect", "BAR", "alice").data).toEqual({
+    expect(payoutAction("mon3y", "BAR", "alice", "sender")).toEqual({
+      account: "mon3y",
+      name: "makeitrain",
+      data: { token_symbol: "BAR", sender: "alice" },
+    });
+    expect(payoutAction("flex.mon3y", "BAR", "alice", "keeper").data).toEqual({
       token_symbol: "BAR",
       keeper: "alice",
     });
     expect(flexAccount("easyflex")).toBe("easyflex");
     expect(flexAccount("complexflex")).toBe("complexflex");
     expect(flexAccount("flexforex")).toBe("flexforex");
+    expect(flexMeta("easyflex").launchEasyMin).toBe(5000);
+    expect(flexMeta("complexflex").launchEasyMin).toBe(10000);
+    expect(flexMeta("flexforex").launchEasyMin).toBe(50000);
+    expect(flexMeta("easyflex").payoutSigner).toBe("sender");
+    expect(flexMeta("flexforex").payoutSigner).toBe("keeper");
+    expect(holdEasyToLaunch(5000)).toBe("Hold 5,000 EASY to launch");
+  });
+});
+
+describe("post-launch poke actions", () => {
+  it("builds checklock, pullangel, and pulljackpot payloads", () => {
+    expect(checklockAction("easyflex", "FOO")).toEqual({
+      account: "easyflex",
+      name: "checklock",
+      data: { token_symbol: "FOO" },
+    });
+    expect(pullangelAction("flexforex", "FOO")).toEqual({
+      account: "flexforex",
+      name: "pullangel",
+      data: { token_symbol: "FOO" },
+    });
+    expect(pulljackpotAction("flexforex", "FOO")).toEqual({
+      account: "flexforex",
+      name: "pulljackpot",
+      data: { token_symbol: "FOO" },
+    });
+  });
+});
+
+describe("XPR testnet launcher defaults", () => {
+  it("uses a valid WebAuth request account and FOOBAR proof quote", () => {
+    expect(REQUEST_ACCOUNT.length).toBeLessThanOrEqual(12);
+    expect(REQUEST_ACCOUNT).toBe("flexlaunch");
+    expect(QUOTE_PRESETS.find((q) => q.id === "easy")?.contract).toBe(MON3Y);
+    expect(QUOTE_PRESETS.find((q) => q.id === "xtoken")?.symbol).toBe(TESTNET_PROOF_XTOKEN);
+    const d = emptyDraft();
+    expect(d.quoteId).toBe("xtoken");
+    expect(d.xtokenSymbol).toBe(TESTNET_PROOF_XTOKEN);
+    expect(d.proofPoolId).toBe(TESTNET_PROOF_POOL_ID);
+    expect(d.precision).toBe(6);
   });
 });

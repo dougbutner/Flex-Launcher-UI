@@ -40,12 +40,13 @@ Let the user pick **easyflex | complexflex | flexforex** before create. Shared l
 | | easyflex | complexflex | flexforex |
 |---|---|---|---|
 | Supply action | `issue` | `mint` | `mint` |
-| Payout action | `distribute(token_symbol)` | `reflect(token_symbol)` | `reflect(token_symbol, keeper)` |
+| Payout action | `makeitrain(token_symbol, sender)` | `makeitrain(token_symbol, sender)` | `makeitrain(token_symbol, keeper)` |
 | Project tax | no | yes | yes |
 | Inheritance / inheritmemo | no | yes | yes |
 | `setdist` / `ratios` / `setangelnum` / `pullangel` | no | no | yes |
 | `receiverand` | never in UI | never in UI | never in UI (`rng` only) |
 | Default create fees | refl 100, burn 100 | refl 100, project 100 | refl 100, project 100 |
+| Liftoff EASY@mon3y | 5,000 × (prior + 1) | 10,000 × (prior + 1) | 50,000 × (prior + 1) |
 | Alcor accounts excluded from reflect denom | `alcor`, `mon3y`, `swap.alcor` | `alcor`, `gold.mon3y`, `swap.alcor` | `alcor`, `gold.mon3y`, `swap.alcor` |
 
 `setconfig` = **contract@active only** on all three. Do not put tax sliders on the issuer wizard as if they will work.
@@ -58,12 +59,15 @@ Code = chosen token contract. Scope for `stat` / `settings` / `flexers` / `flexp
 
 ### `launches` (contract scope)
 
-`token_symbol`, `quote` (extended_asset), `fee`, `tick_lower`, `tick_upper`, `sqrt_price_x64`, `xtoken_proof_pool_id`, `flex_quote`, `launched`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`.
+`token_symbol`, `quote` (extended_asset), `fee`, `tick_lower`, `tick_upper`, `sqrt_price_x64`, `xtoken_proof_pool_id`, `flex_quote`, `launched`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`, `unlock_time`.
 
 - Missing or `launched == false` → wizard in progress.
 - `launched == true` → do not re-seed Alcor; show dashboard.
+- `unlock_time` is copied from Alcor at liftoff. After it, `checklock` or `makeitrain` may add another `PROTO_BPS_HALF` to `dev_bps` and `club_bps`.
 
-Protocol skim: at liftoff `dev_bps`/`club_bps` = `0` if `flex_quote`, else `25` (0.25% each to `nyra` / `reflections`). Sticky.
+Protocol skim: at liftoff `dev_bps`/`club_bps` = `0` if `flex_quote`, else `25` (0.25% each to `nyra` / `reflections`). May rise once if the LP unlocks.
+
+Liftoff also requires issuer EASY@`mon3y` (contract constant `MON3Y`, not `VITE_EASYFLEX`). Base whole tokens: 5000 / 10000 / 50000. Count this issuer’s already-`launched` tokens on *this* contract; need `base * (count + 1)`.
 
 ### `settings`
 
@@ -87,7 +91,7 @@ PK = Alcor `pool_id`. Fields: `id`, `input_symbol`, `input_contract`, `output_sy
 
 easyflex: `supply`, `max_supply`, `issuer`, `reflection_pool`, `burn_pool`.  
 complexflex: + `project_pool`.  
-flexforex: + `angel_numbers_pool`, `jackpot_pool` (**ABI pads — never display as live pots**), `angel_numbers_last`, `flexer_count`.
+flexforex: + `angel_numbers_pool`, `jackpot_pool` (live pots — `pullangel` / `pulljackpot`), `angel_numbers_last`, `flexer_count`.
 
 ### `swap.alcor`
 
@@ -158,8 +162,9 @@ Split txs. Never `liftoff` in the same tx as `createpool`.
 | `addpool` | issuer or contract | Fail copy: `⟁ Only the issuer can add a flex reward token.` |
 | `choosereward` | owner (or issuer/admin/contract) | Empty `output_contract` → native |
 | `feeoptout` | self: `ban_status` **true** only | Irreversible for self |
-| `distribute` / `reflect` | anyone | flexforex: keeper if `keeper_min > 0` |
-| `setdist` / `ratios` / `setangelnum` / `pullangel` | see ABI | flexforex only |
+| `makeitrain` | signer (`sender` or `keeper`) | Always `require_auth` of that name. flexforex ABI field is `keeper`. Signer pays RAM for new holder rows. Splashes 38.2% of `reflection_pool`. |
+| `checklock` | anyone | After `unlock_time`, may raise protocol skim once. |
+| `setdist` / `ratios` / `setangelnum` / `pullangel` / `pulljackpot` | see ABI | flexforex only |
 | `inheritance` / `inheritmemo` | flexer or contract | not easyflex |
 
 Flex payout memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#0`

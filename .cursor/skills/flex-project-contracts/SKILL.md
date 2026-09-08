@@ -30,9 +30,9 @@ Until `launches.launched == true`, transfers may only go to `swap.alcor` (plus c
 
 | Contract | Typical account (confirm env / explorer) | Create | Supply | Payout | Opt-out | Flex-to |
 |----------|------------------------------------------|--------|--------|--------|---------|---------|
-| `easyflex` | `mon3y` (EASY) | `create` | `issue` | `distribute` | `feeoptout` | `addpool` + `choosereward` |
-| `complexflex` | `gold.mon3y` (GRAMS) | `create` | `mint` | `reflect` | `feeoptout` | same |
-| `flexforex` | `flex.mon3y` (`VITE_FLEXFOREX_CONTRACT`) | `create` | `mint` | `reflect(token, keeper)` | `feeoptout` | same |
+| `easyflex` | `mon3y` (EASY) | `create` | `issue` | `makeitrain(token, sender)` | `feeoptout` | `addpool` + `choosereward` |
+| `complexflex` | `gold.mon3y` (GRAMS) | `create` | `mint` | `makeitrain(token, sender)` | `feeoptout` | same |
+| `flexforex` | `flex.mon3y` (`VITE_FLEXFOREX_CONTRACT`) | `create` | `mint` | `makeitrain(token, keeper)` | `feeoptout` | same |
 
 **easyflex:** no inheritance, project tax, angel numbers, or jackpot. Default tax 1% reflect + 1% burn.
 
@@ -40,11 +40,11 @@ Until `launches.launched == true`, transfers may only go to `swap.alcor` (plus c
 
 **flexforex:** plus angel numbers, jackpot, `rng`, `setdist` / `ratios`, keeper tip. Default 1% reflect + 1% project.
 
-Rates are bps / 10000 (100 = 1%). Payout sends 61.8% (`* 618 / 1000`).
+Rates are bps / 10000 (100 = 1%). Payout sends 38.2% of the standard pool (`PAY_NUM/PAY_DEN` = `382/1000`).
 
 ## Stale names (never emit)
 
-`forge` → `create`. `reglaunch` → `startlaunch`. `stamp` → `liftoff`. `interestoken` / `setflextoken` / `setflexpool` → `addpool` / `choosereward`. `renounce` / `noflexzone` → `feeoptout`. `setratios` → `ratios`. `setnumber` / `pullnumber` → `setangelnum` / `pullangel`. Launch fields: `xtoken_proof_pool_id`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`. Flexer: `fee_opted_out`, `flex_reward_pool_id`, `angel_number`, index `byangel`.
+`forge` → `create`. `reglaunch` → `startlaunch`. `stamp` → `liftoff`. `interestoken` / `setflextoken` / `setflexpool` → `addpool` / `choosereward`. `renounce` / `noflexzone` → `feeoptout`. `setratios` → `ratios`. `setnumber` / `pullnumber` → `setangelnum` / `pullangel`. `distribute` / `reflect` → `makeitrain`. Launch fields: `xtoken_proof_pool_id`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`. Flexer: `fee_opted_out`, `flex_reward_pool_id`, `angel_number`, index `byangel`.
 
 ## Accounts
 

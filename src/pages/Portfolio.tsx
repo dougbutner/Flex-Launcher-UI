@@ -3,18 +3,17 @@ import { FLEX_PROGRAMS, alcorSwapUrl, explorerTx, flexAccount, type FlexProgram 
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { readAccounts, readFlexers, readLaunches, readStat, readXprBalance } from "@/services/flexTables";
-import { payoutAction } from "@/services/launchActions";
+import { checklockAction, payoutAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
-const DIST_BPS = 0.618;
+const DIST_BPS = 0.382;
 
 type Holding = {
   key: string;
   program: FlexProgram;
   contract: string;
-  payout: "distribute" | "reflect";
-  keeper: boolean;
+  payoutSigner: "sender" | "keeper";
   symbol: string;
   precision: number;
   quoteSymbol: string;
@@ -22,8 +21,12 @@ type Holding = {
   balance: number;
   flexer: Record<string, unknown> | null;
   reflectionPool: number;
+  angelPool: number;
+  jackpotPool: number;
   estSplash: number | null;
 };
+
+type PokeKind = "rain" | "checklock" | "pullangel" | "pulljackpot";
 
 function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]): unknown {
   if (!row) return undefined;
@@ -41,8 +44,8 @@ export default function Portfolio() {
   const [holdings, setHoldings] = useState<Holding[] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [reflecting, setReflecting] = useState<string | null>(null);
-  const [reflectMsg, setReflectMsg] = useState<Record<string, { tx?: string; err?: string }>>({});
+  const [poking, setPoking] = useState<string | null>(null);
+  const [pokeMsg, setPokeMsg] = useState<Record<string, { tx?: string; err?: string }>>({});
 
   const load = useCallback(async () => {
     if (!actor) return;
@@ -78,6 +81,8 @@ export default function Portfolio() {
               const precision = balAsset?.precision ?? 4;
               const supply = assetAmountNumber(String(pick(stat, "supply") ?? "0"));
               const reflectionPool = assetAmountNumber(String(pick(stat, "reflection_pool") ?? "0"));
+              const angelPool = assetAmountNumber(String(pick(stat, "angel_numbers_pool") ?? "0"));
+              const jackpotPool = assetAmountNumber(String(pick(stat, "jackpot_pool") ?? "0"));
               const vaultTotal = vaults.reduce(
                 (s, v) => s + assetAmountNumber(String(pick(v.rows[0], "balance") ?? "0")),
                 0
@@ -95,8 +100,7 @@ export default function Portfolio() {
                 key: `${code}:${symbol}`,
                 program: p.id,
                 contract: code,
-                payout: p.payout,
-                keeper: p.keeper,
+                payoutSigner: p.payoutSigner,
                 symbol,
                 precision,
                 quoteSymbol: parseAsset(q?.quantity ?? "")?.symbol ?? "",
@@ -104,6 +108,8 @@ export default function Portfolio() {
                 balance,
                 flexer,
                 reflectionPool,
+                angelPool,
+                jackpotPool,
                 estSplash,
               });
             })
@@ -128,19 +134,29 @@ export default function Portfolio() {
     void load();
   }, [load]);
 
-  const payout = async (h: Holding) => {
+  const poke = async (h: Holding, kind: PokeKind) => {
     if (!actor) return;
-    setReflecting(h.key);
-    setReflectMsg((m) => ({ ...m, [h.key]: {} }));
+    const pokeKey = `${h.key}:${kind}`;
+    setPoking(pokeKey);
+    setPokeMsg((m) => ({ ...m, [h.key]: {} }));
     try {
-      const res = await transact([payoutAction(h.contract, h.payout, h.symbol, h.keeper ? actor : undefined)]);
-      setReflectMsg((m) => ({ ...m, [h.key]: { tx: txIdFromResult(res) || "ok" } }));
+      const action =
+        kind === "rain"
+          ? payoutAction(h.contract, h.symbol, actor, h.payoutSigner)
+          : kind === "checklock"
+            ? checklockAction(h.contract, h.symbol)
+            : kind === "pullangel"
+              ? pullangelAction(h.contract, h.symbol)
+              : pulljackpotAction(h.contract, h.symbol);
+      const res = await transact([action]);
+      setPokeMsg((m) => ({ ...m, [h.key]: { tx: txIdFromResult(res) || "ok" } }));
+      void load();
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
-      setReflectMsg((m) => ({ ...m, [h.key]: { err: hint ? `${msg} — ${hint}` : msg } }));
+      setPokeMsg((m) => ({ ...m, [h.key]: { err: hint ? `${msg} — ${hint}` : msg } }));
     } finally {
-      setReflecting(null);
+      setPoking(null);
     }
   };
 
@@ -206,13 +222,13 @@ export default function Portfolio() {
       ) : (
         <div className="mt-6 space-y-3">
           {holdings.map((h) => {
-            const msg = reflectMsg[h.key];
+            const msg = pokeMsg[h.key];
             const angel = Number(pick(h.flexer, "angel_number") ?? 1000);
             const beneficiary = String(pick(h.flexer, "beneficiary") ?? "");
             const beneRate = Number(pick(h.flexer, "bene_rate") ?? 10000);
             const flexPool = Number(pick(h.flexer, "flex_reward_pool_id") ?? 0);
             const optedOut = Boolean(pick(h.flexer, "fee_opted_out"));
-            const actionLabel = h.payout === "distribute" ? "Distribute" : "Reflect";
+            const busyAny = poking != null;
             return (
               <article key={h.key} className="card p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -238,8 +254,18 @@ export default function Portfolio() {
                   <span className={h.reflectionPool > 0 ? "chip-primary" : "chip-muted"}>
                     pool {fmt(h.reflectionPool, h.precision)} {h.symbol}
                   </span>
+                  {h.program === "flexforex" ? (
+                    <>
+                      <span className={h.angelPool > 0 ? "chip-primary" : "chip-muted"}>
+                        angel pot {fmt(h.angelPool, h.precision)}
+                      </span>
+                      <span className={h.jackpotPool > 0 ? "chip-primary" : "chip-muted"}>
+                        jackpot {fmt(h.jackpotPool, h.precision)}
+                      </span>
+                    </>
+                  ) : null}
                   {h.estSplash != null ? (
-                    <span className="chip-success" title="Your balance ÷ circulating supply × 61.8% of the pending pool">
+                    <span className="chip-success" title="Your balance ÷ circulating supply × 38.2% of the pending pool">
                       est. splash ~{fmt(h.estSplash, h.precision)} {h.symbol}
                     </span>
                   ) : null}
@@ -256,11 +282,40 @@ export default function Portfolio() {
                   <button
                     type="button"
                     className="btn btn-primary btn-sm"
-                    disabled={reflecting != null}
-                    onClick={() => void payout(h)}
+                    disabled={busyAny}
+                    onClick={() => void poke(h, "rain")}
                   >
-                    {reflecting === h.key ? "Signing…" : actionLabel}
+                    {poking === `${h.key}:rain` ? "Signing…" : "Make it rain"}
                   </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    disabled={busyAny}
+                    title="Raises protocol skim if the LP lock has expired."
+                    onClick={() => void poke(h, "checklock")}
+                  >
+                    {poking === `${h.key}:checklock` ? "Signing…" : "Check lock"}
+                  </button>
+                  {h.program === "flexforex" ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        disabled={busyAny || h.angelPool <= 0}
+                        onClick={() => void poke(h, "pullangel")}
+                      >
+                        {poking === `${h.key}:pullangel` ? "Signing…" : "Pull angel"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        disabled={busyAny || h.jackpotPool <= 0}
+                        onClick={() => void poke(h, "pulljackpot")}
+                      >
+                        {poking === `${h.key}:pulljackpot` ? "Signing…" : "Pull jackpot"}
+                      </button>
+                    </>
+                  ) : null}
                   {h.quoteSymbol ? (
                     <a
                       href={alcorSwapUrl(h.quoteSymbol, h.quoteContract, h.symbol, h.contract)}
@@ -278,7 +333,7 @@ export default function Portfolio() {
                       rel="noopener noreferrer"
                       className="font-mono text-xs text-success"
                     >
-                      paid {msg.tx.slice(0, 10)}…
+                      tx {msg.tx.slice(0, 10)}…
                     </a>
                   ) : null}
                   {msg?.err ? <span className="text-xs text-destructive">{msg.err}</span> : null}

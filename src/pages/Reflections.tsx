@@ -33,7 +33,7 @@ export default function Reflections() {
       const pages = await Promise.all(
         FLEX_PROGRAMS.map(async (p) => {
           const account = flexAccount(p.id);
-          const actionName = p.payout === "distribute" ? "distribute" : "reflect";
+          const actionName = "makeitrain";
           const res = await getActions({
             account,
             filter: `${account}:${actionName}`,
@@ -66,8 +66,7 @@ export default function Reflections() {
         <div>
           <h1 className="text-3xl font-black tracking-tight">Historic reflections</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            <span className="font-mono">distribute</span> on easyflex and{" "}
-            <span className="font-mono">reflect</span> on complexflex / flexforex — skim first, then the 61.8% splash.
+            <span className="font-mono">makeitrain</span> on all three programs — skim first, then the 38.2% splash.
           </p>
         </div>
         <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>
@@ -82,8 +81,7 @@ export default function Reflections() {
       <div className="mt-6 space-y-2">
         {actions.length === 0 && !busy ? (
           <div className="card p-8 text-center text-sm text-muted-foreground">
-            No payouts yet. After liftoff, anyone can poke <span className="font-mono">distribute</span> or{" "}
-            <span className="font-mono">reflect</span>.
+            No payouts yet. After liftoff, anyone can poke <span className="font-mono">makeitrain</span>.
           </div>
         ) : (
           actions.map((a, i) => {

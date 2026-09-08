@@ -1,4 +1,4 @@
-import { CONTRACT_RAM_QUANT, EOSIO, EOSIO_TOKEN, SWAP_ALCOR } from "@/config/launch";
+import { EOSIO_TOKEN, SWAP_ALCOR } from "@/config/launch";
 import { extendedAsset, zeroAsset } from "@/services/assets";
 import type { LaunchPlan } from "@/services/launchMath";
 
@@ -8,14 +8,6 @@ export type ChainAction = {
   data: Record<string, unknown>;
   authorization?: Array<{ actor: string; permission: string }>;
 };
-
-export function buyContractRam(payer: string, tokenContract: string): ChainAction {
-  return {
-    account: EOSIO,
-    name: "buyram",
-    data: { payer, receiver: tokenContract, quant: CONTRACT_RAM_QUANT },
-  };
-}
 
 export function createTokenAction(tokenContract: string, issuer: string, maximumSupply: string): ChainAction {
   return {
@@ -131,15 +123,37 @@ export function activepoolTransfer(from: string, quantity: string, contract: str
 
 export function payoutAction(
   tokenContract: string,
-  payout: "distribute" | "reflect",
   tokenSymbol: string,
-  keeper?: string
+  signer: string,
+  role: "sender" | "keeper"
 ): ChainAction {
-  if (payout === "distribute") {
-    return { account: tokenContract, name: "distribute", data: { token_symbol: tokenSymbol } };
-  }
-  if (keeper) {
-    return { account: tokenContract, name: "reflect", data: { token_symbol: tokenSymbol, keeper } };
-  }
-  return { account: tokenContract, name: "reflect", data: { token_symbol: tokenSymbol } };
+  return {
+    account: tokenContract,
+    name: "makeitrain",
+    data: role === "keeper" ? { token_symbol: tokenSymbol, keeper: signer } : { token_symbol: tokenSymbol, sender: signer },
+  };
+}
+
+export function checklockAction(tokenContract: string, tokenSymbol: string): ChainAction {
+  return {
+    account: tokenContract,
+    name: "checklock",
+    data: { token_symbol: tokenSymbol },
+  };
+}
+
+export function pullangelAction(tokenContract: string, tokenSymbol: string): ChainAction {
+  return {
+    account: tokenContract,
+    name: "pullangel",
+    data: { token_symbol: tokenSymbol },
+  };
+}
+
+export function pulljackpotAction(tokenContract: string, tokenSymbol: string): ChainAction {
+  return {
+    account: tokenContract,
+    name: "pulljackpot",
+    data: { token_symbol: tokenSymbol },
+  };
 }
