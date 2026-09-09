@@ -7,48 +7,56 @@ const BENEFITS = [
     n: "01",
     title: "Real AMM",
     body: "Tokens go live on Alcor concentrated liquidity with a set fee, ticks, and price. Not a Pump-style curve that exists to be sniped and dumped before graduation.",
+    chart: "EASY / XUSDC chart on Alcor",
   },
   {
     id: "supply",
     n: "02",
     title: "Full supply",
     body: "Until launch, transfers can only hit swap.alcor, and liftoff requires the full supply there. No stealth wallets sitting on inventory.",
+    chart: "EASY / XMD chart on Alcor",
   },
   {
     id: "lock",
     n: "03",
     title: "Locked LP",
     body: "lockpos is a hard gate. You cannot pull the rug the same afternoon you launch. Liquidity stays locked 90 days or more.",
+    chart: "EASY / XPR chart on Alcor",
   },
   {
     id: "holders",
     n: "04",
     title: "Holders get paid",
     body: "On-chain tax funds reflections (and burn or project, depending on contract). Anyone can trigger makeitrain.",
+    chart: "EASY / XXRP chart on Alcor",
   },
   {
     id: "flex",
     n: "05",
     title: "Rewards flex",
     body: "Holders pick an Alcor pool via choosereward. Native or another listed token, instead of sitting in a dead meme ticker.",
+    chart: "EASY / XUSDT chart on Alcor",
   },
   {
     id: "identity",
     n: "06",
     title: "True identity",
     body: "No ticker-collision theater. You launch against a real quote (EASY / WON / GRAMS / MEME or an xtoken with proof).",
+    chart: "EASY / XUSDC chart on Alcor",
   },
   {
     id: "skim",
     n: "07",
     title: "Tiny skim",
     body: "Flex quotes take 0 at liftoff. Other quotes take 0.25% + 0.25% sticky. Not a platform that eats the launch.",
+    chart: "EASY / XMD chart on Alcor",
   },
   {
     id: "products",
     n: "08",
     title: "Three products",
     body: "Simple (easyflex), project + inheritance (complexflex), or forex extras (keepers, angel numbers). Same launch law, not a one-size meme factory.",
+    chart: "EASY / XPR chart on Alcor",
   },
 ] as const;
 
@@ -56,7 +64,7 @@ export default function Home() {
   return (
     <div className="home">
       <section className="home-hero" aria-label="Flex launcher">
-        <figure className="home-hero__plate" role="img" aria-label="Darkroom light plate" />
+        <figure className="home-hero__plate" role="img" aria-label="EASY / XUSDC chart on Alcor Exchange" />
         <p className="home-hero__byline">Flex · XPR</p>
         <p className="home-hero__kicker">Plate 00 · Liftoff</p>
         <h1 className="home-hero__title">
@@ -93,7 +101,7 @@ export default function Home() {
             <figure
               className={`home-spread__plate home-spread__plate--${i + 1}`}
               role="img"
-              aria-hidden
+              aria-label={item.chart}
             />
             <p className="home-spread__no">Plate {item.n}</p>
             <h2 className="home-spread__title">{item.title}</h2>
