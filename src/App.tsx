@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { WalletProvider } from "@/hooks/useWallet";
 import { Layout } from "@/components/Layout";
 import { appendWharfDialogElement } from "@/services/wharfSessionKit";
+import Home from "./pages/Home.tsx";
 import Launch from "./pages/Launch.tsx";
 import Leaderboard from "./pages/Leaderboard.tsx";
 import Reflections from "./pages/Reflections.tsx";
@@ -21,7 +22,8 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
-            <Route path="/" element={<Launch />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/launch" element={<Launch />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/reflections" element={<Reflections />} />
             <Route path="/portfolio" element={<Portfolio />} />

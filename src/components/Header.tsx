@@ -4,7 +4,8 @@ import { useWallet } from "@/hooks/useWallet";
 import { walletTypeLabel } from "@/services/walletSessions";
 
 const NAV = [
-  { to: "/", label: "Launch" },
+  { to: "/", label: "Home" },
+  { to: "/launch", label: "Launch" },
   { to: "/leaderboard", label: "Leaderboard" },
   { to: "/reflections", label: "Reflections" },
   { to: "/portfolio", label: "Portfolio" },
