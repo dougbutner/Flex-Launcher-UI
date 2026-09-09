@@ -59,11 +59,12 @@
   min-height: 62vh;
   outline: 1px solid color-mix(in srgb, var(--home-paper) 16%, transparent);
   background:
+    url('/logos/easy.svg'),
     linear-gradient(180deg, rgba(17, 17, 17, 0.75) 0%, rgba(17, 17, 17, 0.5) 50%, rgba(17, 17, 17, 0.75) 100%),
     url('/alcor/easy-xusdc-swap-ui.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: 180px 180px, cover, cover;
+  background-position: calc(100% - 40px) 40px, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 
 .home-hero__plate::after {
@@ -304,74 +305,82 @@
 
 .home-spread__plate--1 {
   background:
+    url('/logos/easy.svg'),
     linear-gradient(180deg, rgba(17, 17, 17, 0.7) 0%, rgba(17, 17, 17, 0.45) 50%, rgba(17, 17, 17, 0.7) 100%),
     url('/alcor/easy-xusdc.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: 160px 160px, cover, cover;
+  background-position: calc(100% - 30px) 30px, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 
 .home-spread__plate--2 {
   background:
+    url('/logos/grams.svg'),
     linear-gradient(180deg, rgba(17, 17, 17, 0.7) 0%, rgba(17, 17, 17, 0.45) 50%, rgba(17, 17, 17, 0.7) 100%),
     url('/alcor/easy-xmd.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: 160px 160px, cover, cover;
+  background-position: 30px 30px, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 
 .home-spread__plate--3 {
   background:
+    url('/logos/won.svg'),
     linear-gradient(180deg, rgba(17, 17, 17, 0.7) 0%, rgba(17, 17, 17, 0.45) 50%, rgba(17, 17, 17, 0.7) 100%),
     url('/alcor/easy-xpr.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: 160px 160px, cover, cover;
+  background-position: calc(100% - 30px) 30px, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 
 .home-spread__plate--4 {
   background:
+    url('/logos/meme.svg'),
     linear-gradient(180deg, rgba(17, 17, 17, 0.7) 0%, rgba(17, 17, 17, 0.45) 50%, rgba(17, 17, 17, 0.7) 100%),
     url('/alcor/easy-xxrp.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: 160px 160px, cover, cover;
+  background-position: 30px 30px, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 
 .home-spread__plate--5 {
   background:
+    url('/logos/easy.svg'),
     linear-gradient(180deg, rgba(17, 17, 17, 0.7) 0%, rgba(17, 17, 17, 0.45) 50%, rgba(17, 17, 17, 0.7) 100%),
     url('/alcor/easy-xusdt.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: 160px 160px, cover, cover;
+  background-position: calc(100% - 30px) 30px, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 
 .home-spread__plate--6 {
   background:
+    url('/logos/won.svg'),
     linear-gradient(180deg, rgba(17, 17, 17, 0.7) 0%, rgba(17, 17, 17, 0.45) 50%, rgba(17, 17, 17, 0.7) 100%),
     url('/alcor/easy-xusdc.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: 160px 160px, cover, cover;
+  background-position: 30px 30px, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 
 .home-spread__plate--7 {
   background:
+    url('/logos/grams.svg'),
     linear-gradient(180deg, rgba(17, 17, 17, 0.7) 0%, rgba(17, 17, 17, 0.45) 50%, rgba(17, 17, 17, 0.7) 100%),
     url('/alcor/easy-xmd.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: 160px 160px, cover, cover;
+  background-position: calc(100% - 30px) 30px, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 
 .home-spread__plate--8 {
   background:
+    url('/logos/meme.svg'),
     linear-gradient(180deg, rgba(17, 17, 17, 0.7) 0%, rgba(17, 17, 17, 0.45) 50%, rgba(17, 17, 17, 0.7) 100%),
     url('/alcor/easy-xpr.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-size: 160px 160px, cover, cover;
+  background-position: 30px 30px, center, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 
 .home-close {
