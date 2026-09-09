@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sync-token-icons": "node scripts/sync-token-icons.mjs"
   },
   "dependencies": {
     "@proton/link": "^5.0.0",

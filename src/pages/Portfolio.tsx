@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { TokenIcon } from "@/components/TokenIcon";
 import { FLEX_PROGRAMS, alcorSwapUrl, explorerTx, flexAccount, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
@@ -247,10 +248,13 @@ export default function Portfolio() {
           <ul className="mt-3 space-y-2">
             {issued.map((t) => (
               <li key={t.key} className="card flex flex-wrap items-center justify-between gap-3 p-4">
-                <div>
+                <div className="flex min-w-0 items-center gap-3">
+                  <TokenIcon contract={t.contract} symbol={t.symbol} size={36} rounded="xl" />
+                  <div>
                   <div className="font-mono font-bold">${t.symbol}</div>
                   <div className="text-xs text-muted-foreground">
                     {t.program} @ {t.contract} · {t.launched ? "live" : "in progress"}
+                  </div>
                   </div>
                 </div>
                 <Link to={`/token/${t.contract}/${t.symbol}`} className="btn btn-outline btn-sm">
@@ -281,16 +285,26 @@ export default function Portfolio() {
             return (
               <article key={h.key} className="card p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <TokenIcon contract={h.contract} symbol={h.symbol} size={40} rounded="xl" />
+                    <div>
                     <div className="font-mono text-lg font-bold">${h.symbol}</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                       {h.program} @ {h.contract}
-                      {h.quoteSymbol ? ` · ${h.quoteSymbol} pair` : ""} ·{" "}
+                      {h.quoteSymbol ? (
+                        <>
+                          {" · "}
+                          <TokenIcon contract={h.quoteContract} symbol={h.quoteSymbol} size={14} />
+                          {h.quoteSymbol} pair
+                        </>
+                      ) : null}{" "}
+                      ·{" "}
                       {h.flexer
                         ? optedOut
                           ? "fees opted out"
                           : "reflections active"
                         : "no flexer row yet"}
+                    </div>
                     </div>
                   </div>
                   <div className="text-right">

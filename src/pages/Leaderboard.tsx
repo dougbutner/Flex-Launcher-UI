@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { TokenIcon } from "@/components/TokenIcon";
 import { FLEX_PROGRAMS, alcorSwapUrl, explorerAccount, explorerTx, flexAccount, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
@@ -40,10 +41,14 @@ function balanceOf(row: LaunchRow): number {
   return Number(v) || 0;
 }
 
-function quoteLabel(row: LaunchRow): string {
+function quoteOf(row: LaunchRow): { symbol: string; contract: string } {
   const q = pick(row, "quote") as { quantity?: string; contract?: string } | undefined;
-  const sym = parseAsset(q?.quantity ?? "")?.symbol ?? "?";
-  return `${sym} @ ${q?.contract ?? "?"}`;
+  return { symbol: parseAsset(q?.quantity ?? "")?.symbol ?? "", contract: q?.contract ?? "" };
+}
+
+function quoteLabel(row: LaunchRow): string {
+  const q = quoteOf(row);
+  return `${q.symbol || "?"} @ ${q.contract || "?"}`;
 }
 
 function fmtBps(bps: unknown): string {
@@ -189,6 +194,7 @@ export default function Leaderboard() {
           <ul className="space-y-2">
             {launches.map((l) => {
               const active = l.id === selected;
+              const quote = quoteOf(l.row);
               return (
                 <li key={l.id}>
                   <button
@@ -198,12 +204,17 @@ export default function Leaderboard() {
                       active ? "border-primary/60 bg-primary/10" : "hover:border-primary/30"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-base font-bold">${l.symbol}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <TokenIcon contract={l.code} symbol={l.symbol} size={28} rounded="xl" />
+                        <span className="font-mono text-base font-bold">${l.symbol}</span>
+                      </span>
                       <span className="chip-success">live</span>
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {l.program} @ {l.code} · {quoteLabel(l.row)}
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      {l.program} @ {l.code} ·
+                      <TokenIcon contract={quote.contract} symbol={quote.symbol} size={14} />
+                      {quoteLabel(l.row)}
                     </div>
                     <div className="mt-1 font-mono text-[10px] text-muted-foreground/70">
                       pool #{String(pick(l.row, "pure_liquid_alcor_pool_id", "pool_id", "poolId") ?? "-")}
@@ -216,7 +227,12 @@ export default function Leaderboard() {
 
           <section className="card space-y-5 p-6">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-lg font-bold">Top flexers · ${selectedLaunch?.symbol}</h2>
+              <h2 className="flex items-center gap-2 text-lg font-bold">
+                {selectedLaunch ? (
+                  <TokenIcon contract={selectedLaunch.code} symbol={selectedLaunch.symbol} size={28} rounded="xl" />
+                ) : null}
+                Top flexers · ${selectedLaunch?.symbol}
+              </h2>
               {selectedLaunch ? (
                 <div className="flex flex-wrap gap-2">
                   <Link

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { DogAvatar } from "@/components/launch/DogAvatar";
+import { TokenIcon } from "@/components/TokenIcon";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
 import {
@@ -258,11 +258,11 @@ export default function Preview() {
         </div>
       </section>
 
-      {/* Quote / xtoken dog picker shapes */}
+      {/* Quote / xtoken picker shapes */}
       <section className="mt-10">
         <h2 className="text-sm font-bold tracking-tight">Quote xtokens (filled)</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Top 10 dogs, then expand. Selecting one collapses to a single card with expand.
+          Top 10 by Alcor activity, then expand. Selecting one collapses to a single card with expand.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
           {["XUSDC", "XXRP", "XBTC", "XETH", "XUSDT", "METAL", "XSOL", "XDOGE", "XXLM", "XHBAR"].map((sym) => (
@@ -272,9 +272,9 @@ export default function Preview() {
                 sym === "XBTC" ? "border-primary bg-primary/15" : "border-input bg-background/60"
               }`}
             >
-              <DogAvatar symbol={sym} size={52} />
+              <TokenIcon contract="xtokens" symbol={sym} size={52} />
               <span className="font-mono text-xs font-bold">{sym}</span>
-              <span className="text-[10px] text-muted-foreground">dog</span>
+              <span className="text-[10px] text-muted-foreground">xtokens</span>
             </div>
           ))}
         </div>
@@ -282,7 +282,7 @@ export default function Preview() {
           expand
         </button>
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-primary bg-primary/10 p-4">
-          <DogAvatar symbol="XBTC" size={64} />
+          <TokenIcon contract="xtokens" symbol="XBTC" size={64} />
           <div className="min-w-0 flex-1">
             <div className="font-mono text-lg font-bold">XBTC</div>
             <div className="text-xs text-muted-foreground">@xtokens · 8 decimals · 0.5% skim · collapsed pick</div>

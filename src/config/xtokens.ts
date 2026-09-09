@@ -6,7 +6,6 @@ export type XtokenQuote = {
   precision: number;
   label: string;
   wraps: string;
-  /** CSS color for dog collar / accent */
   accent: string;
   /** Rough underlying market-cap rank (1 = largest). */
   rank: number;

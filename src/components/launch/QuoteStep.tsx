@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { DogAvatar } from "@/components/launch/DogAvatar";
+import { TokenIcon } from "@/components/TokenIcon";
 import { quoteNeedsProof, QUOTE_PRESETS, XTOKENS, type QuotePreset } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { presetFromDraft, quoteFromDraft, quoteStepValid } from "@/components/launch/draftPlan";
@@ -48,8 +48,11 @@ function QuoteCard({
             : "border-input bg-background/50 hover:border-primary/40"
       }`}
     >
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-base font-bold">{preset.label}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2">
+          <TokenIcon contract={preset.contract} symbol={preset.symbol} size={28} />
+          <span className="font-mono text-base font-bold">{preset.label}</span>
+        </span>
         {unavailable ? (
           <span className="chip-muted">not on testnet</span>
         ) : preset.flexQuote ? (
@@ -80,7 +83,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
   const [xtokens, setXtokens] = useState<XtokenRow[] | null>(null);
   const [xtokenErr, setXtokenErr] = useState("");
   const [xtokenLoading, setXtokenLoading] = useState(false);
-  /** Picker open: show the dog grid. Closed after pick (or never opened). */
+  /** Picker open: show the xtoken grid. Closed after pick (or never opened). */
   const [xtokenPickerOpen, setXtokenPickerOpen] = useState(false);
   /** Show all rows vs top N. */
   const [xtokenShowAll, setXtokenShowAll] = useState(false);
@@ -270,7 +273,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
         <p className="label">xtokens</p>
         <p className="mb-2 text-xs text-muted-foreground">
           Bridged majors on xtokens (XBTC, XXRP, and friends). Top {XTOKEN_TOP_N} by Alcor market activity; expand for the
-          full pack. Each gets a dog.
+          full list. Logos are the on-chain token.proton icons, served from this app.
         </p>
 
         {/* Collapsed selection or category entry */}
@@ -278,7 +281,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
           <div className="space-y-2">
             {isXtoken && draft.xtokenSymbol ? (
               <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-primary bg-primary/10 p-4">
-                <DogAvatar symbol={draft.xtokenSymbol} size={64} />
+                <TokenIcon contract={XTOKENS} symbol={draft.xtokenSymbol} size={64} />
                 <div className="min-w-0 flex-1">
                   <div className="font-mono text-lg font-bold">{draft.xtokenSymbol}</div>
                   <div className="text-xs text-muted-foreground">
@@ -315,7 +318,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
                 </div>
                 <div className="mt-1 font-mono text-xs text-muted-foreground">@{xtokenPreset.contract}</div>
                 <div className="mt-2 text-xs text-muted-foreground">
-                  Click to load XBTC, XXRP, XETH, and the rest of the pack.
+                  Click to load XBTC, XXRP, XETH, and the rest.
                 </div>
               </button>
             )}
@@ -369,7 +372,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
                           : "border-input bg-background/60 hover:border-primary/40"
                       }`}
                     >
-                      <DogAvatar symbol={row.symbol} size={52} />
+                      <TokenIcon contract={XTOKENS} symbol={row.symbol} size={52} />
                       <span className="font-mono text-xs font-bold">{row.symbol}</span>
                       <span className="text-[10px] text-muted-foreground">{fmtUsd(row.usdPrice)}</span>
                     </button>

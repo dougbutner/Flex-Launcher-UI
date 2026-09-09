@@ -21,6 +21,7 @@ import { protonSymbol, rowMatchesContractSymbol, tokenProtonLogoAction } from "@
 import { applyRangeWidth, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { validImageUrl } from "@/services/tokenLogo";
+import { localTokenIconSrc, tokenIconKey } from "@/services/tokenIcons";
 import { XTOKEN_FALLBACK, XTOKEN_TOP_N, findProofPoolId } from "@/services/xtokenCatalog";
 
 describe("tick math", () => {
@@ -301,6 +302,17 @@ describe("xtoken catalog", () => {
   it("builds Alcor token ids for proof lookup", async () => {
     // Unit-level: function exists and rejects empty pair without throwing on construct
     expect(typeof findProofPoolId).toBe("function");
+  });
+});
+
+describe("local token icons", () => {
+  it("maps token.proton xtokens and flex quotes to /tokens paths", () => {
+    expect(tokenIconKey("xtokens", "xbtc")).toBe("xtokens:XBTC");
+    expect(localTokenIconSrc("xtokens", "XBTC")).toBe("/tokens/xtokens/XBTC.png");
+    expect(localTokenIconSrc("xtokens", "FOOBAR")).toBe("/tokens/xtokens/FOOBAR.png");
+    expect(localTokenIconSrc("eosio.token", "XPR")).toBe("/tokens/eosio.token/XPR.png");
+    expect(localTokenIconSrc("mon3y", "EASY")).toBe("/tokens/easy.png");
+    expect(localTokenIconSrc("flexforex", "UUU")).toBeUndefined();
   });
 });
 

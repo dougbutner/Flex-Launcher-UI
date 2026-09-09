@@ -1,0 +1,229 @@
+/* Single-plane rotateY. Swap at edge-on so each half-twist reveals the next token.
+   One plane (not a 3D card) so header backdrop-filter cannot flatten a hidden back face. */
+
+.flex-logo {
+  --flex-logo-ms: 8s;
+  --swing: cubic-bezier(0.445, 0.05, 0.55, 0.95);
+  position: relative;
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+}
+
+.flex-logo__glow {
+  pointer-events: none;
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 214, 80, 0.4) 0%, transparent 70%);
+  filter: blur(3px);
+}
+
+.flex-logo__stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #111;
+}
+
+.flex-logo__spin {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation: flex-logo-spin var(--flex-logo-ms) infinite;
+}
+
+.flex-logo__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  animation-duration: var(--flex-logo-ms);
+  animation-iteration-count: infinite;
+  animation-timing-function: step-end;
+}
+
+.flex-logo__img--a {
+  animation-name: flex-logo-a;
+}
+
+.flex-logo__img--b {
+  animation-name: flex-logo-b;
+  transform: scaleX(-1);
+}
+
+.flex-logo__img--c {
+  animation-name: flex-logo-c;
+}
+
+.flex-logo__img--d {
+  animation-name: flex-logo-d;
+  transform: scaleX(-1);
+}
+
+/* Visible only while that face is toward the camera. Swap while scaleX ~ 0. */
+@keyframes flex-logo-a {
+  0%,
+  12.4%,
+  87.6%,
+  100% {
+    opacity: 1;
+  }
+  12.5%,
+  87.5% {
+    opacity: 0;
+  }
+}
+
+@keyframes flex-logo-b {
+  0%,
+  12.4%,
+  37.6%,
+  100% {
+    opacity: 0;
+  }
+  12.5%,
+  37.5% {
+    opacity: 1;
+  }
+}
+
+@keyframes flex-logo-c {
+  0%,
+  37.4%,
+  62.6%,
+  100% {
+    opacity: 0;
+  }
+  37.5%,
+  62.5% {
+    opacity: 1;
+  }
+}
+
+@keyframes flex-logo-d {
+  0%,
+  62.4%,
+  87.6%,
+  100% {
+    opacity: 0;
+  }
+  62.5%,
+  87.5% {
+    opacity: 1;
+  }
+}
+
+@keyframes flex-logo-spin {
+  0% {
+    transform: perspective(170px) rotateY(0deg);
+    animation-timing-function: var(--swing);
+  }
+  25% {
+    transform: perspective(170px) rotateY(180deg);
+    animation-timing-function: var(--swing);
+  }
+  50% {
+    transform: perspective(170px) rotateY(360deg);
+    animation-timing-function: var(--swing);
+  }
+  75% {
+    transform: perspective(170px) rotateY(540deg);
+    animation-timing-function: var(--swing);
+  }
+  100% {
+    transform: perspective(170px) rotateY(720deg);
+  }
+}
+
+.flex-logo__rim {
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+  inset: -1px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 210deg,
+    transparent 0 56%,
+    rgba(255, 236, 150, 0.12) 63%,
+    rgba(255, 246, 200, 0.95) 71%,
+    rgba(255, 196, 60, 0.4) 78%,
+    transparent 86%
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1.4px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 1.4px));
+  animation: flex-logo-shimmer 4.5s linear infinite;
+  mix-blend-mode: screen;
+}
+
+.flex-logo__flash {
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+  inset: -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 236, 170, 0.5) 0%, transparent 64%);
+  animation: flex-logo-flash var(--flex-logo-ms) var(--swing) infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes flex-logo-shimmer {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes flex-logo-flash {
+  0%,
+  11.5%,
+  13.5%,
+  36.5%,
+  38.5%,
+  61.5%,
+  63.5%,
+  86.5%,
+  88.5%,
+  100% {
+    opacity: 0.12;
+  }
+  12.5%,
+  37.5%,
+  62.5%,
+  87.5% {
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flex-logo__spin,
+  .flex-logo__img,
+  .flex-logo__rim,
+  .flex-logo__flash {
+    animation: none;
+  }
+
+  .flex-logo__spin {
+    transform: none;
+  }
+
+  .flex-logo__img--b,
+  .flex-logo__img--c,
+  .flex-logo__img--d {
+    display: none;
+  }
+
+  .flex-logo__img--a {
+    opacity: 1;
+    transform: none;
+  }
+
+  .flex-logo__flash {
+    opacity: 0.2;
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
+import { FlexLogo } from "@/components/FlexLogo";
 import { useWallet } from "@/hooks/useWallet";
 import { walletTypeLabel } from "@/services/walletSessions";
 
@@ -56,9 +57,7 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-[0_0_20px_-4px_hsl(var(--primary)/0.8)]">
-              <span className="text-lg font-black text-primary-foreground">F</span>
-            </div>
+            <FlexLogo />
             <div className="leading-tight">
               <div className="text-sm font-bold tracking-tight">Flex Launcher</div>
               <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">

@@ -1,6 +1,7 @@
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
 import { StatusIcon } from "@/components/launch/ui";
+import { TokenIcon } from "@/components/TokenIcon";
 import { flexAccount, flexMeta } from "@/config/launch";
 
 export function LaunchPreview({ draft }: { draft: LaunchDraft }) {
@@ -36,8 +37,10 @@ export function LaunchPreview({ draft }: { draft: LaunchDraft }) {
       </div>
       <div className="px-5 pb-5 pt-10">
         <div className="text-lg font-bold tracking-tight">{draft.name || "Unnamed token"}</div>
-        <div className="font-mono text-xs text-muted-foreground">
-          ${draft.symbol || "?????"} · {draft.program} @ {flexAccount(draft.program)} · {quote.symbol} pair
+        <div className="mt-1 flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+          ${draft.symbol || "?????"} · {draft.program} @ {flexAccount(draft.program)} ·
+          <TokenIcon contract={quote.contract} symbol={quote.symbol} size={14} />
+          {quote.symbol} pair
         </div>
         {draft.description ? (
           <p className="mt-3 line-clamp-3 text-xs text-muted-foreground">{draft.description}</p>

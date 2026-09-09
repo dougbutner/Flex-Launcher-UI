@@ -1,0 +1,167 @@
+#!/usr/bin/env node
+/**
+ * Snapshot token.proton iconurl files into public/tokens and write src/config/tokenIconManifest.ts
+ * Source of truth: mainnet token.proton `tokens` table (iconurl).
+ */
+import { mkdir, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const RPC = process.env.TOKEN_PROTON_RPC || "https://proton.eosusa.io/v1/chain/get_table_rows";
+const FORCE = process.argv.includes("--force");
+
+const KEEP = {
+  "mon3y:EASY": "/tokens/easy.png",
+  "w3won:WON": "/tokens/won.png",
+  "gold.mon3y:GRAMS": "/tokens/grams.png",
+  "m3m3:MEME": "/tokens/meme.png",
+};
+
+const WANT_CONTRACT = new Set(["xtokens", "eosio.token", "xmd.token", "loan.token"]);
+const WANT_SYMBOL = {
+  "eosio.token": new Set(["XPR"]),
+  "xmd.token": new Set(["XMD"]),
+  "loan.token": new Set(["LOAN"]),
+};
+
+function curlJson(body) {
+  const r = spawnSync(
+    "curl",
+    ["-sS", "-A", "FlexLauncherIconSync/1.0", "-X", "POST", RPC, "-H", "Content-Type: application/json", "-d", JSON.stringify(body)],
+    { encoding: "utf8", maxBuffer: 8 * 1024 * 1024 }
+  );
+  if (r.status !== 0) throw new Error(r.stderr || "curl json failed");
+  return JSON.parse(r.stdout);
+}
+
+function curlFile(url, dest) {
+  const r = spawnSync(
+    "curl",
+    ["-sS", "-L", "-A", "Mozilla/5.0 FlexLauncherIconSync", "-o", dest, "-w", "%{http_code} %{content_type}", url],
+    { encoding: "utf8" }
+  );
+  if (r.status !== 0) throw new Error(r.stderr || `curl ${url}`);
+  const [code, ...typeParts] = r.stdout.trim().split(/\s+/);
+  return { code: Number(code), type: typeParts.join(" ") };
+}
+
+function parseCode(raw) {
+  if (typeof raw === "string") {
+    const m = /^(\d+),([A-Z]{1,7})$/.exec(raw.trim());
+    return m ? m[2] : null;
+  }
+  if (raw && typeof raw === "object") {
+    const o = raw;
+    if (typeof o.symbol === "string") return parseCode(o.symbol);
+    const code = String(o.name || o.code || "").toUpperCase();
+    return /^[A-Z]{1,7}$/.test(code) ? code : null;
+  }
+  return null;
+}
+
+function extFor(type, url) {
+  const t = (type || "").toLowerCase();
+  if (t.includes("svg")) return "svg";
+  if (t.includes("jpeg") || t.includes("jpg")) return "jpg";
+  if (t.includes("webp")) return "webp";
+  if (t.includes("gif")) return "gif";
+  const m = /\.(svg|png|jpe?g|webp|gif)(\?|$)/i.exec(url);
+  if (m) return m[1].toLowerCase() === "jpeg" ? "jpg" : m[1].toLowerCase();
+  return "png";
+}
+
+function wanted(contract, code) {
+  if (contract === "xtokens") return Boolean(code);
+  const set = WANT_SYMBOL[contract];
+  return Boolean(set && code && set.has(code));
+}
+
+function allTokenRows() {
+  const rows = [];
+  let lower = 1;
+  for (let i = 0; i < 40; i++) {
+    const data = curlJson({
+      json: true,
+      code: "token.proton",
+      table: "tokens",
+      scope: "token.proton",
+      limit: 200,
+      lower_bound: lower,
+    });
+    const batch = data.rows || [];
+    if (!batch.length) break;
+    rows.push(...batch);
+    const lastId = Number(batch[batch.length - 1].id);
+    if (!Number.isFinite(lastId)) break;
+    if (!data.more) break;
+    lower = lastId + 1;
+  }
+  return rows;
+}
+
+const rows = allTokenRows();
+const picks = [];
+for (const row of rows) {
+  const contract = String(row.tcontract || "");
+  if (!WANT_CONTRACT.has(contract)) continue;
+  const code = parseCode(row.symbol);
+  if (!wanted(contract, code)) continue;
+  const iconurl = String(row.iconurl || "").trim();
+  if (!/^https?:\/\//i.test(iconurl)) continue;
+  picks.push({
+    contract,
+    symbol: code,
+    iconurl,
+    tname: String(row.tname || ""),
+  });
+}
+
+picks.sort((a, b) => a.contract.localeCompare(b.contract) || a.symbol.localeCompare(b.symbol));
+
+const manifest = { ...KEEP };
+const failures = [];
+
+for (const p of picks) {
+  const dir = path.join(ROOT, "public", "tokens", p.contract);
+  await mkdir(dir, { recursive: true });
+  const tmp = path.join(dir, `${p.symbol}.download`);
+  try {
+    const { code, type } = curlFile(p.iconurl, tmp);
+    if (code < 200 || code >= 300) {
+      failures.push(`${p.contract}:${p.symbol} HTTP ${code}`);
+      continue;
+    }
+    const ext = extFor(type, p.iconurl);
+    const destRel = `/tokens/${p.contract}/${p.symbol}.${ext}`;
+    const dest = path.join(ROOT, "public", destRel.replace(/^\//, ""));
+    if (existsSync(dest) && !FORCE) {
+      spawnSync("rm", ["-f", tmp]);
+      manifest[`${p.contract}:${p.symbol}`] = destRel;
+      continue;
+    }
+    spawnSync("mv", [tmp, dest]);
+    manifest[`${p.contract}:${p.symbol}`] = destRel;
+    console.log("saved", destRel, "from", p.iconurl);
+  } catch (err) {
+    spawnSync("rm", ["-f", tmp]);
+    failures.push(`${p.contract}:${p.symbol} ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+const keys = Object.keys(manifest).sort();
+const lines = [
+  "/** Generated by scripts/sync-token-icons.mjs from token.proton iconurl. Do not edit by hand. */",
+  "export const TOKEN_ICON_SRC: Record<string, string> = {",
+  ...keys.map((k) => `  ${JSON.stringify(k)}: ${JSON.stringify(manifest[k])},`),
+  "};",
+  "",
+];
+await writeFile(path.join(ROOT, "src/config/tokenIconManifest.ts"), lines.join("\n"));
+console.log("wrote manifest", keys.length, "icons");
+if (failures.length) {
+  console.error("failures:\n" + failures.join("\n"));
+  process.exit(1);
+}

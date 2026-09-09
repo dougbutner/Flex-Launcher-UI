@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { TokenIcon } from "@/components/TokenIcon";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
 import {
@@ -147,7 +148,13 @@ export default function Token() {
               Leaderboard
             </Link>
           </p>
-          <h1 className="mt-1 font-mono text-3xl font-black tracking-tight">${sym}</h1>
+          <div className="mt-1 flex items-center gap-3">
+            <TokenIcon contract={code} symbol={sym} size={48} rounded="xl" />
+            <h1 className="font-mono text-3xl font-black tracking-tight">${sym}</h1>
+            {quoteSymbol ? (
+              <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={28} />
+            ) : null}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {program} @{" "}
             <a href={explorerAccount(code)} target="_blank" rel="noopener noreferrer" className="link font-mono">
