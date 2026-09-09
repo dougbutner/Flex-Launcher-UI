@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FLEX_PROGRAMS, LOCK_MIN_DAYS, flexAccount, flexMeta } from "@/config/launch";
+import { FLEX_PROGRAMS, LOCK_MIN_DAYS, SWAP_ALCOR, flexAccount, flexMeta } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { planFromDraft } from "@/components/launch/draftPlan";
@@ -17,10 +17,10 @@ import {
   type ChainAction,
 } from "@/services/launchActions";
 import { unlockTimeUnix, type LaunchPlan } from "@/services/launchMath";
-import { findPool, readAlcorSystem, readPool } from "@/services/flexTables";
+import { readAlcorSystem, readPool, resolvePoolIdAfterCreatepool } from "@/services/flexTables";
 import { assetAmountNumber } from "@/services/assets";
-import { hintForError, logpoolIdFromResult, txErrorMessage, txIdFromResult } from "@/services/txParse";
-import { runPreflight, type PreflightItem } from "@/services/preflight";
+import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { runCreateGates, runPreflight, type PreflightItem } from "@/services/preflight";
 
 type Props = {
   draft: LaunchDraft;
@@ -33,6 +33,7 @@ type ExecDef = {
   id: string;
   label: string;
   detail: string;
+  sig: string;
   txOf: (d: LaunchDraft) => string;
   build: (ctx: { actor: string; plan: LaunchPlan; draft: LaunchDraft }) => Promise<ChainAction[] | "skip">;
   after?: (ctx: {
@@ -61,6 +62,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       id: "create",
       label: "Create token",
       detail: `create on ${code}`,
+      sig: `${code}::create`,
       txOf: (d) => d.createTx,
       build: async ({ actor, plan }) => [createTokenAction(code, actor, plan.fullSupply)],
     },
@@ -68,6 +70,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       id: "supply",
       label: meta.supply === "issue" ? "Issue 100%" : "Mint 100%",
       detail: `${meta.supply} full supply to issuer`,
+      sig: `${code}::${meta.supply}`,
       txOf: (d) => d.mintTx,
       build: async ({ actor, plan }) => [supplyAction(code, meta.supply, actor, plan.fullSupply)],
     },
@@ -75,6 +78,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       id: "startlaunch",
       label: "Start launch",
       detail: `Quote, fee, ticks, sqrtPriceX64 on ${code}`,
+      sig: `${code}::startlaunch`,
       txOf: (d) => d.startTx,
       build: async ({ plan, draft: d }) => [
         startlaunchAction(code, plan, Number(d.proofPoolId || 0), d.swapUnderlyingDefault),
@@ -84,22 +88,19 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       id: "createpool",
       label: "Create Alcor pool",
       detail: "Zero-amount extended assets, same sqrt price",
+      sig: `${SWAP_ALCOR}::createpool`,
       txOf: (d) => d.poolTx,
       build: async ({ actor, plan }) => [createpoolAction(actor, plan)],
       after: async ({ result, patch, plan }) => {
-        let poolId = logpoolIdFromResult(result);
-        if (poolId == null) {
-          const found = await findPool(plan.tokenA, plan.tokenB, plan.fee);
-          poolId = found ? Number(found.id) : null;
-        }
-        if (poolId == null) throw new Error("Pool created but id not detected - enter it manually below.");
-        patch({ poolId });
+        const poolId = await resolvePoolIdAfterCreatepool(result, plan);
+        if (poolId != null) patch({ poolId });
       },
     },
     {
       id: "activate",
       label: "Activate pool",
       detail: "Pay activeFee only if the pool starts inactive",
+      sig: `transfer memo activepool#id`,
       txOf: (d) => d.activateTx,
       build: async ({ actor, draft: d }) => {
         const poolId = d.poolId;
@@ -115,6 +116,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       id: "deposit",
       label: "Deposit 100% of supply",
       detail: "transfer to swap.alcor, memo “deposit”",
+      sig: `${code}::transfer`,
       txOf: (d) => d.depositTx,
       build: async ({ actor, plan }) => [depositAction(code, actor, plan.fullSupply)],
     },
@@ -122,6 +124,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       id: "addliquid",
       label: "Add one-sided liquidity",
       detail: "Full supply into the startlaunch ticks",
+      sig: `${SWAP_ALCOR}::addliquid`,
       txOf: (d) => d.rangeTx,
       build: async ({ actor, plan, draft: d }) => {
         if (d.poolId == null) throw new Error("Missing pool id.");
@@ -132,6 +135,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       id: "lockpos",
       label: "Lock position",
       detail: `≥ ${LOCK_MIN_DAYS} days - collect still works, subliquid fails`,
+      sig: `${SWAP_ALCOR}::lockpos`,
       txOf: (d) => d.lockTx,
       build: async ({ actor, plan, draft: d }) => {
         if (d.poolId == null) throw new Error("Missing pool id.");
@@ -151,7 +155,25 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
   const [preflightBusy, setPreflightBusy] = useState(false);
   const [liftoffError, setLiftoffError] = useState("");
   const [manualPoolId, setManualPoolId] = useState("");
+  const [gates, setGates] = useState<PreflightItem[] | null>(null);
+  const [gatesBusy, setGatesBusy] = useState(false);
   const code = flexAccount(draft.program);
+
+  const checkGates = useCallback(async () => {
+    if (!actor || draft.createTx) return;
+    setGatesBusy(true);
+    try {
+      setGates(await runCreateGates(draft.program, draft.symbol, actor));
+    } catch {
+      setGates(null);
+    } finally {
+      setGatesBusy(false);
+    }
+  }, [actor, draft.createTx, draft.program, draft.symbol]);
+
+  useEffect(() => {
+    void checkGates();
+  }, [checkGates]);
 
   const run = async (step: ExecDef) => {
     if (!actor || !plan) return;
@@ -165,10 +187,10 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
         return;
       }
       const result = await transact(actions);
-      await step.after?.({ result, patch, plan });
       const txId = txIdFromResult(result) || "ok";
       const key = TX_KEY[step.id];
       if (key) patch({ [key]: txId } as Partial<LaunchDraft>);
+      await step.after?.({ result, patch, plan });
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
@@ -222,6 +244,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
   }
 
   const preflightOk = preflight != null && preflight.every((i) => i.pass);
+  const gatesOk = !gates || gates.every((i) => i.pass);
 
   return (
     <StepShell
@@ -238,12 +261,37 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
         </>
       }
     >
+      {!draft.createTx ? (
+        <div className="space-y-2 rounded-xl border border-border bg-background/40 p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold">Before create</span>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={gatesBusy || !actor} onClick={() => void checkGates()}>
+              {gatesBusy ? "Checking…" : "Re-check"}
+            </button>
+          </div>
+          {gates ? (
+            <ul className="space-y-1.5">
+              {gates.map((item) => (
+                <li key={item.id} className="flex items-center gap-2 text-xs">
+                  <StatusIcon state={item.pass ? "done" : "error"} />
+                  <span className={item.pass ? "text-foreground" : "text-destructive"}>{item.label}</span>
+                  {item.detail ? <span className="ml-auto text-muted-foreground">{item.detail}</span> : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">{actor ? "Reading chain state…" : "Connect a wallet to check ticker and EASY."}</p>
+          )}
+        </div>
+      ) : null}
+
       <ol className="space-y-2">
         {steps.map((step, i) => {
           const tx = step.txOf(draft);
           const prevDone = i === 0 || Boolean(steps[i - 1].txOf(draft));
           const needsPool = ["activate", "addliquid", "lockpos"].includes(step.id);
-          const ready = prevDone && (!needsPool || draft.poolId != null);
+          const gateBlock = step.id === "create" && !gatesOk;
+          const ready = prevDone && (!needsPool || draft.poolId != null) && !gateBlock;
           const busy = busyId === step.id;
           const err = errors[step.id];
           return (
@@ -260,6 +308,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
                   {tx ? <TxLink tx={tx} /> : null}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">{step.detail}</p>
+                <p className="font-mono text-[11px] text-muted-foreground">{tx ? "Signed" : "Wallet will ask for"} {step.sig}</p>
                 {err ? <p className="mt-1 text-xs font-medium text-destructive">{err}</p> : null}
               </div>
               {!tx ? (
@@ -322,6 +371,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
             <p className="text-xs text-muted-foreground">Reading chain state…</p>
           )}
           {liftoffError ? <p className="text-xs font-medium text-destructive">{liftoffError}</p> : null}
+          <p className="font-mono text-[11px] text-muted-foreground">Wallet will ask for {code}::liftoff</p>
           <button
             type="button"
             className="btn btn-accent btn-lg w-full"

@@ -1,6 +1,7 @@
 import type { ChainAction } from "@/services/launchActions";
 import { getAllTableRows } from "@/services/rpc";
 
+/** Live token.proton::reg/update require tcontract@active. Flex tcontract is 3asy/fl3x/for3x, so the issuer cannot sign. Do not wire this to the issuer wizard. */
 export const TOKEN_PROTON = "token.proton";
 
 export type ProtonTokenRow = {

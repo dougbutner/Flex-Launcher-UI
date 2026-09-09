@@ -136,6 +136,8 @@ describe("mainnet launch flow simulation", () => {
       "liftoff",
     ]);
     expect(steps.find((s) => s.id === "create")?.account).toBe(code);
+    expect(steps.find((s) => s.id === "liftoff")?.name).toBe("liftoff");
+    expect(steps.every((s) => s.account !== "token.proton")).toBe(true);
     expect(steps.find((s) => s.id === "supply")?.name).toBe(supply);
     expect(steps.find((s) => s.id === "createpool")?.account).toBe(SWAP_ALCOR);
     expect(steps.find((s) => s.id === "addliquid")?.account).toBe(SWAP_ALCOR);

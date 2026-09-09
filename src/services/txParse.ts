@@ -41,6 +41,8 @@ export function logpoolIdFromResult(result: unknown): number | null {
   walk(r, acts);
   walk(asRecord(r.processed), acts);
   walk(asRecord(r.response), acts);
+  walk(r.actions, acts);
+  walk(r.traces, acts);
   const log = acts.find((a) => a.name === "logpool");
   const id = log?.data?.poolId ?? log?.data?.pool_id;
   const n = Number(id);

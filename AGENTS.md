@@ -188,7 +188,7 @@ Check strings start with `⟁`. Surface them verbatim.
 ## Screens
 
 1. Connect + **which of the three contracts**.
-2. Create: symbol, precision, max supply, logo (Pinata / URL + `token.proton` if signing as token contract).
+2. Create: symbol, precision, max supply, optional art (Pinata / URL). `token.proton::reg` is `{flex contract}@active`, not the issuer. This UI does not sign it.
 3. Quote: EASY/WON/GRAMS/MEME or xtoken + proof pool.
 4. Range: snap ticks, 90d+ lock.
 5. Execute: create → mint/issue → startlaunch → createpool → activate → deposit → addliquid → lockpos → liftoff.

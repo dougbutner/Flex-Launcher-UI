@@ -3,6 +3,7 @@ import {
   LOCK_MIN_SECONDS,
   MON3Y,
   SWAP_ALCOR,
+  flexAccount,
   flexMeta,
   holdEasyToLaunch,
   type FlexProgram,
@@ -55,6 +56,49 @@ function extMatches(ext: unknown, symbol: string, contract: string): boolean {
   const e = ext as { quantity?: string; contract?: string } | undefined;
   if (!e) return false;
   return e.contract === contract && parseAsset(e.quantity ?? "")?.symbol === symbol;
+}
+
+export function createGateItems(args: {
+  stat: unknown;
+  easyBal: number;
+  need: number;
+  symbol: string;
+  prior: number;
+}): PreflightItem[] {
+  const taken = Boolean(args.stat);
+  return [
+    {
+      id: "ticker",
+      label: `${args.symbol} is free on this contract`,
+      pass: !taken,
+      detail: taken ? "That ticker is taken. Pick another." : "available",
+    },
+    {
+      id: "easy",
+      label: holdEasyToLaunch(args.need),
+      pass: args.easyBal + 1e-12 >= args.need,
+      detail: args.easyBal + 1e-12 >= args.need
+        ? `${args.easyBal.toLocaleString()} / ${args.need.toLocaleString()} EASY · ${args.prior} prior launch${args.prior === 1 ? "" : "es"}`
+        : `Need ${args.need.toLocaleString()} EASY @ mon3y before liftoff`,
+    },
+  ];
+}
+
+export async function runCreateGates(
+  program: FlexProgram,
+  symbol: string,
+  issuer: string
+): Promise<PreflightItem[]> {
+  const code = flexAccount(program);
+  const meta = flexMeta(program);
+  const [stat, easyAcct, prior] = await Promise.all([
+    readStat(code, symbol).catch(() => null),
+    readAccounts(MON3Y, issuer, EASY_SYMBOL).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+    countIssuerLaunched(code, issuer),
+  ]);
+  const need = meta.launchEasyMin * (prior + 1);
+  const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
+  return createGateItems({ stat, easyBal, need, symbol, prior });
 }
 
 export async function countIssuerLaunched(code: string, issuer: string): Promise<number> {

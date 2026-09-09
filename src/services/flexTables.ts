@@ -6,7 +6,9 @@ import {
 } from "@/config/launch";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { symbolCodeToU64 } from "@/services/eosioName";
-import { getAllTableRows, getCurrencyBalance, getTableRows } from "@/services/rpc";
+import { getAllTableRows, getCurrencyBalance, getTableRows, getTransaction } from "@/services/rpc";
+import { logpoolIdFromResult, txIdFromResult } from "@/services/txParse";
+import type { LaunchPlan } from "@/services/launchMath";
 
 /** Numeric primary key for tables keyed by symbol_code.raw() (launches, settings, accounts, balances). */
 function codeBound(symbol?: string): string | undefined {
@@ -96,6 +98,30 @@ export async function readAccounts(code: string, owner: string, symbol?: string)
     upper_bound: codeBound(symbol),
     key_type: symbol ? "i64" : undefined,
   });
+}
+
+async function sleep(ms: number) {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+/** Wallet traces, then Hyperion, then a recent pools scan. Never throws. */
+export async function resolvePoolIdAfterCreatepool(result: unknown, plan: LaunchPlan): Promise<number | null> {
+  let id = logpoolIdFromResult(result);
+  if (id != null) return id;
+  const txId = txIdFromResult(result);
+  if (txId && txId !== "ok") {
+    for (let i = 0; i < 4; i++) {
+      if (i) await sleep(700);
+      try {
+        id = logpoolIdFromResult(await getTransaction(txId));
+        if (id != null) return id;
+      } catch {
+        /* Hyperion can lag the broadcast */
+      }
+    }
+  }
+  const found = await findPool(plan.tokenA, plan.tokenB, plan.fee);
+  return found ? Number(found.id) : null;
 }
 
 export async function findPool(tokenA: { symbol: string; contract: string }, tokenB: { symbol: string; contract: string }, fee: number) {

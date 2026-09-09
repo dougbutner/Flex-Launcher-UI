@@ -42,6 +42,8 @@ import { findXtoken, xtokensByMarketCap } from "@/config/xtokens";
 import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
 import { protonSymbol, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
+import { logpoolIdFromResult } from "@/services/txParse";
+import { createGateItems } from "@/services/preflight";
 import { applyRangeWidth, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { validImageUrl } from "@/services/tokenLogo";
@@ -116,6 +118,16 @@ describe("token.proton logo", () => {
       precision: 4,
       symbol: "FOO",
     }).name).toBe("update");
+    expect(tokenProtonLogoAction({
+      row: null,
+      tcontract: "for3x",
+      tname: "Foo",
+      url: "",
+      desc: "",
+      iconurl: "https://example.com/logo.png",
+      precision: 4,
+      symbol: "FOO",
+    }).authorization).toEqual([{ actor: "for3x", permission: "active" }]);
   });
 
   it("requires a public image URL after a Pinata failure", () => {
@@ -372,5 +384,24 @@ describe("XPR mainnet launcher defaults", () => {
       alcorSwapUrl("EASY", "mon3y", "FOO", "for3x")
     ).toBe("https://alcor.exchange/v/xpr/swap?input=easy-mon3y&output=foo-for3x");
     expect(SWAP_ALCOR).toBe("swap.alcor");
+  });
+});
+
+describe("execute gates and pool id", () => {
+  it("blocks a taken ticker and a short EASY balance", () => {
+    const taken = createGateItems({ stat: { issuer: "alice" }, easyBal: 1000, need: 50000, symbol: "FOO", prior: 0 });
+    expect(taken.find((i) => i.id === "ticker")?.pass).toBe(false);
+    expect(taken.find((i) => i.id === "easy")?.pass).toBe(false);
+    const ok = createGateItems({ stat: null, easyBal: 50000, need: 50000, symbol: "FOO", prior: 0 });
+    expect(ok.every((i) => i.pass)).toBe(true);
+  });
+
+  it("reads logpool id from Hyperion-shaped traces with no wallet inline_traces", () => {
+    expect(logpoolIdFromResult({ processed: { traces: [] } })).toBeNull();
+    expect(
+      logpoolIdFromResult({
+        actions: [{ act: { name: "logpool", data: { poolId: 2142 } } }],
+      })
+    ).toBe(2142);
   });
 });

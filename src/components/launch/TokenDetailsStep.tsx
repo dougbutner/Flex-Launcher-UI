@@ -1,14 +1,12 @@
 import { useRef, useState } from "react";
-import { explorerTx, FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
+import { FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
-import { useWallet } from "@/hooks/useWallet";
 import { tokenStepValid } from "@/components/launch/draftPlan";
 import { Field, StepShell } from "@/components/launch/ui";
 import { validSymbol } from "@/services/assets";
 import { pinLogoFile } from "@/services/ipfsPin";
 import { validateTokenLogo, validImageUrl } from "@/services/tokenLogo";
-import { buildTokenProtonLogoAction } from "@/services/tokenProton";
-import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { txErrorMessage } from "@/services/txParse";
 
 type Props = {
   draft: LaunchDraft;
@@ -18,10 +16,8 @@ type Props = {
 
 export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const { actor, isLoggedIn, transact } = useWallet();
   const invalid = tokenStepValid(draft);
   const [pinning, setPinning] = useState(false);
-  const [signing, setSigning] = useState(false);
   const [logoErr, setLogoErr] = useState("");
   const [urlOpen, setUrlOpen] = useState(Boolean(draft.pinFailed || (draft.imageUrl && !draft.imageCid)));
   const urlReady = validImageUrl(draft.imageUrl);
@@ -29,7 +25,6 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   const showUrl = urlOpen || draft.pinFailed || Boolean(draft.imageUrl && !draft.imageCid);
   const tokenContract = flexAccount(draft.program);
   const programLocked = Boolean(draft.createTx);
-  const canSign = Boolean(isLoggedIn && actor === tokenContract && urlReady && !invalid);
 
   const onImage = async (file: File | undefined) => {
     if (!file) return;
@@ -53,31 +48,6 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
       patch({ pinFailed: true });
     } finally {
       setPinning(false);
-    }
-  };
-
-  const signLogo = async () => {
-    if (!canSign || !actor) return;
-    setSigning(true);
-    setLogoErr("");
-    try {
-      const action = await buildTokenProtonLogoAction({
-        tname: draft.name.trim(),
-        url: draft.website.trim(),
-        desc: draft.description.trim(),
-        iconurl: draft.imageUrl.trim(),
-        precision: draft.precision,
-        symbol: draft.symbol,
-        tcontract: tokenContract,
-      });
-      const result = await transact([action]);
-      patch({ logoTx: txIdFromResult(result) || "ok" });
-    } catch (err) {
-      const msg = txErrorMessage(err);
-      const hint = hintForError(msg);
-      setLogoErr(hint ? `${msg} - ${hint}` : msg);
-    } finally {
-      setSigning(false);
     }
   };
 
@@ -167,7 +137,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
 
       <div className="rounded-2xl border bg-background/50 p-4 text-xs">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="font-semibold text-foreground">WebAuth logo</p>
+          <p className="font-semibold text-foreground">Token art</p>
           {!showUrl ? (
             <button type="button" className="link shrink-0 text-xs" onClick={() => setUrlOpen(true)}>
               or paste a URL
@@ -175,9 +145,9 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           ) : null}
         </div>
         <p className="mt-1 text-muted-foreground">
-          Square PNG or SVG, 256-512px, max 1 MB. Pin to IPFS, or paste a public image URL. Then{" "}
-          <span className="font-mono">token.proton</span> stores that URL. Sign as{" "}
-          <span className="font-mono">{tokenContract}@active</span>.
+          Square PNG or SVG, 256-512px, max 1 MB. Pin to IPFS, or paste a public image URL. Wallets read logos from{" "}
+          <span className="font-mono">token.proton::reg</span>, which must be signed by{" "}
+          <span className="font-mono">{tokenContract}@active</span>, not the issuer. This wizard does not sign that.
         </p>
         {showUrl ? (
           <div className="mt-3">
@@ -210,27 +180,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             </a>
           </p>
         ) : null}
-        {draft.logoTx && draft.logoTx !== "ok" ? (
-          <p className="mt-2">
-            <a href={explorerTx(draft.logoTx)} target="_blank" rel="noopener noreferrer" className="link font-mono">
-              tx {draft.logoTx.slice(0, 12)}…
-            </a>
-          </p>
-        ) : null}
         {logoErr ? <p className="mt-2 font-medium text-destructive">{logoErr}</p> : null}
-        {isLoggedIn && actor !== tokenContract ? (
-          <p className="mt-2 text-warning">
-            Connected as {actor}. Switch to {tokenContract} to register the logo.
-          </p>
-        ) : null}
-        <button
-          type="button"
-          className="btn btn-outline btn-sm mt-3"
-          disabled={!canSign || pinning || signing || Boolean(draft.logoTx)}
-          onClick={() => void signLogo()}
-        >
-          {signing ? "Signing…" : draft.logoTx ? "Logo registered" : "Sign token.proton"}
-        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

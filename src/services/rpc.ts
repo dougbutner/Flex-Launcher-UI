@@ -115,6 +115,25 @@ export type HyperionAction = {
   act?: { account: string; name: string; data?: Record<string, unknown> };
 };
 
+export async function getTransaction(id: string): Promise<Record<string, unknown>> {
+  let last = "get_transaction failed";
+  const q = new URLSearchParams({ id });
+  for (const base of HYPERION_ENDPOINTS) {
+    try {
+      const res = await fetch(`${base}/v2/history/get_transaction?${q}`);
+      if (res.status === 429 || res.status === 503) continue;
+      if (!res.ok) {
+        last = res.statusText;
+        continue;
+      }
+      return (await res.json()) as Record<string, unknown>;
+    } catch (err) {
+      last = err instanceof Error ? err.message : String(err);
+    }
+  }
+  throw new Error(last);
+}
+
 export async function getActions(params: {
   account: string;
   filter?: string;
