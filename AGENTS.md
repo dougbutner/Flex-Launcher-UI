@@ -10,9 +10,9 @@ App UI and wallets: `src/` and `src/services/walletConstants.ts`. Faux UI shapes
 
 ### UI coverage vs ABI
 
-**Shipped:** launch wizard (incl. `swap_underlying_default`), `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot display), token manage page (`/token/:contract/:symbol`) with `setdist` / `ratios` / `setangelnum`, `inheritance` / `inheritmemo`, `addpool` / `choosereward`, `feeoptout`.
+**Shipped:** launch wizard (incl. `swap_underlying_default`), `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot display), token manage (`/token/:contract/:symbol`) with `setdist` / `ratios` / `setangelnum`, easyflex/complexflex `setmin`, `inheritance` / `inheritmemo`, `addpool` / `choosereward`, `feeoptout`.
 
-Gate by program: angel channels = flexforex only; inheritance = complexflex + flexforex; flex-to + feeoptout = all three. Never invent `setconfig` or `receiverand` UI.
+Gate by program: angel channels = flexforex only; inheritance = complexflex + flexforex; `setmin` = easyflex + complexflex; flex-to + feeoptout = all three. Never invent `setconfig` or `receiverand` UI.
 
 ---
 
@@ -23,17 +23,17 @@ Vite + TypeScript, WharfKit / WebAuth (`@proton/web-sdk`). Ticks / `sqrtPriceX64
 ```
 PINATA_JWT=
 PINATA_GATEWAY=gateway.pinata.cloud
-VITE_FLEXFOREX_CONTRACT=flex.mon3y
-VITE_EASYFLEX=mon3y
-VITE_COMPLEXFLEX=gold.mon3y
+VITE_FLEXFOREX_CONTRACT=for3x
+VITE_EASYFLEX=3asy
+VITE_COMPLEXFLEX=fl3x
 VITE_SWAP_ALCOR=swap.alcor
 ```
 
-| Network | chain id | RPC example | flexforex | easyflex | complexflex |
-|---------|----------|-------------|-----------|----------|-------------|
-| XPR mainnet | `384da888112027f0321850a169f737c33e53b388aad48b5adace4bab97f3a223` | `https://proton.eosusa.io` | `flex.mon3y` | `mon3y` | `gold.mon3y` |
-| XPR testnet | `71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd` | `https://proton-testnet.cryptolions.io` | `flexforex` | `easyflex` | `complexflex` |
-| Wire Alcor testnet | `cf4381bcea94e79b2cbb630ca1edd59108b1d159637b2cee7c51d45cdca9c0a7` | `https://wiretest-api.alcor.exchange` | `gudsol.ksxla` | `gudsol.rxkks` | `gudsol.chlru` |
+This app talks to **XPR mainnet only**.
+
+| Network | chain id | RPC | flexforex | easyflex | complexflex |
+|---------|----------|-----|-----------|----------|-------------|
+| XPR mainnet | `384da888112027f0321850a169f737c33e53b388aad48b5adace4bab97f437e0` | `https://proton.greymass.com` | `for3x` | `3asy` | `fl3x` |
 
 Load ABIs with `get_abi` / `get_raw_abi`. `sqrt_price_x64` is `uint128` (decimal string in JSON).
 
@@ -112,7 +112,7 @@ Pretty price caps are **UI-only**. Contract checks fee, tick spacing, ±443636, 
 
 Suggested quote caps (not on-chain): EASY 1e6 / token, WON 1e4, GRAMS 1e3, MEME 1e11, xtokens unbounded.
 
-Issuer pays **5,000.0000 XPR** RAM to the **token contract** (`eosio::buyram`) before `create`. That is not Alcor pool RAM.
+Do not call `eosio::buyram` for the token contract. The wizard starts at `create`. Alcor pool RAM on `createpool` is separate and stays on the issuer path.
 
 ### A - `create`
 
@@ -174,6 +174,7 @@ Split txs. Never `liftoff` in the same tx as `createpool`.
 | `makeitrain` | signer (`sender` or `keeper`) | Always `require_auth` of that name. flexforex ABI field is `keeper`. Signer pays RAM for new holder rows. Splashes 38.2% of `reflection_pool`. |
 | `checklock` | anyone | After `unlock_time`, may raise protocol skim once. |
 | `setdist` / `ratios` / `setangelnum` / `pullangel` / `pulljackpot` | see ABI | flexforex only |
+| `setmin` | issuer | easyflex + complexflex (live 3asy / fl3x) |
 | `inheritance` / `inheritmemo` | flexer or contract | not easyflex |
 
 Flex payout memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#reflections`

@@ -12,7 +12,7 @@ export type XtokenRow = {
 const ALCOR_TOKENS = "https://proton.alcor.exchange/api/v2/tokens";
 const ALCOR_MARKETS = "https://proton.alcor.exchange/api/markets";
 
-/** Offline / testnet fallback ordered roughly by mainnet popularity. */
+/** Offline fallback ordered roughly by mainnet popularity. */
 export const XTOKEN_FALLBACK: XtokenRow[] = [
   { symbol: "XUSDC", precision: 6, usdPrice: 1, score: 98, volume: 1e9 },
   { symbol: "XXRP", precision: 6, usdPrice: 0, score: 90, volume: 9e8 },
@@ -31,7 +31,6 @@ export const XTOKEN_FALLBACK: XtokenRow[] = [
   { symbol: "XBCH", precision: 8, usdPrice: 0, score: 64, volume: 5e7 },
   { symbol: "XPAXG", precision: 8, usdPrice: 0, score: 62, volume: 4e7 },
   { symbol: "XDC", precision: 4, usdPrice: 0, score: 60, volume: 3e7 },
-  { symbol: "FOOBAR", precision: 6, usdPrice: 0, score: 25, volume: 1e6 },
 ];
 
 export const XTOKEN_TOP_N = 10;

@@ -30,9 +30,7 @@ Suggested stack: Vite + TypeScript, [WharfKit](https://wharfkit.com/) (or WebAut
 | XPR | `eosio.token` | Proof quote for xtoken eligibility (`XPR`, precision 4) |
 | XUSDC | `xtokens` | Proof quote (`XUSDC`, typically precision 6) |
 
-Wallet: [WebAuth](https://webauth.com/getStarted). The **issuer** (the account that pays **contract RAM**, `forge`, and Alcor RAM) must sign every launch step.
-
-**Contract RAM (required, UI-enforced):** before `forge`, the issuer buys **5,000.0000 XPR** of RAM **for the flexforex contract** (`eosio::buyram`, `receiver` = flexforex). That gift pays for the new `stat` / `launches` / holder tables. Show the issuer’s XPR balance and disable Forge until this tx succeeds for the current draft. This is not the same as Alcor pool RAM (paid later on `createpool`).
+Wallet: [WebAuth](https://webauth.com/getStarted). The **issuer** signs every launch step. This file is stale on action names. The live UI does **not** gift contract RAM (`eosio::buyram`) before create.
 
 ---
 
@@ -50,7 +48,6 @@ The **contract** only checks Alcor math (fee tier, tick spacing, ±443636, one-s
 
 Also in the UI (not all on-chain):
 
-- **Buy 5,000 XPR of RAM for flexforex** (`eosio::buyram`) before `forge` — see §4 Step 0.
 - Always a **one-sided** range: deposit **only** the new flex token; quote desired amount is `0`.
 - **Lock at least 90 days** (`unlockTime >= now + 7776000`).
 - Mint **100% of `maximum_supply`** to the issuer, then deposit **all of it** into the position (no leftover Alcor “balances” row).
@@ -98,38 +95,13 @@ Find a new pool after `createpool`: listen for inline action `logpool` (`poolId`
 
 ## 4. Wizard steps (exact order)
 
-Use a stepper. Persist `token_symbol`, precision, `maximum_supply`, quote, ticks, `sqrtPriceX64`, `poolId`, and **RAM purchase** in local state. The issuer signs with WebAuth.
-
-### Step 0 — Buy 5,000 XPR of RAM for the contract
-
-**Contract:** `eosio`  
-**Action:** `buyram`  
-**Auth:** `issuer@active` (issuer pays; RAM is credited to **flexforex**)
-
-```json
-{
-  "payer": "alice",
-  "receiver": "flexforex",
-  "quant": "5000.0000 XPR"
-}
-```
-
-`quant` is always **`5000.0000 XPR`** (`eosio.token`, precision 4). Do **not** use `buyrambytes` for this step — the product rule is a **5,000 XPR** gift, not a byte target.
-
-UI must:
-
-1. Read the issuer’s XPR balance (`get_currency_balance` on `eosio.token`). Disable the button if balance &lt; 5,000 XPR.
-2. Read flexforex `get_account` (`ram_quota` / `ram_usage`) so the issuer can see contract headroom before and after.
-3. Block **Forge** (and later steps) until this draft has a successful `buyram` (store the tx id next to `token_symbol`).
-4. Explain that RAM stays on the **contract** account (it is not refunded to the issuer) and that Alcor pool RAM is a **later**, separate cost on `createpool`.
-
-If `VITE_FLEXFOREX_CONTRACT` is not a live account yet, show that error from the chain and do not skip the step.
+Use a stepper. Persist `token_symbol`, precision, `maximum_supply`, quote, ticks, `sqrtPriceX64`, and `poolId` in local state. The issuer signs with WebAuth. Do not add a contract RAM gift step.
 
 ### Step A — Forge
 
 **Contract:** flexforex  
 **Action:** `forge`  
-**Auth:** `issuer@active` (issuer pays RAM)
+**Auth:** `issuer@active`
 
 ```json
 {
@@ -409,14 +381,13 @@ Table reads: `get_table_rows` with `json: true`. For `stat` / `accounts`, `scope
 
 ## 9. Suggested screens
 
-1. **Connect wallet** (WebAuth) + show XPR balance (need **≥ 5,000 XPR** for contract RAM, plus extra for Alcor / possible `activeFee`).
+1. **Connect wallet** (WebAuth).
 2. **Create token** — image, display name, ticker, precision, max supply, preview (Clanker-style deploy form).
-3. **Contract RAM** — one-shot `buyram` of **5,000.0000 XPR** to flexforex; show contract `ram_quota` / `ram_usage`; required before Forge.
-4. **Pick quote** — EASY / WON / GRAMS / MEME / xtoken picker (xtoken: user pastes or selects a proof pool; UI verifies TVL).
-5. **Range** — chart or two prices; snap ticks; show one-sided warning; lock duration (min 90 days).
-6. **Review** — RAM paid, sorted tokenA/B, fee, start price, 100% deposit, lock date.
-7. **Execute** — buttons per tx with status (RAM, forged, minted, registered, pool id, active, deposited, ranged, locked, stamped).
-8. **Done** — Alcor swap deep link `https://alcor.exchange/v/xpr/swap?input=QUOTE-contract&output=FOO-flexforex`, explorer links, `launched` badge.
+3. **Pick quote** — EASY / WON / GRAMS / MEME / xtoken picker (xtoken: user pastes or selects a proof pool; UI verifies TVL).
+4. **Range** — chart or two prices; snap ticks; show one-sided warning; lock duration (min 90 days).
+5. **Review** — sorted tokenA/B, fee, start price, 100% deposit, lock date.
+6. **Execute** — buttons per tx with status (created, minted, registered, pool id, active, deposited, ranged, locked, stamped).
+7. **Done** — Alcor swap deep link `https://alcor.exchange/v/xpr/swap?input=QUOTE-contract&output=FOO-flexforex`, explorer links, `launched` badge.
 
 Same app, other routes (not the wizard):
 
@@ -430,7 +401,7 @@ Same app, other routes (not the wizard):
 
 | Message (substring) | User-facing hint |
 |---------------------|------------------|
-| `overdrawn balance` / `insufficient` | Need **≥ 5,000 XPR** for contract RAM, plus extra for Alcor. |
+| `overdrawn balance` / `insufficient` | Need XPR for Alcor pool create / possible `activeFee`. |
 | `unknown key` / `unable to retrieve account` | `VITE_FLEXFOREX_CONTRACT` is not a live account. |
 | `Place a one-sided Alcor range` | Token not stamped; finish lock + stamp. Cannot send except to `swap.alcor`. |
 | `reglaunch first` | Run register before stamp. |

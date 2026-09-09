@@ -2,15 +2,39 @@ import { describe, expect, it } from "vitest";
 import { formatAsset, validSymbol, zeroAsset } from "@/services/assets";
 import { compareExtTokens, nameToU64, sortPair, symbolCodeToU64 } from "@/services/eosioName";
 import { planLaunch } from "@/services/launchMath";
-import { createTokenAction, checklockAction, payoutAction, pullangelAction, pulljackpotAction, startlaunchAction, supplyAction, ratiosAction, setdistAction, setangelnumAction, addpoolAction, chooserewardAction, feeoptoutAction, inheritanceAction, inheritmemoAction, abiSymbol } from "@/services/launchActions";
 import {
+  createTokenAction,
+  checklockAction,
+  payoutAction,
+  pullangelAction,
+  pulljackpotAction,
+  startlaunchAction,
+  supplyAction,
+  ratiosAction,
+  setdistAction,
+  setangelnumAction,
+  addpoolAction,
+  chooserewardAction,
+  feeoptoutAction,
+  inheritanceAction,
+  inheritmemoAction,
+  abiSymbol,
+  setminAction,
+} from "@/services/launchActions";
+import {
+  COMPLEXFLEX_CONTRACT,
+  EASYFLEX_CONTRACT,
+  FLEXFOREX_CONTRACT,
   MON3Y,
   QUOTE_PRESETS,
-  TESTNET_PROOF_XTOKEN,
+  SWAP_ALCOR,
+  XUSDC_SYMBOL,
+  alcorSwapUrl,
   flexAccount,
   flexMeta,
   hasAngelChannels,
   hasInheritance,
+  hasSetmin,
   holdEasyToLaunch,
   programFromAccount,
 } from "@/config/launch";
@@ -157,9 +181,12 @@ describe("launch plan", () => {
       token_symbol: "BAR",
       keeper: "alice",
     });
-    expect(flexAccount("easyflex")).toBe("easyflex");
-    expect(flexAccount("complexflex")).toBe("complexflex");
-    expect(flexAccount("flexforex")).toBe("flexforex");
+    expect(flexAccount("easyflex")).toBe(EASYFLEX_CONTRACT);
+    expect(flexAccount("complexflex")).toBe(COMPLEXFLEX_CONTRACT);
+    expect(flexAccount("flexforex")).toBe(FLEXFOREX_CONTRACT);
+    expect(EASYFLEX_CONTRACT).toBe("3asy");
+    expect(COMPLEXFLEX_CONTRACT).toBe("fl3x");
+    expect(FLEXFOREX_CONTRACT).toBe("for3x");
     expect(flexMeta("easyflex").launchEasyMin).toBe(5000);
     expect(flexMeta("complexflex").launchEasyMin).toBe(10000);
     expect(flexMeta("flexforex").launchEasyMin).toBe(50000);
@@ -252,7 +279,17 @@ describe("holder and issuer manage actions", () => {
     expect(hasAngelChannels("easyflex")).toBe(false);
     expect(hasInheritance("complexflex")).toBe(true);
     expect(hasInheritance("easyflex")).toBe(false);
-    expect(programFromAccount("flexforex")).toBe("flexforex");
+    expect(programFromAccount("for3x")).toBe("flexforex");
+    expect(programFromAccount("3asy")).toBe("easyflex");
+    expect(programFromAccount("fl3x")).toBe("complexflex");
+    expect(hasSetmin("easyflex")).toBe(true);
+    expect(hasSetmin("complexflex")).toBe(true);
+    expect(hasSetmin("flexforex")).toBe(false);
+    expect(setminAction("3asy", "FOO", 0)).toEqual({
+      account: "3asy",
+      name: "setmin",
+      data: { token_symbol: "FOO", reflect_min: 0 },
+    });
   });
 });
 
@@ -309,26 +346,31 @@ describe("local token icons", () => {
   it("maps token.proton xtokens and flex quotes to /tokens paths", () => {
     expect(tokenIconKey("xtokens", "xbtc")).toBe("xtokens:XBTC");
     expect(localTokenIconSrc("xtokens", "XBTC")).toBe("/tokens/xtokens/XBTC.png");
-    expect(localTokenIconSrc("xtokens", "FOOBAR")).toBe("/tokens/xtokens/FOOBAR.png");
+    expect(localTokenIconSrc("xtokens", "XUSDC")).toBe("/tokens/xtokens/XUSDC.png");
     expect(localTokenIconSrc("eosio.token", "XPR")).toBe("/tokens/eosio.token/XPR.png");
     expect(localTokenIconSrc("mon3y", "EASY")).toBe("/tokens/easy.png");
     expect(localTokenIconSrc("flexforex", "UUU")).toBeUndefined();
   });
 });
 
-describe("XPR testnet launcher defaults", () => {
-  it("uses a valid WebAuth request account and FOOBAR proof quote", () => {
+describe("XPR mainnet launcher defaults", () => {
+  it("uses a valid WebAuth request account and mainnet quotes", () => {
     expect(REQUEST_ACCOUNT.length).toBeLessThanOrEqual(12);
     expect(REQUEST_ACCOUNT).toBe("flexlaunch");
     expect(QUOTE_PRESETS.find((q) => q.id === "easy")?.contract).toBe(MON3Y);
-    expect(QUOTE_PRESETS.find((q) => q.id === "xtoken")?.symbol).toBe(TESTNET_PROOF_XTOKEN);
+    expect(QUOTE_PRESETS.find((q) => q.id === "xtoken")?.symbol).toBe(XUSDC_SYMBOL);
     expect(QUOTE_PRESETS.find((q) => q.id === "xpr")?.contract).toBe("eosio.token");
     expect(QUOTE_PRESETS.find((q) => q.id === "xmd")?.contract).toBe("xmd.token");
     expect(QUOTE_PRESETS.find((q) => q.id === "loan")?.contract).toBe("loan.token");
     const d = emptyDraft();
-    expect(d.quoteId).toBe("xtoken");
-    expect(d.xtokenSymbol).toBe(TESTNET_PROOF_XTOKEN);
+    expect(d.quoteId).toBe("easy");
+    expect(d.xtokenSymbol).toBe(XUSDC_SYMBOL);
+    expect(d.proofPoolId).toBe("0");
     expect(d.swapUnderlyingDefault).toBe(true);
     expect(d.precision).toBe(6);
+    expect(
+      alcorSwapUrl("EASY", "mon3y", "FOO", "for3x")
+    ).toBe("https://alcor.exchange/v/xpr/swap?input=easy-mon3y&output=foo-for3x");
+    expect(SWAP_ALCOR).toBe("swap.alcor");
   });
 });

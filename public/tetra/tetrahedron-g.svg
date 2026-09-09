@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" fill="none" role="img" aria-labelledby="tgTitle tgDesc">
+  <title id="tgTitle">Tetrahedron G</title>
+  <desc id="tgDesc">Nested tetrahedron, top-down. Outer tetrahedron, medial inverted face, and three corner tetras meeting at the centroid.</desc>
+  <defs>
+    <filter id="tg-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.2" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!--
+    Construction (top-down tetrahedron-in-tetrahedron):
+    A outer apex, B left base, C right base.
+    M* = side midpoints = vertices of the inverted medial tetra.
+    G = centroid. Corner tetras: A-Mab-Mca, B-Mab-Mbc, C-Mca-Mbc.
+  -->
+  <g stroke="currentColor" stroke-width="1.15" stroke-linejoin="miter" stroke-linecap="butt" filter="url(#tg-glow)">
+    <!-- Outer tetra -->
+    <polygon points="120,10 8,204 232,204"/>
+    <!-- Medial inverted tetra -->
+    <polygon points="64,107 120,204 176,107"/>
+    <!-- Apex rays to vertices + midpoints -->
+    <line x1="120" y1="139.333" x2="120" y2="10"/>
+    <line x1="120" y1="139.333" x2="8" y2="204"/>
+    <line x1="120" y1="139.333" x2="232" y2="204"/>
+    <line x1="120" y1="139.333" x2="64" y2="107"/>
+    <line x1="120" y1="139.333" x2="120" y2="204"/>
+    <line x1="120" y1="139.333" x2="176" y2="107"/>
+    <!-- Corner A nested tetra -->
+    <line x1="120" y1="74.667" x2="120" y2="10"/>
+    <line x1="120" y1="74.667" x2="64" y2="107"/>
+    <line x1="120" y1="74.667" x2="176" y2="107"/>
+    <line x1="92" y1="58.5" x2="148" y2="58.5"/>
+    <line x1="92" y1="58.5" x2="120" y2="107"/>
+    <line x1="148" y1="58.5" x2="120" y2="107"/>
+    <!-- Corner B nested tetra -->
+    <line x1="64" y1="171.667" x2="8" y2="204"/>
+    <line x1="64" y1="171.667" x2="64" y2="107"/>
+    <line x1="64" y1="171.667" x2="120" y2="204"/>
+    <line x1="36" y1="155.5" x2="64" y2="204"/>
+    <line x1="36" y1="155.5" x2="92" y2="155.5"/>
+    <line x1="64" y1="204" x2="92" y2="155.5"/>
+    <!-- Corner C nested tetra -->
+    <line x1="176" y1="171.667" x2="232" y2="204"/>
+    <line x1="176" y1="171.667" x2="176" y2="107"/>
+    <line x1="176" y1="171.667" x2="120" y2="204"/>
+    <line x1="204" y1="155.5" x2="176" y2="204"/>
+    <line x1="204" y1="155.5" x2="148" y2="155.5"/>
+    <line x1="176" y1="204" x2="148" y2="155.5"/>
+  </g>
+  <circle cx="120" cy="139.333" r="2.2" fill="currentColor"/>
+</svg>

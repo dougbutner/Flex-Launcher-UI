@@ -2,10 +2,9 @@ import { CHAIN_ENDPOINTS } from "@/services/walletConstants";
 
 export type FlexProgram = "easyflex" | "complexflex" | "flexforex";
 
-export const FLEXFOREX_CONTRACT =
-  import.meta.env.VITE_FLEXFOREX_CONTRACT?.trim() || "flexforex";
-export const EASYFLEX_CONTRACT = import.meta.env.VITE_EASYFLEX?.trim() || "easyflex";
-export const COMPLEXFLEX_CONTRACT = import.meta.env.VITE_COMPLEXFLEX?.trim() || "complexflex";
+export const FLEXFOREX_CONTRACT = import.meta.env.VITE_FLEXFOREX_CONTRACT?.trim() || "for3x";
+export const EASYFLEX_CONTRACT = import.meta.env.VITE_EASYFLEX?.trim() || "3asy";
+export const COMPLEXFLEX_CONTRACT = import.meta.env.VITE_COMPLEXFLEX?.trim() || "fl3x";
 export const SWAP_ALCOR = import.meta.env.VITE_SWAP_ALCOR?.trim() || "swap.alcor";
 
 /** Hardcoded in all three contracts as MON3Y - liftoff reads EASY here, not VITE_EASYFLEX. */
@@ -29,7 +28,8 @@ export const FLEX_PROGRAMS: Array<{
     supply: "issue",
     payoutSigner: "sender",
     launchEasyMin: 5_000,
-    vaults: ["alcor", EASYFLEX_CONTRACT, SWAP_ALCOR],
+    /** C++ makeitrain denom excludes these accounts (not the program contract). */
+    vaults: ["alcor", MON3Y, SWAP_ALCOR],
   },
   {
     id: "complexflex",
@@ -38,7 +38,7 @@ export const FLEX_PROGRAMS: Array<{
     supply: "mint",
     payoutSigner: "sender",
     launchEasyMin: 10_000,
-    vaults: ["alcor", COMPLEXFLEX_CONTRACT, SWAP_ALCOR],
+    vaults: ["alcor", "gold.mon3y", SWAP_ALCOR],
   },
   {
     id: "flexforex",
@@ -47,7 +47,7 @@ export const FLEX_PROGRAMS: Array<{
     supply: "mint",
     payoutSigner: "keeper",
     launchEasyMin: 50_000,
-    vaults: ["alcor", COMPLEXFLEX_CONTRACT, SWAP_ALCOR],
+    vaults: ["alcor", "gold.mon3y", SWAP_ALCOR],
   },
 ];
 
@@ -77,6 +77,11 @@ export function hasInheritance(program: FlexProgram): boolean {
   return program === "complexflex" || program === "flexforex";
 }
 
+/** Live 3asy / fl3x ABI: issuer `setmin`. for3x uses `setdist.reflect_min` instead. */
+export function hasSetmin(program: FlexProgram): boolean {
+  return program === "easyflex" || program === "complexflex";
+}
+
 export function holdEasyToLaunch(amount: number) {
   return `Hold ${amount.toLocaleString()} EASY to launch`;
 }
@@ -95,11 +100,8 @@ export const XUSDC_SYMBOL = "XUSDC";
 export const XMD_SYMBOL = "XMD";
 export const LOAN_SYMBOL = "LOAN";
 
-export const EXPLORER = "https://testnet.explorer.xprnetwork.org";
-export const FAUCET_URL = "https://resources.xprnetwork.org/faucet";
-export const XPR_TESTNET_CHAIN_ID = "71ee83bcf52142d61019d95f9cc5427ba6a0d7ff8accd9e2088ae2abeaf3d3dd";
-export const TESTNET_PROOF_XTOKEN = "FOOBAR";
-export const TESTNET_PROOF_POOL_ID = "0";
+export const EXPLORER = "https://explorer.xprnetwork.org";
+export const ALCOR_SWAP = "https://alcor.exchange/v/xpr/swap";
 
 export const LOCK_MIN_SECONDS = 7_776_000;
 export const LOCK_MIN_DAYS = 90;
@@ -228,7 +230,7 @@ export const QUOTE_PRESETS: QuotePreset[] = [
   },
   {
     id: "xtoken",
-    symbol: "FOOBAR",
+    symbol: XUSDC_SYMBOL,
     contract: XTOKENS,
     precision: 6,
     priceLower: "0.000001",
@@ -245,10 +247,7 @@ export function quoteNeedsProof(preset: QuotePreset | undefined): boolean {
 
 export const RPC_ENDPOINTS = [...CHAIN_ENDPOINTS];
 
-export const HYPERION_ENDPOINTS = [
-  "https://test.proton.eosusa.io",
-  "https://api-xprnetwork-test.saltant.io",
-];
+export const HYPERION_ENDPOINTS = ["https://proton.eosusa.io"];
 
 export function explorerAccount(name: string) {
   return `${EXPLORER}/account/${name}`;
@@ -258,8 +257,10 @@ export function explorerTx(id: string) {
   return `${EXPLORER}/transaction/${id}`;
 }
 
-export function alcorSwapUrl(_quoteSymbol: string, _quoteContract: string, _tokenSymbol: string, tokenContract: string) {
-  return explorerAccount(tokenContract);
+export function alcorSwapUrl(quoteSymbol: string, quoteContract: string, tokenSymbol: string, tokenContract: string) {
+  const input = `${quoteSymbol.toLowerCase()}-${quoteContract}`;
+  const output = `${tokenSymbol.toLowerCase()}-${tokenContract}`;
+  return `${ALCOR_SWAP}?input=${encodeURIComponent(input)}&output=${encodeURIComponent(output)}`;
 }
 
 export function tickSpacing(fee: number) {

@@ -1,14 +1,14 @@
-import { EXPLORER, FAUCET_URL } from "@/config/launch";
+import { EXPLORER, SWAP_ALCOR, explorerAccount } from "@/config/launch";
 
 export function NetworkSwitcher() {
   return (
     <p className="text-center font-mono text-[11px] tracking-wide text-muted-foreground">
       <a href={EXPLORER} target="_blank" rel="noopener noreferrer" className="link">
-        xprtestnet
+        XPR Network
       </a>
       {" · "}
-      <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="link">
-        faucet
+      <a href={explorerAccount(SWAP_ALCOR)} target="_blank" rel="noopener noreferrer" className="link">
+        {SWAP_ALCOR}
       </a>
     </p>
   );

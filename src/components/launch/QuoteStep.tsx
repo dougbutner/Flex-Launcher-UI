@@ -54,7 +54,7 @@ function QuoteCard({
           <span className="font-mono text-base font-bold">{preset.label}</span>
         </span>
         {unavailable ? (
-          <span className="chip-muted">not on testnet</span>
+          <span className="chip-muted">not on chain</span>
         ) : preset.flexQuote ? (
           <span className="chip-success">0% skim</span>
         ) : (
@@ -440,7 +440,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
 
       <p className="text-xs text-muted-foreground">
         Skim chips are the liftoff starting rates. After the Alcor lock expires, checklock (or makeitrain) can add
-        +0.25% each to nyra and reflections.
+        +0.25% each to dev and club.
       </p>
 
       <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">

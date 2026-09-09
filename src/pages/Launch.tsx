@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FAUCET_URL, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
+import { SWAP_ALCOR, allFlexAccounts, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
 import { useLaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { Stepper, type WizardStep } from "@/components/launch/Stepper";
@@ -36,7 +36,7 @@ export default function Launch() {
       {
         id: "quote",
         title: "Quote pair",
-        desc: "xtoken proof pool",
+        desc: "Backing market",
         done: !quoteStepValid(draft) && tokenOk,
         locked: !tokenOk,
       },
@@ -80,7 +80,7 @@ export default function Launch() {
           Deploy a <span className="text-primary">flex token</span>
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Signing against <span className="font-mono">XPR testnet</span>. Create on {flexAccount(draft.program)}, seed
+          Signing against <span className="font-mono">XPR Network</span>. Create on {flexAccount(draft.program)}, seed
           one-sided Alcor liquidity, then liftoff. Non-flex quotes (XPR / XMD / LOAN / xtoken) need a proof pool id &gt;
           0. {holdEasyToLaunch(flexMeta(draft.program).launchEasyMin)} - that balance is read from{" "}
           <span className="font-mono">mon3y</span>.
@@ -91,13 +91,13 @@ export default function Launch() {
         <div className="card mb-6 space-y-1 p-4 text-xs">
           <p className="font-semibold">
             {chain.contracts.flexforex && chain.contracts.easyflex && chain.contracts.complexflex && chain.contracts.swap
-              ? "flexforex, easyflex, complexflex, and swap.alcor are live on this chain."
+              ? `${allFlexAccounts().join(", ")}, and ${SWAP_ALCOR} are live on XPR Network.`
               : "One or more flex / Alcor accounts are missing - check VITE_* env."}
           </p>
           {!chain.lockpos ? (
             <p className="text-warning">
-              Testnet swap.alcor has no lockpos. Liftoff still requires a 90-day Alcor lock, so the last step will fail
-              until that action exists on chain.
+              swap.alcor has no lockpos. Liftoff still requires a 90-day Alcor lock, so the last step will fail until
+              that action exists on chain.
             </p>
           ) : null}
           {!chain.mon3y ? (
@@ -113,11 +113,7 @@ export default function Launch() {
         <div className="card mb-6 flex flex-wrap items-center gap-3 border-primary/30 bg-primary/5 p-4 text-sm">
           <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
           <span>
-            Connect WebAuth or Anchor (top right). Need testnet XPR?{" "}
-            <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="link">
-              Faucet
-            </a>
-            .
+            Connect WebAuth or Anchor (top right).
           </span>
         </div>
       ) : null}

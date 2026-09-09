@@ -175,7 +175,7 @@ export default function Leaderboard() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-black tracking-tight">Leaderboard</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Live launches across easyflex, complexflex, and flexforex.
+        Live launches across 3asy, fl3x, and for3x.
       </p>
 
       {notice ? (
@@ -262,7 +262,7 @@ export default function Leaderboard() {
               <div className="space-y-3 rounded-xl border border-border/60 bg-background/40 p-4">
                 <div className="flex flex-wrap gap-2 text-xs">
                   <span className="chip-muted">
-                    skim nyra {fmtBps(pick(selectedLaunch.row, "dev_bps"))} · club{" "}
+                    skim dev {fmtBps(pick(selectedLaunch.row, "dev_bps"))} · club{" "}
                     {fmtBps(pick(selectedLaunch.row, "club_bps"))}
                   </span>
                   <span className="chip-muted">

@@ -30,8 +30,6 @@ export const XTOKEN_QUOTES: XtokenQuote[] = [
   { symbol: "XEOS", precision: 4, label: "XEOS", wraps: "EOS", accent: "#000000", rank: 14, priceLower: "0.0001", priceUpper: "100000" },
   { symbol: "METAL", precision: 8, label: "METAL", wraps: "Metal Blockchain", accent: "#c0c0c0", rank: 15, priceLower: "0.000001", priceUpper: "100000" },
   { symbol: "XMT", precision: 8, label: "XMT", wraps: "Metal DAO", accent: "#e8b923", rank: 16, priceLower: "0.000001", priceUpper: "100000" },
-  /** Testnet-only faucet xtoken; kept last so it never displaces top-10. */
-  { symbol: "FOOBAR", precision: 6, label: "FOOBAR", wraps: "Testnet", accent: "#888888", rank: 99, priceLower: "0.000001", priceUpper: "1000000" },
 ];
 
 export const XTOKEN_TOP_N = 10;

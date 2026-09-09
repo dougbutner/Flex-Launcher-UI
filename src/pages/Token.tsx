@@ -89,7 +89,7 @@ export default function Token() {
       <div className="mx-auto max-w-lg px-4 py-20 text-center sm:px-6">
         <h1 className="text-2xl font-black tracking-tight">Unknown token</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Need a flex contract account and symbol code (e.g. /token/flexforex/FOO).
+          Need a flex contract account and symbol code (e.g. /token/for3x/FOO).
         </p>
         <Link to="/leaderboard" className="btn btn-outline btn-sm mt-6">
           Leaderboard

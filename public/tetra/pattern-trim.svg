@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 72" fill="none">
+  <defs>
+    <pattern id="tetra-trim" width="70" height="72" patternUnits="userSpaceOnUse">
+      <g stroke="currentColor" stroke-width="0.6">
+        <polygon points="0,72 35,11.4 70,72"/>
+        <polygon points="35,11.4 70,72 105,11.4"/>
+        <line x1="35" y1="51.8" x2="0" y2="72"/>
+        <line x1="35" y1="51.8" x2="35" y2="11.4"/>
+        <line x1="35" y1="51.8" x2="70" y2="72"/>
+        <circle cx="35" cy="51.8" r="1.15" fill="currentColor" stroke="none"/>
+        <circle cx="0" cy="72" r="1" fill="currentColor" stroke="none"/>
+        <circle cx="70" cy="72" r="1" fill="currentColor" stroke="none"/>
+        <circle cx="35" cy="11.4" r="1" fill="currentColor" stroke="none"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="420" height="72" fill="url(#tetra-trim)"/>
+</svg>

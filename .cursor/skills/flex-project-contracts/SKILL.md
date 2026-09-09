@@ -29,7 +29,7 @@ Canonical C++: **`src/Project Contracts/`** (`*.hpp` / `*.cpp`). If header and c
 
 | | easyflex | complexflex | flexforex |
 |---|---|---|---|
-| Typical account | `mon3y` / testnet `easyflex` | `gold.mon3y` / `complexflex` | `flex.mon3y` / `flexforex` |
+| Typical account | `3asy` | `fl3x` | `for3x` |
 | Supply | `issue` | `mint` | `mint` |
 | Payout | `makeitrain(..., sender)` | `makeitrain(..., sender)` | `makeitrain(..., keeper)` |
 | Project tax | no | yes | yes |
@@ -46,7 +46,7 @@ Shared launch law: `create` → mint/issue 100% to issuer → `startlaunch` → 
 
 - Launch wizard: create / mint|issue / startlaunch (+ `swap_underlying_default`) / Alcor seed / lockpos / liftoff
 - Post-launch poke: `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot chips)
-- Token manage (`/token/:contract/:symbol`): holder `choosereward` / `feeoptout` / `setangelnum` / inheritance; issuer `setdist` / `ratios` / `addpool`
+- Token manage (`/token/:contract/:symbol`): holder `choosereward` / `feeoptout` / `setangelnum` / inheritance; issuer `setdist` / `ratios` / `addpool` / `setmin` (easy + complex)
 - Read-only: leaderboard holders, reflection history filter, portfolio balances (+ “Your launches”)
 
 **Never in UI**
@@ -64,7 +64,7 @@ Gate angel UI to flexforex; inheritance to complexflex + flexforex. Prefer `laun
 
 ## Accounts / quotes
 
-Env: `VITE_FLEXFOREX_CONTRACT`, `VITE_EASYFLEX`, `VITE_COMPLEXFLEX`, `VITE_SWAP_ALCOR`. Liftoff EASY always reads **`mon3y`** (C++ `MON3Y`), not `VITE_EASYFLEX`.
+Env: `VITE_FLEXFOREX_CONTRACT` (`for3x`), `VITE_EASYFLEX` (`3asy`), `VITE_COMPLEXFLEX` (`fl3x`), `VITE_SWAP_ALCOR`. Liftoff EASY always reads **`mon3y`** (C++ `MON3Y`), not `VITE_EASYFLEX`.
 
 Flex quotes (0% skim, proof id 0): EASY@mon3y, WON@w3won, MEME@m3m3, GRAMS@gold.mon3y.  
 Non-flex (0.5% skim, proof id **> 0** vs XUSDC or XPR): xtokens, XPR@eosio.token, XMD@xmd.token, LOAN@loan.token.

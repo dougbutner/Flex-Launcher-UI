@@ -211,7 +211,7 @@ export default function Preview() {
           </button>
           <div className="card space-y-4 p-6">
             <div className="flex flex-wrap gap-2 text-xs">
-              <span className="chip-muted">skim nyra 0.25% · club 0.25%</span>
+              <span className="chip-muted">skim dev 0.25% · club 0.25%</span>
               <span className="chip-muted">LP unlock Dec 2026</span>
               <span className="chip-muted">reflect → EASY</span>
               <span className="chip-primary">angel pot 420</span>

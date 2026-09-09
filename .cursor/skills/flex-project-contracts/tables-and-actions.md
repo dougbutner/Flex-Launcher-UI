@@ -103,6 +103,7 @@ checklock(token_symbol)
 | `choosereward(owner, token_symbol, output_symbol, output_contract)` | owner or issuer/admin/contract; empty output_contract → native (0) | all |
 | `inheritance` / `inheritmemo` | flexer or contract | complex + forex |
 | `ratios` / `setdist` / `setangelnum` / `pullangel` / `pulljackpot` | see [flexforex-extras.md](flexforex-extras.md) | forex only |
+| `setmin(token_symbol, reflect_min)` | issuer | easy + complex (live 3asy / fl3x) |
 | `receiverand` | `rng` only | forex only |
 
 ## Actions  -  payout

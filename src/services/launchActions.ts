@@ -308,3 +308,12 @@ export function inheritmemoAction(
     data: { flexer, custom_memo: customMemo, token_symbol: tokenSymbol },
   };
 }
+
+/** easyflex / complexflex only (live 3asy / fl3x). flexforex uses setdist. */
+export function setminAction(tokenContract: string, tokenSymbol: string, reflectMin: number): ChainAction {
+  return {
+    account: tokenContract,
+    name: "setmin",
+    data: { token_symbol: tokenSymbol, reflect_min: reflectMin },
+  };
+}

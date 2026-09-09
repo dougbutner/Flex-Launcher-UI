@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 208 180" fill="none">
+  <defs>
+    <pattern id="tetra-tess" width="104" height="90" patternUnits="userSpaceOnUse">
+      <g stroke="currentColor" stroke-width="0.55" opacity="0.9">
+        <!-- Pair of equilateral tetras (up + down) -->
+        <polygon points="0,90 52,0 104,90"/>
+        <polygon points="52,0 104,90 156,0"/>
+        <line x1="52" y1="60" x2="0" y2="90"/>
+        <line x1="52" y1="60" x2="52" y2="0"/>
+        <line x1="52" y1="60" x2="104" y2="90"/>
+        <line x1="104" y1="30" x2="52" y2="0"/>
+        <line x1="104" y1="30" x2="104" y2="90"/>
+        <line x1="104" y1="30" x2="156" y2="0"/>
+        <!-- wrap the overflow of the down-tetra into the tile -->
+        <polygon points="-52,0 0,90 52,0"/>
+        <line x1="0" y1="30" x2="-52" y2="0"/>
+        <line x1="0" y1="30" x2="0" y2="90"/>
+        <line x1="0" y1="30" x2="52" y2="0"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="208" height="180" fill="url(#tetra-tess)"/>
+</svg>

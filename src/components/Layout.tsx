@@ -12,9 +12,9 @@ export function Layout() {
       <footer className="relative z-30 overflow-visible border-t px-6 py-4">
         <NetworkSwitcher />
         <p className="mt-2 text-center text-[11px] text-muted-foreground/70">
-          Liquidity on testnet{" "}
-          <a href="https://testnet.explorer.xprnetwork.org/account/swap.alcor" target="_blank" rel="noopener noreferrer" className="link">
-            swap.alcor
+          Liquidity on{" "}
+          <a href="https://alcor.exchange/v/xpr" target="_blank" rel="noopener noreferrer" className="link">
+            Alcor
           </a>
         </p>
       </footer>

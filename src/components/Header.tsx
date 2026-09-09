@@ -61,7 +61,7 @@ export function Header() {
             <div className="leading-tight">
               <div className="text-sm font-bold tracking-tight">Flex Launcher</div>
               <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                XPR Testnet
+                XPR Network
               </div>
             </div>
           </Link>

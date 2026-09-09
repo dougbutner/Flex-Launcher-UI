@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { hasAngelChannels, type FlexProgram } from "@/config/launch";
+import { hasAngelChannels, hasSetmin, type FlexProgram } from "@/config/launch";
 import { Field } from "@/components/launch/ui";
 import { validAccount, validSymbol } from "@/services/assets";
 import {
@@ -7,6 +7,7 @@ import {
   addpoolAction,
   ratiosAction,
   setdistAction,
+  setminAction,
   type ChainAction,
 } from "@/services/launchActions";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
@@ -29,6 +30,7 @@ type Props = {
 
 export function IssuerTools({ program, contract, symbol, settings, busy, transact, onDone }: Props) {
   const angelOk = hasAngelChannels(program);
+  const setminOk = hasSetmin(program);
   const distLocked = Boolean(pick(settings, "dist_locked"));
   const curAngel = Number(pick(settings, "angel_numbers_bps") ?? 0);
   const curJack = Number(pick(settings, "jackpot_bps") ?? 0);
@@ -72,7 +74,8 @@ export function IssuerTools({ program, contract, symbol, settings, busy, transac
         <h3 className="text-sm font-bold tracking-tight">Issuer tools</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Add flex reward pools
-          {angelOk ? "; configure angel / jackpot channels" : ""}. Tax rates stay contract-only (`setconfig`).
+          {angelOk ? "; configure angel / jackpot channels" : ""}
+          {setminOk ? "; set the makeitrain pool floor" : ""}. Tax rates stay contract-only (`setconfig`).
         </p>
       </div>
 
@@ -206,6 +209,32 @@ export function IssuerTools({ program, contract, symbol, settings, busy, transac
             </button>
           </Field>
         </>
+      ) : null}
+
+      {setminOk ? (
+        <Field
+          label="Reflection floor (setmin)"
+          hint="Raw int64. 0 means one whole token. makeitrain refuses until reflection_pool meets this floor."
+        >
+          <div className="flex flex-wrap gap-2">
+            <input
+              className="input w-40"
+              inputMode="numeric"
+              placeholder="reflect_min (raw)"
+              value={reflectMin}
+              disabled={disabled}
+              onChange={(e) => setReflectMin(e.target.value.replace(/\D/g, ""))}
+            />
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              disabled={disabled}
+              onClick={() => void run(setminAction(contract, symbol, Number(reflectMin) || 0))}
+            >
+              {signing ? "Signing…" : "Save setmin"}
+            </button>
+          </div>
+        </Field>
       ) : null}
 
       <Field

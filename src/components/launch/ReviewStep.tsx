@@ -29,7 +29,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
     month: "short",
     day: "numeric",
   });
-  const skimLabel = preset.flexQuote ? "0%" : "0.25% nyra + 0.25% reflections";
+  const skimLabel = preset.flexQuote ? "0%" : "0.25% dev + 0.25% club";
 
   return (
     <StepShell
