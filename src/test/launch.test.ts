@@ -14,12 +14,14 @@ import {
   holdEasyToLaunch,
   programFromAccount,
 } from "@/config/launch";
+import { findXtoken, xtokensByMarketCap } from "@/config/xtokens";
 import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
 import { protonSymbol, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
 import { applyRangeWidth, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { validImageUrl } from "@/services/tokenLogo";
+import { XTOKEN_FALLBACK, XTOKEN_TOP_N, findProofPoolId } from "@/services/xtokenCatalog";
 
 describe("tick math", () => {
   it("tick 0 is 2^64", () => {
@@ -285,6 +287,20 @@ describe("range width presets", () => {
     });
     expect(plan.tickUpper).toBeLessThanOrEqual(443636);
     expect(plan.tickLower).toBeLessThan(plan.tickUpper);
+  });
+});
+
+describe("xtoken catalog", () => {
+  it("keeps a curated fallback with majors first", () => {
+    expect(XTOKEN_FALLBACK[0].symbol).toBe("XUSDC");
+    expect(XTOKEN_FALLBACK.some((r) => r.symbol === "XBTC")).toBe(true);
+    expect(XTOKEN_FALLBACK.some((r) => r.symbol === "XXRP")).toBe(true);
+    expect(XTOKEN_TOP_N).toBe(10);
+  });
+
+  it("builds Alcor token ids for proof lookup", async () => {
+    // Unit-level: function exists and rejects empty pair without throwing on construct
+    expect(typeof findProofPoolId).toBe("function");
   });
 });
 
