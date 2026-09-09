@@ -90,6 +90,11 @@ export function allFlexAccounts(): string[] {
   return [...new Set(FLEX_PROGRAMS.map((p) => flexAccount(p.id)))];
 }
 
+export function isFlexContractActor(actor: string | null | undefined): boolean {
+  if (!actor) return false;
+  return allFlexAccounts().includes(actor);
+}
+
 export const EOSIO_TOKEN = "eosio.token";
 export const XTOKENS = "xtokens";
 export const XMD_TOKEN = "xmd.token";

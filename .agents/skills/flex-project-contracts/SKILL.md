@@ -21,5 +21,5 @@ description: >-
 
 ## UI gap (quick)
 
-Shipped: launch wizard, `makeitrain`, `checklock`, `pullangel` / `pulljackpot`, `swap_underlying_default`, token manage (`setdist` / `ratios` / `setangelnum`, inheritance, `addpool` / `choosereward`, `feeoptout`).  
+Shipped: launch wizard, `makeitrain`, `checklock`, `pullangel` / `pulljackpot`, `swap_underlying_default`, token manage (`setdist` / `ratios` / `setangelnum`, inheritance, `addpool` / `choosereward`, `feeoptout`), admin `token.proton` sync when connected as the flex contract.  
 Never: `setconfig`, `receiverand`.

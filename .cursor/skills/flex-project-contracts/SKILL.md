@@ -48,6 +48,7 @@ Shared launch law: `create` → mint/issue 100% to issuer → `startlaunch` → 
 - Post-launch poke: `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot chips)
 - Token manage (`/token/:contract/:symbol`): holder `choosereward` / `feeoptout` / `setangelnum` / inheritance; issuer `setdist` / `ratios` / `addpool` / `setmin` (easy + complex)
 - Read-only: leaderboard holders, reflection history filter, portfolio balances (+ “Your launches”)
+- Admin (`/admin`): `token.proton` `reg` / `update` when connected as the flex contract
 
 **Never in UI**
 

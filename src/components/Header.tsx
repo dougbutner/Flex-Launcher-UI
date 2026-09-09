@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { FlexLogo } from "@/components/FlexLogo";
+import { isFlexContractActor } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { walletTypeLabel } from "@/services/walletSessions";
 
@@ -29,6 +30,7 @@ export function Header() {
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDetailsElement>(null);
   const location = useLocation();
+  const nav = isFlexContractActor(actor) ? [...NAV, { to: "/admin", label: "Admin" }] : NAV;
 
   useEffect(() => {
     menuRef.current?.removeAttribute("open");
@@ -67,7 +69,7 @@ export function Header() {
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -161,7 +163,7 @@ export function Header() {
       </div>
 
       <nav className="flex items-center gap-1 overflow-x-auto border-t px-4 py-1.5 md:hidden">
-        {NAV.map((item) => (
+        {nav.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

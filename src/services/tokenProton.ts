@@ -1,5 +1,8 @@
 import type { ChainAction } from "@/services/launchActions";
-import { getAllTableRows } from "@/services/rpc";
+import { parseAsset } from "@/services/assets";
+import { readLaunches, readStat } from "@/services/flexTables";
+import { symbolCodeOf } from "@/services/preflight";
+import { getActions, getAllTableRows } from "@/services/rpc";
 
 /** Live token.proton::reg/update require tcontract@active. Flex tcontract is 3asy/fl3x/for3x, so the issuer cannot sign. Do not wire this to the issuer wizard. */
 export const TOKEN_PROTON = "token.proton";
@@ -45,6 +48,51 @@ export function rowMatchesContractSymbol(
   if (row.tcontract !== tcontract) return false;
   const s = parseProtonSymbol(row.symbol);
   return Boolean(s && s.precision === precision && s.code === code);
+}
+
+export async function listProtonRowsForContract(tcontract: string): Promise<ProtonTokenRow[]> {
+  const rows = await getAllTableRows<ProtonTokenRow>(
+    { code: TOKEN_PROTON, table: "tokens", scope: TOKEN_PROTON, limit: 200 },
+    8000
+  );
+  return rows.filter((row) => row.tcontract === tcontract);
+}
+
+export function protonSyncGaps(
+  tokens: Array<{ symbol: string; precision: number }>,
+  rows: ProtonTokenRow[],
+  tcontract: string
+): Array<{ symbol: string; precision: number }> {
+  return tokens.filter((t) => !rows.some((r) => rowMatchesContractSymbol(r, tcontract, t.precision, t.symbol)));
+}
+
+export async function listContractTokenRefs(code: string): Promise<Array<{ symbol: string; precision: number }>> {
+  const [launches, created] = await Promise.all([
+    readLaunches(code, 400).catch(() => [] as Record<string, unknown>[]),
+    getActions({ account: code, filter: `${code}:create`, limit: 200 }).catch(() => ({ actions: [] as Array<{ act?: { name?: string; data?: Record<string, unknown> } }> })),
+  ]);
+  const symbols = new Set<string>();
+  const precisionHint = new Map<string, number>();
+  for (const row of launches) {
+    const symbol = symbolCodeOf(row.token_symbol ?? row.symbol);
+    if (symbol) symbols.add(symbol);
+  }
+  for (const a of created.actions) {
+    if (a.act?.name && a.act.name !== "create") continue;
+    const parsed = parseAsset(String(a.act?.data?.maximum_supply ?? ""));
+    if (!parsed) continue;
+    symbols.add(parsed.symbol);
+    precisionHint.set(parsed.symbol, parsed.precision);
+  }
+  const out: Array<{ symbol: string; precision: number }> = [];
+  for (const symbol of symbols) {
+    const stat = await readStat(code, symbol).catch(() => null);
+    const supply = parseAsset(String(stat?.max_supply ?? stat?.supply ?? ""));
+    const precision = supply?.precision ?? precisionHint.get(symbol);
+    if (precision == null) continue;
+    out.push({ symbol, precision });
+  }
+  return out.sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
 export async function findProtonTokenRow(

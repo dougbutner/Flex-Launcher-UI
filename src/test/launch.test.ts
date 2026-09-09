@@ -36,12 +36,13 @@ import {
   hasInheritance,
   hasSetmin,
   holdEasyToLaunch,
+  isFlexContractActor,
   programFromAccount,
 } from "@/config/launch";
 import { findXtoken, xtokensByMarketCap } from "@/config/xtokens";
 import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
-import { protonSymbol, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
+import { protonSymbol, protonSyncGaps, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
 import { logpoolIdFromResult } from "@/services/txParse";
 import { createGateItems } from "@/services/preflight";
 import { applyRangeWidth, tokenStepValid } from "@/components/launch/draftPlan";
@@ -384,6 +385,8 @@ describe("XPR mainnet launcher defaults", () => {
       alcorSwapUrl("EASY", "mon3y", "FOO", "for3x")
     ).toBe("https://alcor.exchange/v/xpr/swap?input=easy-mon3y&output=foo-for3x");
     expect(SWAP_ALCOR).toBe("swap.alcor");
+    expect(isFlexContractActor("for3x")).toBe(true);
+    expect(isFlexContractActor("alice")).toBe(false);
   });
 });
 
@@ -403,5 +406,17 @@ describe("execute gates and pool id", () => {
         actions: [{ act: { name: "logpool", data: { poolId: 2142 } } }],
       })
     ).toBe(2142);
+  });
+
+  it("lists token.proton gaps for a contract", () => {
+    const tokens = [
+      { symbol: "FOO", precision: 4 },
+      { symbol: "BAR", precision: 6 },
+    ];
+    const rows = [
+      { id: 1, tcontract: "for3x", tname: "Foo", url: "", desc: "", iconurl: "", symbol: "4,FOO" },
+    ];
+    expect(protonSyncGaps(tokens, rows, "for3x").map((t) => t.symbol)).toEqual(["BAR"]);
+    expect(protonSyncGaps(tokens, rows, "3asy")).toEqual(tokens);
   });
 });

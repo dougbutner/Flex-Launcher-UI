@@ -193,6 +193,7 @@ Check strings start with `⟁`. Surface them verbatim.
 4. Range: snap ticks, 90d+ lock.
 5. Execute: create → mint/issue → startlaunch → createpool → activate → deposit → addliquid → lockpos → liftoff.
 6. Token home (`/token/:contract/:symbol`): poke + holder prefs + issuer tools; Portfolio / Leaderboard link here.
+7. Admin (`/admin`): nav only when connected as `3asy` / `fl3x` / `for3x`. Syncs missing token metadata to `token.proton` (`reg` / `update`).
 
 ---
 
