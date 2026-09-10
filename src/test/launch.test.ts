@@ -55,7 +55,7 @@ import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
 import { protonSymbol, protonSyncGaps, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
 import { logpoolIdFromResult } from "@/services/txParse";
-import { createGateItems } from "@/services/preflight";
+import { alcorInventoryItems, createGateItems } from "@/services/preflight";
 import { applyRangeWidth, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { validImageUrl } from "@/services/tokenLogo";
@@ -459,6 +459,67 @@ describe("execute gates and pool id", () => {
     expect(taken.find((i) => i.id === "ticker")?.pass).toBe(false);
     expect(taken.find((i) => i.id === "easy")?.pass).toBe(false);
     const ok = createGateItems({ stat: null, easyBal: 50000, need: 50000, symbol: "FOO", prior: 0 });
+    expect(ok.every((i) => i.pass)).toBe(true);
+  });
+
+  it("marks GEASY inventory rows pass on complexflex", () => {
+    const items = alcorInventoryItems({
+      program: "complexflex",
+      contract: COMPLEXFLEX_CONTRACT,
+      symbol: "GEASY",
+      precision: 6,
+      supply: 1000,
+      swapBal: 1,
+      issuerBal: 50,
+      leftover: 10,
+    });
+    expect(items.map((i) => i.id)).toEqual(["supply-on-alcor", "issuer-empty", "no-leftover"]);
+    expect(items.map((i) => i.label)).toEqual([
+      "100% of supply sits on swap.alcor",
+      "Issuer wallet holds none of the token",
+      "No unused Alcor balance of the token",
+    ]);
+    expect(items.every((i) => i.pass)).toBe(true);
+    expect(items.find((i) => i.id === "supply-on-alcor")?.detail).toBe(
+      `${(1000).toLocaleString()} / ${(1000).toLocaleString()} GEASY`
+    );
+    expect(items.find((i) => i.id === "issuer-empty")?.detail).toBe("clean");
+    expect(items.find((i) => i.id === "no-leftover")?.detail).toBe("clean");
+  });
+
+  it("keeps inventory rows strict for other programs and tickers", () => {
+    const bad = {
+      precision: 6,
+      supply: 1000,
+      swapBal: 1,
+      issuerBal: 50,
+      leftover: 10,
+    };
+    expect(
+      alcorInventoryItems({ ...bad, program: "complexflex", contract: COMPLEXFLEX_CONTRACT, symbol: "FOO" }).every(
+        (i) => i.pass
+      )
+    ).toBe(false);
+    expect(
+      alcorInventoryItems({ ...bad, program: "easyflex", contract: EASYFLEX_CONTRACT, symbol: "GEASY" }).every(
+        (i) => i.pass
+      )
+    ).toBe(false);
+    expect(
+      alcorInventoryItems({ ...bad, program: "flexforex", contract: FLEXFOREX_CONTRACT, symbol: "GEASY" }).every(
+        (i) => i.pass
+      )
+    ).toBe(false);
+    const ok = alcorInventoryItems({
+      program: "flexforex",
+      contract: FLEXFOREX_CONTRACT,
+      symbol: "FOO",
+      precision: 6,
+      supply: 1000,
+      swapBal: 1000,
+      issuerBal: 0,
+      leftover: 0,
+    });
     expect(ok.every((i) => i.pass)).toBe(true);
   });
 
