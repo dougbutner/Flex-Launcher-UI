@@ -86,6 +86,24 @@ export function holdEasyToLaunch(amount: number) {
   return `Hold ${amount.toLocaleString()} EASY to launch`;
 }
 
+/** Promo start: 90% off the EASY hold, then -10% each calendar month until 0. */
+export const EASY_HOLD_PROMO_START = Date.UTC(2026, 8, 1);
+
+export function easyHoldOffPercent(nowMs = Date.now()): number {
+  const start = new Date(EASY_HOLD_PROMO_START);
+  const now = new Date(nowMs);
+  const months =
+    (now.getUTCFullYear() - start.getUTCFullYear()) * 12 + (now.getUTCMonth() - start.getUTCMonth());
+  if (months < 0) return 90;
+  return Math.max(0, 90 - 10 * months);
+}
+
+export function easyHoldPromoCopy(nowMs = Date.now()): string | null {
+  const off = easyHoldOffPercent(nowMs);
+  if (off <= 0) return null;
+  return `Hold EASY, don't spend it. ${off}% off this month. -10%/mo until full price.`;
+}
+
 export function allFlexAccounts(): string[] {
   return [...new Set(FLEX_PROGRAMS.map((p) => flexAccount(p.id)))];
 }
@@ -141,7 +159,7 @@ export const RANGE_WIDTH_PRESETS = [
   {
     id: "fast",
     label: "Fast",
-    title: "Infinity on the sell side. Range tops out at Alcor max tick so buyers can keep walking.",
+    title: "No cap. Buyers can keep paying more.",
     kind: "inf" as const,
     mult: null,
   },

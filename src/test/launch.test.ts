@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAsset, validSymbol, zeroAsset } from "@/services/assets";
+import { formatAsset, formatSupplyCommas, parseSupplyInput, validSymbol, zeroAsset } from "@/services/assets";
 import { compareExtTokens, nameToU64, sortPair, symbolCodeToU64 } from "@/services/eosioName";
 import { planLaunch } from "@/services/launchMath";
 import {
@@ -36,6 +36,8 @@ import {
   hasInheritance,
   hasSetmin,
   holdEasyToLaunch,
+  easyHoldOffPercent,
+  easyHoldPromoCopy,
   isFlexContractActor,
   programFromAccount,
 } from "@/config/launch";
@@ -50,6 +52,16 @@ import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { validImageUrl } from "@/services/tokenLogo";
 import { localTokenIconSrc, tokenIconKey } from "@/services/tokenIcons";
 import { XTOKEN_FALLBACK, XTOKEN_TOP_N, findProofPoolId } from "@/services/xtokenCatalog";
+import { draftFromManager, managerFromDraft } from "@/services/managerDraft";
+import {
+  LAUNCH_STEP_IDS,
+  launchProgressFrom,
+  managerHasStarted,
+  mergeManagerViews,
+  nextLaunchStep,
+  parseManagerToken,
+  sanitizeManagerMeta,
+} from "@/services/managerStore";
 
 describe("tick math", () => {
   it("tick 0 is 2^64", () => {
@@ -81,6 +93,11 @@ describe("assets", () => {
     expect(zeroAsset(6, "EASY")).toBe("0.000000 EASY");
     expect(validSymbol("FOO")).toBe(true);
     expect(validSymbol("foo")).toBe(false);
+    expect(parseSupplyInput("1,000,000")).toBe("1000000");
+    expect(parseSupplyInput("1T")).toBe("1");
+    expect(formatSupplyCommas("1000000")).toBe("1,000,000");
+    expect(formatSupplyCommas("1000000000000")).toBe("1,000,000,000,000");
+    expect(formatSupplyCommas("1000000000")).toBe("1,000,000,000");
   });
 });
 
@@ -206,6 +223,12 @@ describe("launch plan", () => {
     expect(flexMeta("easyflex").payoutSigner).toBe("sender");
     expect(flexMeta("flexforex").payoutSigner).toBe("keeper");
     expect(holdEasyToLaunch(5000)).toBe("Hold 5,000 EASY to launch");
+    expect(easyHoldOffPercent(Date.UTC(2026, 8, 9))).toBe(90);
+    expect(easyHoldOffPercent(Date.UTC(2026, 9, 1))).toBe(80);
+    expect(easyHoldOffPercent(Date.UTC(2027, 2, 1))).toBe(30);
+    expect(easyHoldOffPercent(Date.UTC(2027, 5, 1))).toBe(0);
+    expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9))).toMatch(/90%/);
+    expect(easyHoldPromoCopy(Date.UTC(2027, 5, 1))).toBeNull();
   });
 });
 
@@ -418,5 +441,75 @@ describe("execute gates and pool id", () => {
     ];
     expect(protonSyncGaps(tokens, rows, "for3x").map((t) => t.symbol)).toEqual(["BAR"]);
     expect(protonSyncGaps(tokens, rows, "3asy")).toEqual(tokens);
+  });
+});
+
+describe("issuer manager store", () => {
+  it("points to mint after a successful create", () => {
+    const progress = launchProgressFrom({
+      hasStat: true,
+      txs: { create: "abc" },
+    });
+    expect(progress.create).toBe(true);
+    expect(nextLaunchStep(progress).id).toBe("supply");
+  });
+
+  it("marks every step done after liftoff", () => {
+    const progress = launchProgressFrom({ launched: true });
+    expect(LAUNCH_STEP_IDS.every((id) => progress[id])).toBe(true);
+    expect(nextLaunchStep(progress).id).toBe("done");
+  });
+
+  it("merges sqlite metadata onto an on-chain issuer token", () => {
+    const stored = parseManagerToken({
+      issuer: "alice",
+      contract: "for3x",
+      symbol: "FOO",
+      program: "flexforex",
+      name: "Foo Token",
+      imageUrl: "https://example.com/foo.png",
+      createTx: "txcreate",
+      mintTx: "txmint",
+    });
+    expect(stored?.name).toBe("Foo Token");
+    const views = mergeManagerViews(
+      [
+        {
+          issuer: "alice",
+          contract: "for3x",
+          program: "flexforex",
+          symbol: "FOO",
+          precision: 6,
+          launched: false,
+          poolId: null,
+          supplyPositive: true,
+          hasLaunch: false,
+          hasStat: true,
+          createTx: "txcreate",
+        },
+      ],
+      stored ? [stored] : []
+    );
+    expect(views).toHaveLength(1);
+    expect(views[0].token.name).toBe("Foo Token");
+    expect(views[0].next.id).toBe("startlaunch");
+    expect(managerHasStarted(views)).toBe(true);
+  });
+
+  it("rejects a non-http icon URL and round-trips a draft", () => {
+    expect(sanitizeManagerMeta({ name: "Foo", imageUrl: "ipfs://abc" })).toMatch(/http/i);
+    const d = emptyDraft();
+    d.program = "flexforex";
+    d.name = "Foo";
+    d.symbol = "FOO";
+    d.createTx = "tx1";
+    d.imageUrl = "https://gateway.pinata.cloud/ipfs/cid";
+    const row = managerFromDraft("alice", d);
+    expect(row.contract).toBe("for3x");
+    expect(row.imageUrl).toContain("https://");
+    const back = draftFromManager(row);
+    expect(back.symbol).toBe("FOO");
+    expect(back.createTx).toBe("tx1");
+    expect(parseManagerToken({ ...row, imageUrl: "not-a-url" })).toBeNull();
   });
 });

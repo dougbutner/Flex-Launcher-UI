@@ -1,10 +1,17 @@
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
-import { StatusIcon } from "@/components/launch/ui";
+import { StatusIcon, SupplyShortcuts } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
 import { flexAccount, flexMeta } from "@/config/launch";
+import { formatSupplyCommas } from "@/services/assets";
 
-export function LaunchPreview({ draft }: { draft: LaunchDraft }) {
+export function LaunchPreview({
+  draft,
+  patch,
+}: {
+  draft: LaunchDraft;
+  patch?: (p: Partial<LaunchDraft>) => void;
+}) {
   const quote = quoteFromDraft(draft);
   const plan = planFromDraft(draft);
 
@@ -48,8 +55,11 @@ export function LaunchPreview({ draft }: { draft: LaunchDraft }) {
 
         <div className="mt-4 grid grid-cols-2 gap-2 text-center">
           <div className="stat-box !px-2 !py-2">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Supply</div>
-            <div className="font-mono text-sm font-bold">{Number(draft.maxSupply || "0").toLocaleString()}</div>
+            <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+              Supply
+              {patch ? <SupplyShortcuts value={draft.maxSupply} onPick={(maxSupply) => patch({ maxSupply })} /> : null}
+            </div>
+            <div className="font-mono text-sm font-bold">{formatSupplyCommas(draft.maxSupply || "0")}</div>
           </div>
           <div className="stat-box !px-2 !py-2">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Lock</div>

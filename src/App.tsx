@@ -11,6 +11,7 @@ import Portfolio from "./pages/Portfolio.tsx";
 import Token from "./pages/Token.tsx";
 import Preview from "./pages/Preview.tsx";
 import Admin from "./pages/Admin.tsx";
+import Manager from "./pages/Manager.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/token/:contract/:symbol" element={<Token />} />
             <Route path="/preview" element={<Preview />} />
+            <Route path="/manager" element={<Manager />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Route>

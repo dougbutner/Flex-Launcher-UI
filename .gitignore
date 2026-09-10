@@ -25,3 +25,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Issuer manager sqlite (dev / preview)
+data/*.sqlite
+data/*.sqlite-*

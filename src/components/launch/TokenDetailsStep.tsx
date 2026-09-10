@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { tokenStepValid } from "@/components/launch/draftPlan";
-import { Field, StepShell } from "@/components/launch/ui";
-import { validSymbol } from "@/services/assets";
+import { Field, StepShell, SupplyShortcuts } from "@/components/launch/ui";
+import { formatSupplyCommas, parseSupplyInput, validSymbol } from "@/services/assets";
 import { pinLogoFile } from "@/services/ipfsPin";
 import { validateTokenLogo, validImageUrl } from "@/services/tokenLogo";
 import { txErrorMessage } from "@/services/txParse";
@@ -145,7 +145,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           ) : null}
         </div>
         <p className="mt-1 text-muted-foreground">
-          Square PNG or SVG, 256-512px, max 1 MB. Pin to IPFS, or paste a public image URL. Wallets read logos from{" "}
+          Square PNG or SVG, 256-1024px, max 1 MB. Pin to IPFS, or paste a public image URL. Wallets read logos from{" "}
           <span className="font-mono">token.proton::reg</span>, which must be signed by{" "}
           <span className="font-mono">{tokenContract}@active</span>, not the issuer. This wizard does not sign that.
         </p>
@@ -184,13 +184,17 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Max supply" hint="100% is issued or minted to you, then deposited into the pool.">
+        <Field
+          label="Max supply"
+          hint="100% is issued or minted to you, then deposited into the pool."
+          aside={<SupplyShortcuts value={draft.maxSupply} onPick={(maxSupply) => patch({ maxSupply })} />}
+        >
           <input
             className="input font-mono"
             inputMode="decimal"
-            placeholder="1000000"
-            value={draft.maxSupply}
-            onChange={(e) => patch({ maxSupply: e.target.value.replace(/[^\d.]/g, "") })}
+            placeholder="1,000,000"
+            value={formatSupplyCommas(draft.maxSupply)}
+            onChange={(e) => patch({ maxSupply: parseSupplyInput(e.target.value) })}
           />
         </Field>
         <Field label="Precision" hint="Decimal places (0-8). Flex tokens usually use 6.">

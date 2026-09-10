@@ -41,3 +41,23 @@ export function validSymbol(code: string): boolean {
 export function validAccount(name: string): boolean {
   return /^[a-z1-5.]{1,12}$/.test(name) && !name.startsWith(".") && !name.endsWith(".");
 }
+
+export const SUPPLY_SHORTCUTS = [
+  { label: "1T", value: "1000000000000" },
+  { label: "1B", value: "1000000000" },
+  { label: "1M", value: "1000000" },
+] as const;
+
+export function parseSupplyInput(raw: string): string {
+  let s = raw.replace(/,/g, "").replace(/[^\d.]/g, "");
+  const dot = s.indexOf(".");
+  if (dot >= 0) s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, "");
+  return s;
+}
+
+export function formatSupplyCommas(raw: string): string {
+  if (!raw) return "";
+  const [i, f] = raw.split(".");
+  const grouped = (i || "0").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return f != null && raw.includes(".") ? `${grouped}.${f}` : grouped;
+}

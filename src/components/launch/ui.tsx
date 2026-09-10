@@ -1,10 +1,31 @@
 import type { ReactNode } from "react";
 import { explorerTx } from "@/config/launch";
+import { SUPPLY_SHORTCUTS } from "@/services/assets";
 
-export function Field(props: { label: string; hint?: string; error?: string; children: ReactNode }) {
+export function SupplyShortcuts(props: { value: string; onPick: (value: string) => void }) {
+  return (
+    <span className="inline-flex items-center gap-2 font-mono text-xs font-semibold">
+      {SUPPLY_SHORTCUTS.map((s) => (
+        <button
+          key={s.label}
+          type="button"
+          className={`link ${props.value === s.value ? "text-primary" : ""}`}
+          onClick={() => props.onPick(s.value)}
+        >
+          {s.label}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+export function Field(props: { label: string; hint?: string; error?: string; aside?: ReactNode; children: ReactNode }) {
   return (
     <div>
-      <span className="label">{props.label}</span>
+      <div className="mb-1.5 flex items-baseline gap-3">
+        <span className="label mb-0">{props.label}</span>
+        {props.aside}
+      </div>
       {props.children}
       {props.error ? (
         <p className="mt-1.5 text-xs font-medium text-destructive">{props.error}</p>

@@ -2,6 +2,7 @@ import { FEE_TIERS, SWAP_ALCOR, flexAccount, flexMeta, holdEasyToLaunch } from "
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, presetFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
 import { StepShell } from "@/components/launch/ui";
+import { formatSupplyCommas } from "@/services/assets";
 import { unlockTimeUnix } from "@/services/launchMath";
 
 type Props = {
@@ -49,7 +50,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
       <div className="rounded-2xl border bg-background/50 px-4 py-2">
         <Row k="Program" v={`${draft.program} @ ${flexAccount(draft.program)}`} />
         <Row k="Token" v={`${draft.name} (${draft.symbol})`} />
-        <Row k="Max supply" v={`${Number(draft.maxSupply || "0").toLocaleString()} ${draft.symbol} · precision ${draft.precision}`} />
+        <Row k="Max supply" v={`${formatSupplyCommas(draft.maxSupply || "0")} ${draft.symbol} · precision ${draft.precision}`} />
         <Row
           k="Quote"
           v={`${quote.symbol} @ ${quote.contract}${preset.flexQuote ? "" : ` · proof pool #${draft.proofPoolId}`}`}

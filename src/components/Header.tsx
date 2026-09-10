@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { FlexLogo } from "@/components/FlexLogo";
 import { isFlexContractActor } from "@/config/launch";
+import { useManagerAccess } from "@/hooks/useManagerAccess";
 import { useWallet } from "@/hooks/useWallet";
 import { walletTypeLabel } from "@/services/walletSessions";
 
@@ -30,7 +31,13 @@ export function Header() {
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDetailsElement>(null);
   const location = useLocation();
-  const nav = isFlexContractActor(actor) ? [...NAV, { to: "/admin", label: "Admin" }] : NAV;
+  const showManager = useManagerAccess(isLoggedIn ? actor : null);
+  const nav = [
+    ...NAV.slice(0, 2),
+    ...(showManager ? [{ to: "/manager", label: "Manager" }] : []),
+    ...NAV.slice(2),
+    ...(isFlexContractActor(actor) ? [{ to: "/admin", label: "Admin" }] : []),
+  ];
 
   useEffect(() => {
     menuRef.current?.removeAttribute("open");

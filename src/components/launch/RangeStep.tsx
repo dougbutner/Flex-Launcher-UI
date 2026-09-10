@@ -92,7 +92,7 @@ export function RangeStep({ draft, patch, onNext, onBack }: Props) {
             }
           />
         </Field>
-        <Field label={`Max price (${quote.symbol} / ${draft.symbol || "TOKEN"})`} hint="Where the range tops out.">
+        <Field label={`Max price (${quote.symbol} / ${draft.symbol || "TOKEN"})`} hint="Highest price someone can pay here.">
           <input
             className="input font-mono"
             inputMode="decimal"

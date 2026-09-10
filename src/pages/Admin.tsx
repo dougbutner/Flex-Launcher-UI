@@ -12,6 +12,7 @@ import {
   rowMatchesContractSymbol,
   type ProtonTokenRow,
 } from "@/services/tokenProton";
+import { listManagerTokens } from "@/services/managerApi";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 type Draft = { tname: string; url: string; desc: string; iconurl: string };
@@ -36,7 +37,11 @@ export default function Admin() {
     setBusy(true);
     setError("");
     try {
-      const [refs, proton] = await Promise.all([listContractTokenRefs(actor), listProtonRowsForContract(actor)]);
+      const [refs, proton, stored] = await Promise.all([
+        listContractTokenRefs(actor),
+        listProtonRowsForContract(actor),
+        listManagerTokens({ contract: actor }).catch(() => []),
+      ]);
       setTokens(refs);
       setRows(proton);
       setDrafts((prev) => {
@@ -44,11 +49,12 @@ export default function Admin() {
         for (const t of refs) {
           if (!next[t.symbol]) {
             const row = proton.find((r) => rowMatchesContractSymbol(r, actor, t.precision, t.symbol));
+            const sq = stored.find((s) => s.symbol === t.symbol);
             next[t.symbol] = {
-              tname: row?.tname || t.symbol,
-              url: row?.url || "",
-              desc: row?.desc || "",
-              iconurl: row?.iconurl || "",
+              tname: row?.tname || sq?.name || t.symbol,
+              url: row?.url || sq?.website || "",
+              desc: row?.desc || sq?.description || "",
+              iconurl: row?.iconurl || sq?.imageUrl || "",
             };
           }
         }
@@ -187,7 +193,8 @@ export default function Admin() {
       <p className="mt-2 text-sm text-muted-foreground">
         Signed in as <span className="font-mono">{actor}</span>
         {program ? ` (${program})` : ""}. Register tokens that exist on this contract but are missing from token.proton.
-        Wallet will ask for token.proton::reg or update, authorized by {actor}@active.
+        Prefills gaps from the issuer Manager sqlite store when token.proton has no row. Wallet will ask for
+        token.proton::reg or update, authorized by {actor}@active.
       </p>
       <div className="mt-4 flex items-center gap-2">
         <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>

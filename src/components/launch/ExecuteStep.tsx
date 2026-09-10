@@ -20,6 +20,7 @@ import { unlockTimeUnix, type LaunchPlan } from "@/services/launchMath";
 import { readAlcorSystem, readPool, resolvePoolIdAfterCreatepool } from "@/services/flexTables";
 import { assetAmountNumber } from "@/services/assets";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { persistLaunchDraft } from "@/services/managerApi";
 import { runCreateGates, runPreflight, type PreflightItem } from "@/services/preflight";
 
 type Props = {
@@ -180,17 +181,24 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
     setBusyId(step.id);
     setErrors((e) => ({ ...e, [step.id]: "" }));
     try {
+      let next = { ...draft };
+      const wrapPatch = (p: Partial<LaunchDraft>) => {
+        next = { ...next, ...p };
+        patch(p);
+      };
       const actions = await step.build({ actor, plan, draft });
       if (actions === "skip") {
         const key = TX_KEY[step.id];
-        if (key) patch({ [key]: "skipped" } as Partial<LaunchDraft>);
+        if (key) wrapPatch({ [key]: "skipped" } as Partial<LaunchDraft>);
+        void persistLaunchDraft(actor, next);
         return;
       }
       const result = await transact(actions);
       const txId = txIdFromResult(result) || "ok";
       const key = TX_KEY[step.id];
-      if (key) patch({ [key]: txId } as Partial<LaunchDraft>);
-      await step.after?.({ result, patch, plan });
+      if (key) wrapPatch({ [key]: txId } as Partial<LaunchDraft>);
+      await step.after?.({ result, patch: wrapPatch, plan });
+      void persistLaunchDraft(actor, next);
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
@@ -224,7 +232,9 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
     setLiftoffError("");
     try {
       const result = await transact([liftoffAction(code, plan, draft.poolId)]);
-      patch({ liftoffTx: txIdFromResult(result) || "ok" });
+      const next = { ...draft, liftoffTx: txIdFromResult(result) || "ok" };
+      patch({ liftoffTx: next.liftoffTx });
+      void persistLaunchDraft(actor, next);
       onDone();
     } catch (err) {
       const msg = txErrorMessage(err);
@@ -342,7 +352,11 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
             type="button"
             className="btn btn-primary btn-sm"
             disabled={!manualPoolId}
-            onClick={() => patch({ poolId: Number(manualPoolId) })}
+            onClick={() => {
+              const poolId = Number(manualPoolId);
+              patch({ poolId });
+              if (actor) void persistLaunchDraft(actor, { ...draft, poolId });
+            }}
           >
             Set
           </button>

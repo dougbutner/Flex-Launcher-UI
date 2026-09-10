@@ -193,7 +193,8 @@ Check strings start with `⟁`. Surface them verbatim.
 4. Range: snap ticks, 90d+ lock.
 5. Execute: create → mint/issue → startlaunch → createpool → activate → deposit → addliquid → lockpos → liftoff.
 6. Token home (`/token/:contract/:symbol`): poke + holder prefs + issuer tools; Portfolio / Leaderboard link here.
-7. Admin (`/admin`): nav only when connected as `3asy` / `fl3x` / `for3x`. Syncs missing token metadata to `token.proton` (`reg` / `update`).
+7. Admin (`/admin`): nav only when connected as `3asy` / `fl3x` / `for3x`. Syncs missing token metadata to `token.proton` (`reg` / `update`). Prefills from issuer Manager sqlite when present.
+8. Manager (`/manager`): nav for logged-in issuers after the first successful `create`. SQLite stores metadata + step txs keyed by account; chain fills progress so a new device can resume. No IPFS re-upload (URL paste only). Admin later pushes to `token.proton`.
 
 ---
 

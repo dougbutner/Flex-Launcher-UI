@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { SWAP_ALCOR, allFlexAccounts, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
-import { useLaunchDraft } from "@/hooks/useLaunchDraft";
+import { MANAGER_RESUME_KEY, useLaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { Stepper, type WizardStep } from "@/components/launch/Stepper";
 import { TokenDetailsStep } from "@/components/launch/TokenDetailsStep";
@@ -10,6 +10,7 @@ import { ReviewStep } from "@/components/launch/ReviewStep";
 import { ExecuteStep } from "@/components/launch/ExecuteStep";
 import { DonePanel } from "@/components/launch/DonePanel";
 import { LaunchPreview } from "@/components/launch/LaunchPreview";
+import { EasyHoldNotice } from "@/components/launch/EasyHoldNotice";
 import { quoteStepValid, rangeStepValid, tokenStepValid } from "@/components/launch/draftPlan";
 import { readChainStatus, type ChainStatus } from "@/services/chainStatus";
 
@@ -23,6 +24,17 @@ export default function Launch() {
   useEffect(() => {
     void readChainStatus().then(setChain).catch(() => setChain(null));
   }, []);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(MANAGER_RESUME_KEY) !== "1") return;
+      if (!draft.createTx || draft.liftoffTx) return;
+      sessionStorage.removeItem(MANAGER_RESUME_KEY);
+      setStep(4);
+    } catch {
+      /* ignore */
+    }
+  }, [draft.createTx, draft.liftoffTx]);
 
   const steps: WizardStep[] = useMemo(
     () => [
@@ -135,12 +147,15 @@ export default function Launch() {
           ) : step === 3 ? (
             <ReviewStep draft={draft} onNext={() => setStep(4)} onBack={() => setStep(2)} />
           ) : (
-            <ExecuteStep draft={draft} patch={patch} onBack={() => setStep(3)} onDone={() => {}} />
+            <>
+              <ExecuteStep draft={draft} patch={patch} onBack={() => setStep(3)} onDone={() => {}} />
+              <EasyHoldNotice active />
+            </>
           )}
         </div>
 
         <div className="order-3">
-          <LaunchPreview draft={draft} />
+          <LaunchPreview draft={draft} patch={patch} />
         </div>
       </div>
     </div>

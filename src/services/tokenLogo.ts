@@ -1,6 +1,6 @@
 const MAX_BYTES = 1_048_576;
 const MIN_PX = 256;
-const MAX_PX = 512;
+const MAX_PX = 1024;
 
 function rasterSize(file: File): Promise<{ w: number; h: number }> {
   return new Promise((resolve, reject) => {

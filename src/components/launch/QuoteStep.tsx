@@ -451,10 +451,9 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
           onChange={(e) => patch({ swapUnderlyingDefault: e.target.checked })}
         />
         <span>
-          <span className="block text-sm font-semibold">Reflect into the quote (underlying)</span>
+          <span className="block text-sm font-semibold">Pay unpaid holders in {quote.symbol}</span>
           <span className="mt-1 block text-xs text-muted-foreground">
-            When on, makeitrain swaps holders who have not chosen a flex reward into {quote.symbol}@
-            {quote.contract} through the launch Alcor pool. When off, they receive the native token.
+            On: rain pays {quote.symbol} from the pool. Off: rain pays your token.
           </span>
         </span>
       </label>

@@ -49,6 +49,7 @@ Shared launch law: `create` → mint/issue 100% to issuer → `startlaunch` → 
 - Token manage (`/token/:contract/:symbol`): holder `choosereward` / `feeoptout` / `setangelnum` / inheritance; issuer `setdist` / `ratios` / `addpool` / `setmin` (easy + complex)
 - Read-only: leaderboard holders, reflection history filter, portfolio balances (+ “Your launches”)
 - Admin (`/admin`): `token.proton` `reg` / `update` when connected as the flex contract
+- Manager (`/manager`): sqlite + chain progress for issuers after first `create`. No IPFS re-upload.
 
 **Never in UI**
 

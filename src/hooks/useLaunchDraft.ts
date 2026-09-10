@@ -42,6 +42,12 @@ export type LaunchDraft = {
 };
 
 const KEY = "flex-launch-draft-v5";
+export const DRAFT_STORAGE_KEY = KEY;
+export const MANAGER_RESUME_KEY = "flex-manager-resume";
+
+export function writeLaunchDraft(draft: LaunchDraft) {
+  localStorage.setItem(KEY, JSON.stringify(draft));
+}
 
 const easy = QUOTE_PRESETS.find((q) => q.id === "easy") ?? QUOTE_PRESETS[0];
 
@@ -96,14 +102,17 @@ function load(): LaunchDraft {
 
 export function useLaunchDraft() {
   const [draft, setDraft] = useState<LaunchDraft>(emptyDraft);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setDraft(load());
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     localStorage.setItem(KEY, JSON.stringify(draft));
-  }, [draft]);
+  }, [draft, hydrated]);
 
   const patch = useCallback((partial: Partial<LaunchDraft>) => {
     setDraft((prev) => ({ ...prev, ...partial }));
