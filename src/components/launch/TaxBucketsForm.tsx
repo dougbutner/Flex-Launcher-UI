@@ -5,6 +5,8 @@ import {
   formatBpsPercent,
   hasProjectTax,
   percentInputToBps,
+  taxAdjustValid,
+  taxCreateValid,
   taxSum,
   type TaxDraft,
 } from "@/services/taxRates";
@@ -13,11 +15,10 @@ type Props = {
   program: FlexProgram;
   value: TaxDraft;
   onChange: (next: TaxDraft) => void;
-  /** When set, overall total is frozen and shown read-only. */
-  lockedTotal?: number | null;
   disabled?: boolean;
-  /** Wizard can hide channel ops if desired; default show for flexforex. */
   showChannels?: boolean;
+  /** After the first setfees, pass on-chain rates so later edits follow contract rules. */
+  chain?: TaxDraft | null;
 };
 
 function PctInput(props: {
@@ -54,14 +55,15 @@ export function TaxBucketsForm({
   program,
   value,
   onChange,
-  lockedTotal = null,
   disabled = false,
   showChannels,
+  chain = null,
 }: Props) {
   const projectOk = hasProjectTax(program);
   const channelsOk = showChannels ?? hasAngelChannels(program);
   const sum = taxSum(value, program);
-  const locked = lockedTotal != null && Number.isFinite(lockedTotal);
+  const adjusting = Boolean(chain && taxSum(chain, program) > 0);
+  const err = adjusting && chain ? taxAdjustValid(value, program, chain) : taxCreateValid(value, program);
   const patch = (p: Partial<TaxDraft>) => onChange({ ...value, ...p });
   const channelRest = Math.max(0, 10000 - value.angelNumbersBps - value.jackpotBps);
 
@@ -71,14 +73,14 @@ export function TaxBucketsForm({
         <div>
           <p className="text-sm font-semibold">Transfer tax</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {locked
-              ? "Overall tax is locked on chain. Move bps between buckets only."
-              : "Pick any overall rate at create. After create you can only reallocate buckets."}
+            {adjusting
+              ? "Total cannot rise. Reflection cannot go down. Burn and project can move, or you can cut them to lower the total."
+              : "Signed with setfees after create (create writes 0%). Sum must be at most 100%."}
           </p>
         </div>
-        <p className={`font-mono text-sm font-bold ${locked && sum !== lockedTotal ? "text-destructive" : ""}`}>
+        <p className={`font-mono text-sm font-bold ${err?.startsWith("⟁") ? "text-destructive" : ""}`}>
           Overall {formatBpsPercent(sum)}
-          {locked ? ` / ${formatBpsPercent(lockedTotal!)}` : ""}
+          {adjusting && chain ? ` / ${formatBpsPercent(taxSum(chain, program))} max` : ""}
         </p>
       </div>
 
@@ -87,8 +89,15 @@ export function TaxBucketsForm({
           label="Reflection"
           bps={value.reflectionRate}
           disabled={disabled}
-          onBps={(reflectionRate) => patch({ reflectionRate })}
-          hint="Goes to the reflection pool (makeitrain)."
+          onBps={(reflectionRate) => {
+            const next = adjusting && chain ? Math.max(chain.reflectionRate, reflectionRate) : reflectionRate;
+            patch({ reflectionRate: next });
+          }}
+          hint={
+            adjusting
+              ? `Cannot go below ${formatBpsPercent(chain?.reflectionRate ?? 0)}.`
+              : "Goes to the reflection pool (makeitrain)."
+          }
         />
         <PctInput
           label="Burn"
@@ -109,13 +118,10 @@ export function TaxBucketsForm({
       </div>
 
       {projectOk ? (
-        <Field
-          label="Project account"
-          hint={locked ? "Where project tax is sent." : "Blank uses your issuer account."}
-        >
+        <Field label="Project account" hint="Blank uses the issuer.">
           <input
             className="input font-mono"
-            placeholder={locked ? "project account" : "blank = issuer"}
+            placeholder="blank = issuer"
             disabled={disabled}
             value={value.projectAccount}
             onChange={(e) => patch({ projectAccount: e.target.value.trim().toLowerCase() })}
@@ -123,13 +129,15 @@ export function TaxBucketsForm({
         </Field>
       ) : null}
 
+      {err ? <p className="text-xs font-medium text-destructive">{err}</p> : null}
+
       {channelsOk ? (
         <div className="space-y-3 border-t border-border pt-4">
           <div>
             <p className="text-sm font-semibold">Reflection channels</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Share of the reflection fee only. Does not raise the transfer tax. Remainder stays in the standard
-              reflection pool.
+              Share of the reflection fee only. Signed with ratios. Does not raise the transfer tax. Remainder stays
+              in the standard reflection pool.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

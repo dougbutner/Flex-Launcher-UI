@@ -60,23 +60,23 @@ export function simulateLaunchFlow(args: {
   const meta = flexMeta(args.program);
   const { actor, plan } = args;
   const tax = args.tax ?? defaultTaxDraft(args.program);
-  const withProject = hasProjectTax(args.program);
-  const createActions: ChainAction[] = [
-    createTokenAction(
+  const setfeesActions: ChainAction[] = [
+    setfeesAction(
       code,
-      actor,
-      plan.fullSupply,
+      plan.launched.precision,
+      plan.launched.symbol,
       {
         reflectionRate: tax.reflectionRate,
         burnRate: tax.burnRate,
         projectRate: tax.projectRate,
         projectAccount: tax.projectAccount,
       },
-      withProject
+      hasProjectTax(args.program),
+      actor
     ),
   ];
   if (hasAngelChannels(args.program) && (tax.angelNumbersBps > 0 || tax.jackpotBps > 0)) {
-    createActions.push(ratiosAction(code, plan.launched.symbol, tax.angelNumbersBps, tax.jackpotBps));
+    setfeesActions.push(ratiosAction(code, plan.launched.symbol, tax.angelNumbersBps, tax.jackpotBps));
   }
   return [
     {
@@ -84,7 +84,14 @@ export function simulateLaunchFlow(args: {
       label: "Create token",
       account: code,
       name: "create",
-      actions: createActions,
+      actions: [createTokenAction(code, actor, plan.fullSupply)],
+    },
+    {
+      id: "setfees",
+      label: "Set fees",
+      account: code,
+      name: "setfees",
+      actions: setfeesActions,
     },
     {
       id: "supply",
@@ -162,6 +169,7 @@ export function simulateManageActions(args: {
   out.push(
     setfeesAction(
       code,
+      precision,
       symbol,
       {
         reflectionRate: 100,
@@ -169,7 +177,8 @@ export function simulateManageActions(args: {
         projectRate: 100,
         projectAccount: actor,
       },
-      hasProjectTax(args.program)
+      hasProjectTax(args.program),
+      actor
     )
   );
   if (hasInheritance(args.program)) {

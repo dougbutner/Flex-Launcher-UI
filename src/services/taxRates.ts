@@ -11,6 +11,7 @@ export type TaxDraft = {
   jackpotBps: number;
 };
 
+/** Suggested first setfees split. On-chain create writes 0/0/0. */
 export function defaultTaxDraft(program: FlexProgram): TaxDraft {
   if (program === "easyflex") {
     return {
@@ -64,34 +65,40 @@ export function formatBpsPercent(bps: number): string {
   return `${bpsToPercentInput(bps)}%`;
 }
 
-/** Create-time validation. Null = ok. */
-export function taxCreateValid(draft: TaxDraft, program: FlexProgram): string | null {
-  const sum = taxSum(draft, program);
-  if (sum <= 0) return "Overall transfer tax must be greater than 0%.";
-  if (sum > 10000) return "Overall transfer tax cannot exceed 100%.";
-  if (hasProjectTax(program) && draft.projectAccount.trim()) {
-    if (!validAccount(draft.projectAccount.trim().toLowerCase())) {
-      return "Project account must be a valid XPR name (or leave blank for the issuer).";
-    }
-  }
-  if (hasAngelChannels(program)) {
-    if (channelSum(draft) > 10000) return "Angel + jackpot cannot exceed 100% of the reflection slice.";
+function projectAccountErr(draft: TaxDraft, program: FlexProgram): string | null {
+  if (!hasProjectTax(program) || !draft.projectAccount.trim()) return null;
+  if (!validAccount(draft.projectAccount.trim().toLowerCase())) {
+    return "Project account must be a valid XPR name (or leave blank for the issuer).";
   }
   return null;
 }
 
-/** setfees-time validation. lockedTotal is the on-chain sum that must be preserved. */
-export function taxSetfeesValid(draft: TaxDraft, program: FlexProgram, lockedTotal: number): string | null {
-  const sum = taxSum(draft, program);
-  if (sum !== lockedTotal) {
-    return `Bucket split must stay ${formatBpsPercent(lockedTotal)} overall (now ${formatBpsPercent(sum)}).`;
-  }
-  if (hasProjectTax(program) && draft.projectAccount.trim()) {
-    if (!validAccount(draft.projectAccount.trim().toLowerCase())) {
-      return "Project account must be a valid XPR name.";
-    }
+function taxChannelValid(draft: TaxDraft, program: FlexProgram): string | null {
+  if (hasAngelChannels(program) && channelSum(draft) > 10000) {
+    return "Angel + jackpot cannot exceed 100% of the reflection slice.";
   }
   return null;
+}
+
+/** Bucket rules for setfees (no angel/jackpot). Null = ok. */
+export function taxRateValid(draft: TaxDraft, program: FlexProgram, chain: TaxDraft | null = null): string | null {
+  const newSum = taxSum(draft, program);
+  if (newSum > 10000) return "⟁ Total fees cannot exceed 100%";
+  if (chain && taxSum(chain, program) > 0) {
+    if (newSum > taxSum(chain, program)) return "⟁ Total tax cannot increase";
+    if (draft.reflectionRate < chain.reflectionRate) return "⟁ Reflection cannot go down";
+  }
+  return projectAccountErr(draft, program);
+}
+
+/** First setfees (on-chain sum is 0). Null = ok. */
+export function taxCreateValid(draft: TaxDraft, program: FlexProgram): string | null {
+  return taxRateValid(draft, program, null) ?? taxChannelValid(draft, program);
+}
+
+/** Later setfees. Uses the same ⟁ strings as the contract. */
+export function taxAdjustValid(draft: TaxDraft, program: FlexProgram, chain: TaxDraft): string | null {
+  return taxRateValid(draft, program, chain) ?? taxChannelValid(draft, program);
 }
 
 export function taxFromSettings(
@@ -99,15 +106,17 @@ export function taxFromSettings(
   settings: Record<string, unknown> | null | undefined
 ): TaxDraft {
   const base = defaultTaxDraft(program);
-  if (!settings) return base;
+  if (!settings) {
+    return { ...base, reflectionRate: 0, burnRate: 0, projectRate: 0 };
+  }
   const num = (k: string, fallback: number) => {
     const n = Number(settings[k]);
     return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
   };
   return {
-    reflectionRate: num("reflection_rate", base.reflectionRate),
-    burnRate: num("burn_rate", base.burnRate),
-    projectRate: hasProjectTax(program) ? num("project_rate", base.projectRate) : 0,
+    reflectionRate: num("reflection_rate", 0),
+    burnRate: num("burn_rate", 0),
+    projectRate: hasProjectTax(program) ? num("project_rate", 0) : 0,
     projectAccount: hasProjectTax(program) ? String(settings.project_account ?? "").trim() : "",
     angelNumbersBps: hasAngelChannels(program) ? num("angel_numbers_bps", 0) : 0,
     jackpotBps: hasAngelChannels(program) ? num("jackpot_bps", 0) : 0,

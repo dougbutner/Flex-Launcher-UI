@@ -12,51 +12,37 @@ export type ChainAction = {
 export function createTokenAction(
   tokenContract: string,
   issuer: string,
-  maximumSupply: string,
+  maximumSupply: string
+): ChainAction {
+  return {
+    account: tokenContract,
+    name: "create",
+    data: { issuer, maximum_supply: maximumSupply },
+  };
+}
+
+/** Issuer or contract. First call (on-chain sum 0) sets tax. Later: total cannot rise, reflection cannot fall. */
+export function setfeesAction(
+  tokenContract: string,
+  precision: number,
+  symbol: string,
   tax: {
     reflectionRate: number;
     burnRate: number;
     projectRate?: number;
     projectAccount?: string;
   },
-  withProject: boolean
+  withProject: boolean,
+  issuer: string
 ): ChainAction {
   const data: Record<string, unknown> = {
-    issuer,
-    maximum_supply: maximumSupply,
+    sym: abiSymbol(precision, symbol),
     reflection_rate: tax.reflectionRate,
     burn_rate: tax.burnRate,
   };
   if (withProject) {
     data.project_rate = tax.projectRate ?? 0;
     data.project_account = (tax.projectAccount || "").trim() || issuer;
-  }
-  return {
-    account: tokenContract,
-    name: "create",
-    data,
-  };
-}
-
-export function setfeesAction(
-  tokenContract: string,
-  tokenSymbol: string,
-  tax: {
-    reflectionRate: number;
-    burnRate: number;
-    projectRate?: number;
-    projectAccount?: string;
-  },
-  withProject: boolean
-): ChainAction {
-  const data: Record<string, unknown> = {
-    token_symbol: tokenSymbol,
-    reflection_rate: tax.reflectionRate,
-    burn_rate: tax.burnRate,
-  };
-  if (withProject) {
-    data.project_rate = tax.projectRate ?? 0;
-    data.project_account = (tax.projectAccount || "").trim();
   }
   return {
     account: tokenContract,

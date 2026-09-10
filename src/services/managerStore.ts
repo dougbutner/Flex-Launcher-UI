@@ -4,6 +4,7 @@ import type { FeeTier, FlexProgram } from "@/config/launch";
 
 export const LAUNCH_STEP_IDS = [
   "create",
+  "setfees",
   "supply",
   "startlaunch",
   "createpool",
@@ -20,6 +21,7 @@ export type LaunchProgress = Record<LaunchStepId, boolean>;
 
 export const LAUNCH_STEPS: Record<LaunchStepId, { label: string; prompt: string }> = {
   create: { label: "Create token", prompt: "Sign create on the token contract. This is the first on-chain step." },
+  setfees: { label: "Set fees", prompt: "Sign setfees. Rates start at 0 after create. Later calls cannot raise the total or lower reflection." },
   supply: { label: "Mint or issue 100%", prompt: "Mint or issue the full supply to yourself before startlaunch." },
   startlaunch: { label: "Start launch", prompt: "Sign startlaunch with quote, fee, ticks, and sqrt price." },
   createpool: { label: "Create Alcor pool", prompt: "Sign swap.alcor::createpool with zero amounts and the same sqrt price." },
@@ -69,6 +71,7 @@ export type ManagerToken = {
   rangeTx: string;
   lockTx: string;
   liftoffTx: string;
+  feesTx: string;
   createdAt: number;
   updatedAt: number;
 };
@@ -134,6 +137,7 @@ export function emptyManagerToken(): ManagerToken {
     rangeTx: "",
     lockTx: "",
     liftoffTx: "",
+    feesTx: "",
     createdAt: 0,
     updatedAt: 0,
   };
@@ -194,6 +198,7 @@ export function parseManagerToken(raw: unknown): ManagerToken | null {
     rangeTx: str(o.rangeTx, 128),
     lockTx: str(o.lockTx, 128),
     liftoffTx: str(o.liftoffTx, 128),
+    feesTx: str(o.feesTx, 128),
     createdAt: Math.max(0, Math.floor(num(o.createdAt))),
     updatedAt: Math.max(0, Math.floor(num(o.updatedAt))),
   };
@@ -226,6 +231,7 @@ export type LaunchEvidence = {
   deposited?: boolean;
   hasPosition?: boolean;
   hasLock?: boolean;
+  feesSet?: boolean;
   txs?: Partial<Record<LaunchStepId | "mint", string>>;
 };
 
@@ -247,10 +253,12 @@ export function launchProgressFrom(ev: LaunchEvidence): LaunchProgress {
         ev.poolActive == null;
   const hasLaunch = launched || hasPool || Boolean(ev.hasLaunch) || txDone(tx.startlaunch);
   const supplyPositive = hasLaunch || Boolean(ev.supplyPositive) || txDone(tx.supply) || txDone(tx.mint);
-  const hasStat = supplyPositive || Boolean(ev.hasStat) || txDone(tx.create);
+  const setfeesDone = supplyPositive || txDone(tx.setfees) || Boolean(ev.feesSet);
+  const hasStat = setfeesDone || Boolean(ev.hasStat) || txDone(tx.create);
 
   return {
     create: hasStat,
+    setfees: setfeesDone,
     supply: supplyPositive,
     startlaunch: hasLaunch,
     createpool: hasPool,
@@ -314,6 +322,7 @@ export function mergeManagerViews(chain: ChainIssuerToken[], stored: ManagerToke
       hasLock: Boolean(row.lockTx),
       txs: {
         create: row.createTx,
+        setfees: row.feesTx,
         supply: row.mintTx,
         mint: row.mintTx,
         startlaunch: row.startTx,
@@ -368,6 +377,7 @@ export function mergeManagerViews(chain: ChainIssuerToken[], stored: ManagerToke
       hasLock: Boolean(token.lockTx),
       txs: {
         create: token.createTx,
+        setfees: token.feesTx,
         supply: token.mintTx,
         mint: token.mintTx,
         startlaunch: token.startTx,

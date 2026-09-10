@@ -19,6 +19,7 @@ type Props = {
   patch: (p: Partial<LaunchDraft>) => void;
   onNext: () => void;
   onBack: () => void;
+  locked?: boolean;
 };
 
 const FLEX_IDS = new Set(["easy", "won", "grams", "meme"]);
@@ -76,7 +77,7 @@ function fmtUsd(n: number): string {
   return `$${n.toPrecision(3)}`;
 }
 
-export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
+export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Props) {
   const [proof, setProof] = useState<{ ok: boolean; reason: string } | null>(null);
   const [checking, setChecking] = useState(false);
   const [live, setLive] = useState<Record<string, boolean>>({});
@@ -138,6 +139,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
   }, [needsProof, invalid, draft.proofPoolId, quote.symbol, quote.contract]);
 
   const autofillProof = (symbol: string, contract: string) => {
+    if (locked) return;
     setProofBusy(true);
     setProofHint("Looking up Alcor proof pool…");
     void findProofPoolId(symbol, contract)
@@ -169,6 +171,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
   };
 
   const openXtokenPicker = () => {
+    if (locked) return;
     patch({
       quoteId: "xtoken",
       priceLower: xtokenPreset.priceLower,
@@ -182,6 +185,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
   };
 
   const selectXtoken = (row: XtokenRow) => {
+    if (locked) return;
     patch({
       quoteId: "xtoken",
       xtokenSymbol: row.symbol,
@@ -197,6 +201,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
   };
 
   const selectPreset = (p: QuotePreset) => {
+    if (locked) return;
     setXtokenPickerOpen(false);
     setXtokenShowAll(false);
     patch({
@@ -239,6 +244,11 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
         </>
       }
     >
+      {locked ? (
+        <p className="text-xs text-warning">
+          Create already landed. Quote is frozen so execute preflight cannot drift.
+        </p>
+      ) : null}
       <div>
         <p className="label">Flex quotes</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -247,7 +257,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
               key={p.id}
               preset={p}
               selected={draft.quoteId === p.id}
-              unavailable={live[p.contract] === false}
+              unavailable={locked || live[p.contract] === false}
               onSelect={() => selectPreset(p)}
             />
           ))}
@@ -262,7 +272,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
               key={p.id}
               preset={p}
               selected={draft.quoteId === p.id}
-              unavailable={live[p.contract] === false}
+              unavailable={locked || live[p.contract] === false}
               onSelect={() => selectPreset(p)}
             />
           ))}
@@ -310,7 +320,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
                     ? "cursor-not-allowed opacity-50"
                     : "border-input bg-background/50 hover:border-primary/40"
                 }`}
-                disabled={live[xtokenPreset.contract] === false}
+                disabled={locked || live[xtokenPreset.contract] === false}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-base font-bold">xtokens</span>
@@ -365,7 +375,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
                       key={row.symbol}
                       type="button"
                       title={`${row.symbol} · ${fmtUsd(row.usdPrice)}`}
-                      onClick={() => selectXtoken(row)}
+                      onClick={() => !locked && selectXtoken(row)}
                       className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-all ${
                         selectedDog
                           ? "border-primary bg-primary/15"
@@ -395,6 +405,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
               <div className="flex flex-wrap gap-2">
                 <input
                   className="input max-w-[10rem] font-mono uppercase"
+                  disabled={locked}
                   value={draft.xtokenSymbol}
                   maxLength={7}
                   onChange={(e) =>
@@ -408,6 +419,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
                   className="input w-20 font-mono"
                   inputMode="numeric"
                   title="Precision"
+                  disabled={locked}
                   value={draft.xtokenPrecision}
                   onChange={(e) =>
                     patch({
@@ -418,7 +430,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
                 <button
                   type="button"
                   className="btn btn-outline btn-sm"
-                  disabled={!draft.xtokenSymbol}
+                  disabled={locked || !draft.xtokenSymbol}
                   onClick={() => {
                     if (!draft.xtokenSymbol) return;
                     selectXtoken({
@@ -447,6 +459,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
         <input
           type="checkbox"
           className="mt-1"
+          disabled={locked}
           checked={draft.swapUnderlyingDefault}
           onChange={(e) => patch({ swapUnderlyingDefault: e.target.checked })}
         />
@@ -476,6 +489,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
                 className="input min-w-[10rem] flex-1 font-mono"
                 inputMode="numeric"
                 placeholder="e.g. 2142"
+                disabled={locked}
                 value={draft.proofPoolId}
                 onChange={(e) => {
                   setProofHint("");
@@ -485,7 +499,7 @@ export function QuoteStep({ draft, patch, onNext, onBack }: Props) {
               <button
                 type="button"
                 className="btn btn-outline btn-sm"
-                disabled={proofBusy}
+                disabled={locked || proofBusy}
                 onClick={() => autofillProof(quote.symbol, quote.contract)}
               >
                 {proofBusy ? "Finding…" : "Find pool"}

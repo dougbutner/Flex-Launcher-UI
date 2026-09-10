@@ -35,19 +35,19 @@ Canonical C++: **`src/Project Contracts/`** (`*.hpp` / `*.cpp`). If header and c
 | Project tax | no | yes | yes |
 | Inheritance | no | yes | yes |
 | Angel / jackpot / `rng` | no | no | yes |
-| Default create rates | issuer-chosen (default refl 100, burn 100) | issuer-chosen (default refl 100, project 100) | issuer-chosen (default refl 100, project 100) |
+| Create rates | 0 until issuer `setfees` | 0 until issuer `setfees` | 0 until issuer `setfees` |
 | Liftoff EASY@`mon3y` | 5,000 × (prior+1) | 10,000 × (prior+1) | 50,000 × (prior+1) |
 
-Shared launch law: `create` → mint/issue 100% to issuer → `startlaunch` → issuer seeds `swap.alcor` → `liftoff`. Constants: `PROTO_BPS_HALF=25`, `PAY_NUM/PAY_DEN=382/1000`, `MIN_LOCK_SECS=7776000`, ticks ±443636.
+Shared launch law: `create` → `setfees` → mint/issue 100% to issuer → `startlaunch` → issuer seeds `swap.alcor` → `liftoff`. Constants: `PROTO_BPS_HALF=25`, `PAY_NUM/PAY_DEN=382/1000`, `MIN_LOCK_SECS=7776000`, ticks ±443636.
 
 ## UI coverage (honest)
 
 **In the Vite app today**
 
-- Launch wizard: create (tax buckets) / mint|issue / startlaunch (+ `swap_underlying_default`) / Alcor seed / lockpos / liftoff; for3x may sign `ratios` with create
+- Launch wizard: two-field `create` / Flexonomics `setfees` / mint|issue / startlaunch (+ `swap_underlying_default`) / Alcor seed / lockpos / liftoff; for3x may sign `ratios` with setfees
 - Post-launch poke: `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot chips)
 - Token manage (`/token/:contract/:symbol`): holder `choosereward` / `feeoptout` / `setangelnum` / inheritance; issuer `setfees` / `setdist` / `ratios` / `addpool` / `setmin` (easy + complex)
-- Manager (`/manager`): sqlite + chain progress for issuers after first `create`; locked-total `setfees` / for3x `ratios`. No IPFS re-upload.
+- Manager (`/manager`): sqlite + chain progress for issuers after first `create`; Save tax (`setfees`) separate from metadata; for3x `ratios`. No IPFS re-upload.
 - Read-only: leaderboard holders, reflection history filter, portfolio balances (+ “Your launches”)
 - Admin (`/admin`): `token.proton` `reg` / `update` when connected as the flex contract
 
@@ -58,7 +58,7 @@ Shared launch law: `create` → mint/issue 100% to issuer → `startlaunch` → 
 | `setconfig` | **contract@active only** |
 | `receiverand` | **rng only** |
 
-Issuer tax path: `create` tax fields + `setfees` (locked overall sum). Prefer `launchActions.ts`, `flexTables.ts`, Token / Manager patterns.
+Issuer tax path: `create` writes 0 rates, then issuer `setfees`. for3x issuers split the reflection slice with `ratios` / `setdist`. Prefer `launchActions.ts`, `flexTables.ts`, Token / Manager patterns.
 
 ## Stale names (never emit)
 
@@ -74,6 +74,6 @@ Non-flex (0.5% skim, proof id **> 0** vs XUSDC or XPR): xtokens, XPR@eosio.token
 ## Do not
 
 - Edit the three token `.cpp`/`.hpp` unless the user asks.
-- Call `setconfig` or `receiverand` from issuer/holder UI (issuers use `create` tax fields + `setfees`).
+- Call `setconfig` or `receiverand` from issuer/holder UI. Overall tax is issuer `setfees` after create. for3x issuers use `ratios` / `setdist`.
 - Treat `angel_numbers_pool` / `jackpot_pool` as unused pads  -  they are live pots.
 - Follow `UI-LAUNCH.md` action names.

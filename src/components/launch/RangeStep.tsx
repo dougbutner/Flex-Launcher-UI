@@ -15,9 +15,10 @@ type Props = {
   patch: (p: Partial<LaunchDraft>) => void;
   onNext: () => void;
   onBack: () => void;
+  locked?: boolean;
 };
 
-export function RangeStep({ draft, patch, onNext, onBack }: Props) {
+export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Props) {
   const invalid = rangeStepValid(draft);
   const preset = presetFromDraft(draft);
   const quote = quoteFromDraft(draft);
@@ -38,12 +39,18 @@ export function RangeStep({ draft, patch, onNext, onBack }: Props) {
         </>
       }
     >
+      {locked ? (
+        <p className="text-xs text-warning">
+          Create already landed. Range and lock are frozen so execute preflight cannot drift.
+        </p>
+      ) : null}
       <Field label="Fee tier" hint="Swap fee on every trade through this pool.">
         <div className="grid grid-cols-3 gap-2">
           {FEE_TIERS.map((t) => (
             <button
               key={t.fee}
               type="button"
+              disabled={locked}
               onClick={() => patch({ fee: t.fee })}
               className={`rounded-xl border px-3 py-2.5 text-center transition-all ${
                 draft.fee === t.fee
@@ -67,6 +74,7 @@ export function RangeStep({ draft, patch, onNext, onBack }: Props) {
                 key={w.id}
                 type="button"
                 title={w.title}
+                disabled={locked}
                 onClick={() => patch(applyRangeWidth(draft, w.id))}
                 className={`rounded-xl border px-3 py-5 text-center transition-all ${
                   selected
@@ -87,6 +95,7 @@ export function RangeStep({ draft, patch, onNext, onBack }: Props) {
             className="input font-mono"
             inputMode="decimal"
             value={draft.priceLower}
+            disabled={locked}
             onChange={(e) =>
               patch({ priceLower: e.target.value.replace(/[^\d.]/g, ""), rangeWidthId: null })
             }
@@ -97,6 +106,7 @@ export function RangeStep({ draft, patch, onNext, onBack }: Props) {
             className="input font-mono"
             inputMode="decimal"
             value={draft.priceUpper}
+            disabled={locked}
             onChange={(e) =>
               patch({ priceUpper: e.target.value.replace(/[^\d.]/g, ""), rangeWidthId: null })
             }
@@ -112,6 +122,7 @@ export function RangeStep({ draft, patch, onNext, onBack }: Props) {
             max={730}
             step={1}
             value={Math.max(LOCK_MIN_DAYS, draft.lockDays)}
+            disabled={locked}
             onChange={(e) => patch({ lockDays: Number(e.target.value) })}
             className="flex-1 accent-[hsl(var(--primary))]"
           />

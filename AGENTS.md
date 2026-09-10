@@ -10,9 +10,9 @@ App UI and wallets: `src/` and `src/services/walletConstants.ts`. Faux UI shapes
 
 ### UI coverage vs ABI
 
-**Shipped:** launch wizard (incl. `swap_underlying_default` + transfer-tax buckets at `create`, for3x `ratios` in the create tx), issuer `setfees` (locked overall tax), `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot display), token manage (`/token/:contract/:symbol`) with `setdist` / `ratios` / `setangelnum` / `setfees`, easyflex/complexflex `setmin`, `inheritance` / `inheritmemo`, `addpool` / `choosereward`, `feeoptout`.
+**Shipped:** launch wizard (Flexonomics `setfees` after two-field `create`, then mint|issue / startlaunch / Alcor seed / liftoff; for3x may sign `ratios` with setfees), `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot display), token manage (`/token/:contract/:symbol`) with `setfees` / `setdist` / `ratios` / `setangelnum`, easyflex/complexflex `setmin`, `inheritance` / `inheritmemo`, `addpool` / `choosereward`, `feeoptout`.
 
-Gate by program: angel channels = flexforex only; inheritance = complexflex + flexforex; `setmin` = easyflex + complexflex; flex-to + feeoptout = all three. Never invent `setconfig` or `receiverand` UI. Issuer may set tax **split** at create and reallocate with `setfees` without changing the locked total.
+Gate by program: angel channels = flexforex only; inheritance = complexflex + flexforex; `setmin` = easyflex + complexflex; flex-to + feeoptout = all three. Never invent `setconfig` or `receiverand` UI. `setconfig` is contract@active only (pagination / admin). Overall transfer tax is issuer `setfees` after create (rates start at 0). for3x issuers split the reflection slice with `ratios` / `setdist` (not extra tax).
 
 ---
 
@@ -51,12 +51,11 @@ Let the user pick **easyflex | complexflex | flexforex** before create. Shared l
 | Inheritance / inheritmemo | no | yes | yes |
 | `setdist` / `ratios` / `setangelnum` / `pullangel` / `pulljackpot` | no | no | yes |
 | `receiverand` | never in UI | never in UI | never in UI (`rng` only) |
-| `setfees` (locked total) | yes | yes | yes |
-| Default create fees | issuer-chosen (default refl 100, burn 100) | issuer-chosen (default refl 100, project 100) | issuer-chosen (default refl 100, project 100) |
+| Create fees | 0 until issuer `setfees` | 0 until issuer `setfees` | 0 until issuer `setfees` |
 | Liftoff EASY@mon3y | 5,000 × (prior + 1) | 10,000 × (prior + 1) | 50,000 × (prior + 1) |
 | Alcor accounts excluded from reflect denom | `alcor`, `mon3y`, `swap.alcor` | `alcor`, `gold.mon3y`, `swap.alcor` | `alcor`, `gold.mon3y`, `swap.alcor` |
 
-`setconfig` = **contract@active only** on all three (admin hatch that may change the total). Issuer path: tax fields on `create`, then `setfees` with the same overall bps sum. Do not put `setconfig` sliders in the issuer wizard.
+`setconfig` = **contract@active only** on all three (limit / start_key / admin). Do not put `setconfig` in the issuer wizard. Issuer tax is `setfees` after `create`. for3x may sign `ratios` with that setfees step (share of `reflection_rate` only). Later `setfees`: new total cannot exceed current total, reflection cannot go down, burn and project can move or be cut.
 
 ---
 
@@ -113,28 +112,31 @@ Pretty price caps are **UI-only**. Contract checks fee, tick spacing, ±443636, 
 
 Suggested quote caps (not on-chain): EASY 1e6 / token, WON 1e4, GRAMS 1e3, MEME 1e11, xtokens unbounded.
 
-Do not call `eosio::buyram` for the token contract. The wizard starts at `create`. Alcor pool RAM on `createpool` is separate and stays on the issuer path.
+Do not call `eosio::buyram` for the token contract. The wizard starts at `create`, then **`setfees`**, then mint/issue. Alcor pool RAM on `createpool` is separate and stays on the issuer path. After a successful create tx, Token / Flexonomics / Quote / Range stay viewable but frozen until liftoff.
 
 ### A - `create`
 
+```json
+{ "issuer": "alice", "maximum_supply": "1000000.0000 FOO" }
+```
+
+`create` writes `settings` rates at **0**. Do not send tax on create.
+
+### A2 - `setfees` (issuer@active, after create, before mint/issue)
+
 easyflex:
+
 ```json
-{ "issuer": "alice", "maximum_supply": "1000000.0000 FOO", "reflection_rate": 100, "burn_rate": 100 }
+{ "sym": "4,FOO", "reflection_rate": 100, "burn_rate": 100 }
 ```
 
-complexflex / flexforex:
+complexflex / flexforex (empty `project_account` stays the issuer):
+
 ```json
-{
-  "issuer": "alice",
-  "maximum_supply": "1000000.0000 FOO",
-  "reflection_rate": 100,
-  "burn_rate": 0,
-  "project_rate": 100,
-  "project_account": "alice"
-}
+{ "sym": "4,FOO", "reflection_rate": 100, "burn_rate": 0, "project_rate": 100, "project_account": "alice" }
 ```
 
-Empty `project_account` stores the issuer. Sum of tax rates ≤ 10000. for3x may include `ratios` in the same create tx when angel/jackpot channel bps are set.
+Rates are bps / 10000. First call (on-chain sum 0) any split ≤ 10000. Later: `new_sum <= old_sum`, reflection cannot fall. Errors start with `⟁` (`Total tax cannot increase`, `Reflection cannot go down`). for3x may include `ratios` in the same tx when angel/jackpot channel bps are set (split of `reflection_rate` only).
 
 ### B - mint / issue 100% to issuer
 
@@ -189,7 +191,8 @@ Split txs. Never `liftoff` in the same tx as `createpool`.
 | `feeoptout` | self: `ban_status` **true** only | Irreversible for self |
 | `makeitrain` | signer (`sender` or `keeper`) | Always `require_auth` of that name. flexforex ABI field is `keeper`. Signer pays RAM for new holder rows. Splashes 38.2% of `reflection_pool`. |
 | `checklock` | anyone | After `unlock_time`, may raise protocol skim once. |
-| `setfees` / `ratios` / `setdist` / `setangelnum` / `pullangel` / `pulljackpot` | see ABI / flexforex-extras | `setfees` all three (locked total); channels forex only |
+| `setfees` | issuer or contract | After create; later cannot raise total or lower reflection |
+| `ratios` / `setdist` / `setangelnum` / `pullangel` / `pulljackpot` | see ABI / flexforex-extras | channels forex only |
 | `setmin` | issuer | easyflex + complexflex (live 3asy / fl3x) |
 | `inheritance` / `inheritmemo` | flexer or contract | not easyflex |
 
@@ -205,12 +208,13 @@ Check strings start with `⟁`. Surface them verbatim.
 
 1. Connect + **which of the three contracts**.
 2. Create: symbol, precision, max supply, optional art (Pinata / URL). `token.proton::reg` is `{flex contract}@active`, not the issuer. This UI does not sign it.
-3. Quote: EASY/WON/GRAMS/MEME or xtoken + proof pool.
-4. Range: snap ticks, 90d+ lock.
-5. Execute: create → mint/issue → startlaunch → createpool → activate → deposit → addliquid → lockpos → liftoff.
-6. Token home (`/token/:contract/:symbol`): poke + holder prefs + issuer tools; Portfolio / Leaderboard link here.
-7. Admin (`/admin`): nav only when connected as `3asy` / `fl3x` / `for3x`. Syncs missing token metadata to `token.proton` (`reg` / `update`). Prefills from issuer Manager sqlite when present.
-8. Manager (`/manager`): nav for logged-in issuers after the first successful `create`. SQLite stores metadata + step txs keyed by account; chain fills progress so a new device can resume. No IPFS re-upload (URL paste only). Admin later pushes to `token.proton`.
+3. Flexonomics: reflection + burn (easyflex) or reflection + burn + project + optional project account (complex/forex). for3x optional angel/jackpot share of reflection. Signed as `setfees` after create.
+4. Quote: EASY/WON/GRAMS/MEME or xtoken + proof pool.
+5. Range: snap ticks, 90d+ lock.
+6. Execute: create → setfees → mint/issue → startlaunch → createpool → activate → deposit → addliquid → lockpos → liftoff. After liftoff, celebration modal + reset draft. Manager is ready.
+7. Token home (`/token/:contract/:symbol`): poke + holder prefs + issuer tools (incl. `setfees`); Portfolio / Leaderboard link here.
+8. Admin (`/admin`): nav only when connected as `3asy` / `fl3x` / `for3x`. Syncs missing token metadata to `token.proton` (`reg` / `update`). Prefills from issuer Manager sqlite when present.
+9. Manager (`/manager`): nav for logged-in issuers after the first successful `create`. SQLite stores metadata + step txs keyed by account; chain fills progress so a new device can resume. Save metadata is separate from Save tax (`setfees`). No IPFS re-upload (URL paste only). Admin later pushes to `token.proton`.
 
 ---
 

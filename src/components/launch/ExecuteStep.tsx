@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FLEX_PROGRAMS, LOCK_MIN_DAYS, SWAP_ALCOR, flexAccount, flexMeta } from "@/config/launch";
+import { FLEX_PROGRAMS, LOCK_MIN_DAYS, SWAP_ALCOR, flexAccount, flexMeta, hasAngelChannels } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { planFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
@@ -13,6 +13,7 @@ import {
   liftoffAction,
   lockposAction,
   ratiosAction,
+  setfeesAction,
   startlaunchAction,
   supplyAction,
   type ChainAction,
@@ -20,9 +21,8 @@ import {
 import { unlockTimeUnix, type LaunchPlan } from "@/services/launchMath";
 import { readAlcorSystem, readPool, resolvePoolIdAfterCreatepool } from "@/services/flexTables";
 import { assetAmountNumber } from "@/services/assets";
-import { hasAngelChannels } from "@/config/launch";
-import { hasProjectTax } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { hasProjectTax } from "@/services/taxRates";
 import { persistLaunchDraft } from "@/services/managerApi";
 import { runCreateGates, runPreflight, type PreflightItem } from "@/services/preflight";
 
@@ -49,6 +49,7 @@ type ExecDef = {
 
 const TX_KEY: Record<string, keyof LaunchDraft> = {
   create: "createTx",
+  setfees: "feesTx",
   supply: "mintTx",
   startlaunch: "startTx",
   createpool: "poolTx",
@@ -68,20 +69,32 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       detail: `create on ${code}`,
       sig: `${code}::create`,
       txOf: (d) => d.createTx,
+      build: async ({ actor, plan }) => {
+        const actions: ChainAction[] = [createTokenAction(code, actor, plan.fullSupply)];
+        return actions;
+      },
+    },
+    {
+      id: "setfees",
+      label: "Set fees",
+      detail: `setfees on ${code}`,
+      sig: `${code}::setfees`,
+      txOf: (d) => d.feesTx,
       build: async ({ actor, plan, draft: d }) => {
         const tax = taxFromDraft(d);
         const actions: ChainAction[] = [
-          createTokenAction(
+          setfeesAction(
             code,
-            actor,
-            plan.fullSupply,
+            d.precision,
+            plan.launched.symbol,
             {
               reflectionRate: tax.reflectionRate,
               burnRate: tax.burnRate,
               projectRate: tax.projectRate,
               projectAccount: tax.projectAccount,
             },
-            hasProjectTax(d.program)
+            hasProjectTax(d.program),
+            actor
           ),
         ];
         if (hasAngelChannels(d.program) && (tax.angelNumbersBps > 0 || tax.jackpotBps > 0)) {

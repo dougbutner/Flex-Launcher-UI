@@ -1,8 +1,7 @@
 import { useRef, useState } from "react";
 import { FLEX_PROGRAMS, easyHoldNeed, flexAccount, holdEasyToLaunch, type FlexProgram } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
-import { taxFromDraft, tokenStepValid } from "@/components/launch/draftPlan";
-import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
+import { tokenStepValid } from "@/components/launch/draftPlan";
 import { Field, StepShell, SupplyShortcuts } from "@/components/launch/ui";
 import { formatSupplyCommas, parseSupplyInput, validSymbol } from "@/services/assets";
 import { pinLogoFile } from "@/services/ipfsPin";
@@ -29,7 +28,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   const programLocked = Boolean(draft.createTx);
 
   const onImage = async (file: File | undefined) => {
-    if (!file) return;
+    if (!file || programLocked) return;
     setLogoErr("");
     const problem = await validateTokenLogo(file);
     if (problem) {
@@ -66,6 +65,11 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         </>
       }
     >
+      {programLocked ? (
+        <p className="text-xs text-warning">
+          Create already landed. Token fields are frozen so execute preflight cannot drift.
+        </p>
+      ) : null}
       <div className="grid grid-cols-1 gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Program</p>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -107,7 +111,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
       <div className="flex items-start gap-5">
         <button
           type="button"
-          onClick={() => fileRef.current?.click()}
+          onClick={() => !programLocked && fileRef.current?.click()}
           className="group relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-input bg-background/60 transition-colors hover:border-primary/60"
         >
           {preview ? (
@@ -124,6 +128,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             type="file"
             accept="image/png,image/svg+xml"
             className="hidden"
+            disabled={programLocked}
             onChange={(e) => void onImage(e.target.files?.[0])}
           />
         </button>
@@ -133,6 +138,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
               className="input"
               placeholder="e.g. Flex Forex"
               value={draft.name}
+              disabled={programLocked}
               onChange={(e) => patch({ name: e.target.value })}
             />
           </Field>
@@ -142,6 +148,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
               placeholder="FOO"
               maxLength={7}
               value={draft.symbol}
+              disabled={programLocked}
               onChange={(e) => patch({ symbol: e.target.value.toUpperCase().replace(/[^A-Z]/g, "") })}
             />
             {draft.symbol && !validSymbol(draft.symbol) ? (
@@ -155,7 +162,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         <div className="flex items-baseline justify-between gap-3">
           <p className="font-semibold text-foreground">Token art</p>
           {!showUrl ? (
-            <button type="button" className="link shrink-0 text-xs" onClick={() => setUrlOpen(true)}>
+            <button type="button" className="link shrink-0 text-xs" disabled={programLocked} onClick={() => setUrlOpen(true)}>
               or paste a URL
             </button>
           ) : null}
@@ -180,6 +187,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
                 className="input font-mono text-xs"
                 placeholder="https://"
                 value={draft.imageUrl}
+                disabled={programLocked}
                 required={draft.pinFailed}
                 onChange={(e) => patch({ imageUrl: e.target.value, imageCid: "", logoTx: "" })}
               />
@@ -203,13 +211,14 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         <Field
           label="Max supply"
           hint="100% is issued or minted to you, then deposited into the pool."
-          aside={<SupplyShortcuts value={draft.maxSupply} onPick={(maxSupply) => patch({ maxSupply })} />}
+          aside={programLocked ? undefined : <SupplyShortcuts value={draft.maxSupply} onPick={(maxSupply) => patch({ maxSupply })} />}
         >
           <input
             className="input font-mono"
             inputMode="decimal"
             placeholder="1,000,000"
             value={formatSupplyCommas(draft.maxSupply)}
+            disabled={programLocked}
             onChange={(e) => patch({ maxSupply: parseSupplyInput(e.target.value) })}
           />
         </Field>
@@ -218,6 +227,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             className="input font-mono"
             inputMode="numeric"
             value={draft.precision}
+            disabled={programLocked}
             onChange={(e) => {
               const n = Math.max(0, Math.min(8, Number(e.target.value.replace(/\D/g, "") || 0)));
               patch({ precision: n });
@@ -226,27 +236,12 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         </Field>
       </div>
 
-      <TaxBucketsForm
-        program={draft.program}
-        value={taxFromDraft(draft)}
-        disabled={programLocked}
-        onChange={(tax) =>
-          patch({
-            reflectionRate: tax.reflectionRate,
-            burnRate: tax.burnRate,
-            projectRate: tax.projectRate,
-            projectAccount: tax.projectAccount,
-            angelNumbersBps: tax.angelNumbersBps,
-            jackpotBps: tax.jackpotBps,
-          })
-        }
-      />
-
       <Field label="Description" hint="Optional - shown on the token page.">
         <textarea
           className="input min-h-[88px] resize-y"
           placeholder="What is this token? Why does it flex?"
           value={draft.description}
+          disabled={programLocked}
           onChange={(e) => patch({ description: e.target.value })}
         />
       </Field>
@@ -257,6 +252,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             className="input"
             placeholder="https://"
             value={draft.website}
+            disabled={programLocked}
             onChange={(e) => patch({ website: e.target.value })}
           />
         </Field>
@@ -265,14 +261,16 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             className="input"
             placeholder="@handle"
             value={draft.twitter}
+            disabled={programLocked}
             onChange={(e) => patch({ twitter: e.target.value })}
           />
         </Field>
         <Field label="Telegram">
           <input
             className="input"
-            placeholder="t.me/…"
+            placeholder="t.me/channel"
             value={draft.telegram}
+            disabled={programLocked}
             onChange={(e) => patch({ telegram: e.target.value })}
           />
         </Field>
@@ -281,6 +279,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             className="input"
             placeholder="@fid"
             value={draft.farcaster}
+            disabled={programLocked}
             onChange={(e) => patch({ farcaster: e.target.value })}
           />
         </Field>

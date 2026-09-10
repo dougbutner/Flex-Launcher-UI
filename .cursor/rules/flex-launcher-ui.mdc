@@ -18,11 +18,11 @@ Always pass **symbol + contract**. `stat` / `settings` / `flexers` / `flexpools`
 
 ## Wizard order
 
-`create` → `mint`/`issue` 100% to issuer → `startlaunch` → Alcor `createpool` / `activepool#id` / `transfer` memo `deposit` / one-sided `addliquid` / `lockpos` ≥90d → `liftoff`. Issuer signs Alcor, not the flex contract. Until `launches.launched`, only `to=swap.alcor`. Do not gift `eosio::buyram` to the token contract.
+`create` → `setfees` → `mint`/`issue` 100% to issuer → `startlaunch` → Alcor `createpool` / `activepool#id` / `transfer` memo `deposit` / one-sided `addliquid` / `lockpos` ≥90d → `liftoff`. Issuer signs Alcor, not the flex contract. Until `launches.launched`, only `to=swap.alcor`. Do not gift `eosio::buyram` to the token contract. After a successful create, freeze Token / Flexonomics / Quote / Range so execute preflight cannot drift.
 
 ## Do not
 
-- Call `receiverand` or `setconfig` from the issuer wizard (`setconfig` is contract-only; issuers use `create` tax fields + `setfees`).
+- Call `receiverand` or `setconfig` from the issuer wizard (`setconfig` is contract-only). Overall tax is issuer `setfees` after create. for3x issuers use `ratios` / `setdist` for a share of `reflection_rate` only.
 - Treat `stat.angel_numbers_pool` / `jackpot_pool` as unused ABI pads.
 - Build inheritance or luck UI on easyflex.
 - Edit the three token `.cpp`/`.hpp` unless the user asks.

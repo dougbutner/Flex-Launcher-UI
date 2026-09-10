@@ -120,3 +120,14 @@
     @apply font-medium text-primary underline-offset-4 hover:text-accent hover:underline;
   }
 }
+
+@keyframes flex-confetti {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(12px, 110vh, 0) rotate(540deg);
+    opacity: 0;
+  }
+}

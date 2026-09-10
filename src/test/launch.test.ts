@@ -12,7 +12,6 @@ import {
   supplyAction,
   ratiosAction,
   setdistAction,
-  setfeesAction,
   setangelnumAction,
   addpoolAction,
   chooserewardAction,
@@ -47,8 +46,8 @@ import {
   defaultTaxDraft,
   formatBpsPercent,
   percentInputToBps,
+  taxAdjustValid,
   taxCreateValid,
-  taxSetfeesValid,
   taxSum,
 } from "@/services/taxRates";
 import { findXtoken, xtokensByMarketCap } from "@/config/xtokens";
@@ -205,29 +204,10 @@ describe("launch plan", () => {
       priceUpper: "1000",
     });
     expect(plan.launched.contract).toBe("mon3y");
-    expect(createTokenAction("mon3y", "alice", plan.fullSupply, { reflectionRate: 100, burnRate: 100 }, false).name).toBe(
-      "create"
-    );
-    expect(
-      createTokenAction(
-        "fl3x",
-        "alice",
-        plan.fullSupply,
-        { reflectionRate: 150, burnRate: 50, projectRate: 100, projectAccount: "" },
-        true
-      ).data
-    ).toMatchObject({
-      reflection_rate: 150,
-      burn_rate: 50,
-      project_rate: 100,
-      project_account: "alice",
-    });
-    expect(
-      setfeesAction("3asy", "FOO", { reflectionRate: 150, burnRate: 50 }, false).data
-    ).toEqual({
-      token_symbol: "FOO",
-      reflection_rate: 150,
-      burn_rate: 50,
+    expect(createTokenAction("mon3y", "alice", plan.fullSupply).name).toBe("create");
+    expect(createTokenAction("fl3x", "alice", plan.fullSupply).data).toEqual({
+      issuer: "alice",
+      maximum_supply: plan.fullSupply,
     });
     expect(supplyAction("mon3y", "issue", "alice", plan.fullSupply).name).toBe("issue");
     expect(supplyAction("flex.mon3y", "mint", "alice", plan.fullSupply).name).toBe("mint");
@@ -367,17 +347,25 @@ describe("holder and issuer manage actions", () => {
 });
 
 describe("tax rates", () => {
-  it("defaults and freezes the overall sum", () => {
+  it("suggests first setfees splits and validates channels", () => {
     const easy = defaultTaxDraft("easyflex");
     const complex = defaultTaxDraft("complexflex");
     expect(taxSum(easy, "easyflex")).toBe(200);
     expect(taxSum(complex, "complexflex")).toBe(200);
-    expect(taxCreateValid({ ...easy, reflectionRate: 0, burnRate: 0 }, "easyflex")).toMatch(/greater than 0/);
-    expect(taxCreateValid({ ...easy, reflectionRate: 6000, burnRate: 5000 }, "easyflex")).toMatch(/100%/);
-    expect(taxSetfeesValid({ ...easy, reflectionRate: 150, burnRate: 50 }, "easyflex", 200)).toBeNull();
-    expect(taxSetfeesValid({ ...easy, reflectionRate: 100, burnRate: 50 }, "easyflex", 200)).toMatch(/stay/);
+    expect(taxCreateValid(easy, "easyflex")).toBeNull();
+    expect(taxCreateValid({ ...easy, angelNumbersBps: 6000, jackpotBps: 5000 }, "flexforex")).toMatch(/100%/);
     expect(percentInputToBps("1.5")).toBe(150);
     expect(formatBpsPercent(100)).toBe("1%");
+  });
+
+  it("blocks later setfees that raise total or cut reflection", () => {
+    const chain = defaultTaxDraft("complexflex");
+    expect(taxAdjustValid({ ...chain, projectRate: 200 }, "complexflex", chain)).toBe("⟁ Total tax cannot increase");
+    expect(taxAdjustValid({ ...chain, reflectionRate: 50, projectRate: 150 }, "complexflex", chain)).toBe(
+      "⟁ Reflection cannot go down"
+    );
+    expect(taxAdjustValid({ ...chain, burnRate: 50, projectRate: 50 }, "complexflex", chain)).toBeNull();
+    expect(taxAdjustValid({ ...chain, projectRate: 0 }, "complexflex", chain)).toBeNull();
   });
 });
 
@@ -497,12 +485,22 @@ describe("execute gates and pool id", () => {
 });
 
 describe("issuer manager store", () => {
-  it("points to mint after a successful create", () => {
+  it("points to setfees after a successful create", () => {
     const progress = launchProgressFrom({
       hasStat: true,
       txs: { create: "abc" },
     });
     expect(progress.create).toBe(true);
+    expect(progress.setfees).toBe(false);
+    expect(nextLaunchStep(progress).id).toBe("setfees");
+  });
+
+  it("points to mint after setfees", () => {
+    const progress = launchProgressFrom({
+      hasStat: true,
+      txs: { create: "abc", setfees: "fees" },
+    });
+    expect(progress.setfees).toBe(true);
     expect(nextLaunchStep(progress).id).toBe("supply");
   });
 

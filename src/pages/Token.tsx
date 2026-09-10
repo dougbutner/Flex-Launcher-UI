@@ -282,6 +282,8 @@ export default function Token() {
                   program={program}
                   contract={code}
                   symbol={sym}
+                  precision={precision}
+                  actor={actor ?? ""}
                   settings={settings}
                   busy={busy || poking != null}
                   transact={transact}

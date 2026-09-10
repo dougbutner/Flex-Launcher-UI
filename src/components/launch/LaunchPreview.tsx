@@ -20,6 +20,7 @@ export function LaunchPreview({
   const milestones = [
     { label: `Hold ${easyHoldNeed(flexMeta(draft.program).launchEasyMin).toLocaleString()} EASY`, done: false },
     { label: "Created", done: Boolean(draft.createTx) },
+    { label: "Fees", done: Boolean(draft.feesTx) },
     { label: "Supply", done: Boolean(draft.mintTx) },
     { label: "startlaunch", done: Boolean(draft.startTx) },
     { label: draft.poolId != null ? `Pool #${draft.poolId}` : "Pool created", done: Boolean(draft.poolTx) },

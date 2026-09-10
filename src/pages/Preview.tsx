@@ -350,6 +350,8 @@ export default function Preview() {
             program={PREVIEW_PROGRAM}
             contract={PREVIEW_CONTRACT}
             symbol={PREVIEW_SYMBOL}
+            precision={PREVIEW_PRECISION}
+            actor={PREVIEW_ACTOR}
             settings={previewSettings}
             busy={false}
             transact={fauxTransact}

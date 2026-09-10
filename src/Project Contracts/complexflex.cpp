@@ -108,15 +108,11 @@ void complexflex::maybe_apply_unlock_fee(launches_table& launches, launches_tabl
 
 // === Core token lifecycle === //
 
-ACTION complexflex::create(const name& issuer, const asset& maximum_supply, uint16_t reflection_rate, uint16_t burn_rate,
-                           uint16_t project_rate, const name& project_account) {
+ACTION complexflex::create(const name& issuer, const asset& maximum_supply) {
     require_auth(issuer);
     check(is_account(issuer), "⟁ Issuer account does not exist");
     auto sym = maximum_supply.symbol;
     check(sym.is_valid() && maximum_supply.is_valid() && maximum_supply.amount > 0, "⟁ Invalid symbol/supply");
-    check((uint32_t)reflection_rate + burn_rate + project_rate <= 10000, "⟁ Total fees cannot exceed 100%");
-    name project = project_account.value ? project_account : issuer;
-    if(project.value) check(is_account(project), "⟁ Project account does not exist");
 
     stats statstable(get_self(), sym.code().raw());
     check(statstable.find(sym.code().raw()) == statstable.end(), "⟁ A token with symbol already exists.");
@@ -133,10 +129,10 @@ ACTION complexflex::create(const name& issuer, const asset& maximum_supply, uint
         config.emplace(issuer, [&](auto& c) {
             c.token_symbol = sym;
             c.limit = 100;
-            c.reflection_rate = reflection_rate;
-            c.burn_rate = burn_rate;
-            c.project_rate = project_rate;
-            c.project_account = project;
+            c.reflection_rate = 0;
+            c.burn_rate = 0;
+            c.project_rate = 0;
+            c.project_account = issuer;
             c.admin_account = issuer;
         });
     }
@@ -194,7 +190,8 @@ ACTION complexflex::close(const name& owner, const symbol& symbol) {
 }//END close()
 
 ACTION complexflex::transfer(const name& from, const name& to, const asset& quantity, const string& memo) {
-    check(has_auth(from) || has_auth(get_self()), "⟁ missing required authority of sender or contract");
+    // - Sender must authorize; vault pays only as get_self()
+    require_auth(from);
     check(from != to && is_account(to), "⟁ bad transfer parties");
     check(memo.size() <= 256, "✍️ memo too long ");
 
@@ -223,12 +220,16 @@ ACTION complexflex::transfer(const name& from, const name& to, const asset& quan
     auto flex_it = flex_table.find(from.value);
     const bool banned = flex_it != flex_table.end() && flex_it->fee_opted_out;
     const bool seed_exempt = !launched && to_alcor;
+    // - No tax: swap.alcor Dec/Col (subliquid/collect), alcor order c (cancel)
+    const bool alcor_skip_fee =
+        (from == SWAP_ALCOR && memo.size() >= 3 && (memo.compare(0, 3, "Dec") == 0 || memo.compare(0, 3, "Col") == 0)) ||
+        (from == "alcor"_n && memo.size() >= 7 && memo.compare(0, 7, "order c") == 0);
 
     asset total_deduction = quantity;
     asset actual_transfer = quantity;
     auto payer = has_auth(to) ? to : from;
 
-    if(!is_dist && !banned && !seed_exempt) {
+    if(!is_dist && !banned && !seed_exempt && !alcor_skip_fee) {
         settings_table config(get_self(), sym.raw());
         const auto& conf = config.get(sym.raw(), "Distribution config not set 🤷");
 
@@ -262,33 +263,62 @@ ACTION complexflex::transfer(const name& from, const name& to, const asset& quan
     update_flex_balance(to, actual_transfer, payer);
 }//END transfer()
 
-ACTION complexflex::setconfig(const symbol& sym, uint64_t start_key, uint32_t limit, uint16_t reflection_rate,
-                              uint16_t burn_rate, uint16_t project_rate, const name& project_account, const name& admin_account) {
+ACTION complexflex::setconfig(const symbol& sym, const std::optional<uint64_t>& start_key, const std::optional<uint32_t>& limit,
+                              const std::optional<uint16_t>& reflection_rate, const std::optional<uint16_t>& burn_rate,
+                              const std::optional<uint16_t>& project_rate, const std::optional<name>& project_account,
+                              const std::optional<name>& admin_account) {
     require_auth(get_self());
     stats statstable(get_self(), sym.code().raw());
     const auto& st = statstable.get(sym.code().raw(), "⟁ token with symbol does not exist");
     check(sym.is_valid() && st.supply.symbol == sym, "⟁ Bad symbol");
-    check(limit > 0 && limit <= 1000, "limit must be 1-1000");
-    check(reflection_rate + burn_rate + project_rate <= 10000, "Total fees cannot exceed 100%");
-    if(project_account.value) check(is_account(project_account), "Project account does not exist");
-    if(admin_account.value) check(is_account(admin_account), "Admin account does not exist");
 
     settings_table config(get_self(), sym.code().raw());
     auto itr = config.find(sym.code().raw());
+    const uint32_t lim = limit.value_or(itr != config.end() ? itr->limit : 100);
+    check(lim > 0 && lim <= 1000, "⟁ Limit must be 1-1000");
+    if(admin_account && admin_account->value)
+        check(is_account(*admin_account), "⟁ Admin account does not exist");
+
     auto write = [&](auto& c) {
         c.token_symbol = sym;
-        c.start_key = start_key;
-        c.limit = limit;
-        c.reflection_rate = reflection_rate;
-        c.burn_rate = burn_rate;
-        c.project_rate = project_rate;
-        c.project_account = project_account;
-        if(admin_account.value || itr == config.end())
-            c.admin_account = admin_account.value ? admin_account : get_self();
+        if(start_key) c.start_key = *start_key;
+        c.limit = lim;
+        if(admin_account && admin_account->value) c.admin_account = *admin_account;
+        else if(itr == config.end()) c.admin_account = get_self();
     };
     if(itr == config.end()) config.emplace(get_self(), write);
     else config.modify(itr, same_payer, write);
 }//END setconfig()
+
+// === Set fees === //
+// --- Issuer or contract. First call (sum 0) sets tax. Later: total cannot rise, reflection cannot fall. --- //
+ACTION complexflex::setfees(const symbol& sym, uint16_t reflection_rate, uint16_t burn_rate, uint16_t project_rate,
+                            const name& project_account) {
+    stats statstable(get_self(), sym.code().raw());
+    const auto& st = statstable.get(sym.code().raw(), "⟁ token with symbol does not exist");
+    check(has_auth(get_self()) || has_auth(st.issuer), "⟁ missing issuer or contract authority");
+    check(sym.is_valid() && st.supply.symbol == sym, "⟁ Bad symbol");
+
+    settings_table config(get_self(), sym.code().raw());
+    auto itr = config.find(sym.code().raw());
+    check(itr != config.end(), "⟁ Distribution config not set");
+    const uint32_t old_sum = (uint32_t)itr->reflection_rate + itr->burn_rate + itr->project_rate;
+    const uint32_t new_sum = (uint32_t)reflection_rate + burn_rate + project_rate;
+    check(new_sum <= 10000, "⟁ Total fees cannot exceed 100%");
+    if(old_sum > 0) {
+        check(new_sum <= old_sum, "⟁ Total tax cannot increase");
+        check(reflection_rate >= itr->reflection_rate, "⟁ Reflection cannot go down");
+    }
+    name proj = project_account.value ? project_account : st.issuer;
+    check(is_account(proj), "⟁ Project account does not exist");
+
+    config.modify(itr, same_payer, [&](auto& c) {
+        c.reflection_rate = reflection_rate;
+        c.burn_rate = burn_rate;
+        c.project_rate = project_rate;
+        c.project_account = proj;
+    });
+}//END setfees()
 
 ACTION complexflex::setmin(const string& token_symbol, int64_t reflect_min) {
     check(!token_symbol.empty(), "⟁ Token symbol is required");
@@ -302,30 +332,6 @@ ACTION complexflex::setmin(const string& token_symbol, int64_t reflect_min) {
     require_token_auth(st, *conf_it);
     config.modify(conf_it, same_payer, [&](auto& c) { c.reflect_min = reflect_min; });
 }//END setmin()
-
-ACTION complexflex::setfees(const string& token_symbol, uint16_t reflection_rate, uint16_t burn_rate, uint16_t project_rate,
-                            const name& project_account) {
-    check(!token_symbol.empty(), "⟁ Token symbol is required");
-    symbol_code code(token_symbol);
-    stats statstable(get_self(), code.raw());
-    const auto& st = statstable.get(code.raw(), "⟁ token with symbol does not exist");
-    settings_table config(get_self(), code.raw());
-    auto conf_it = config.find(code.raw());
-    check(conf_it != config.end(), "Distribution config not set");
-    check(has_auth(get_self()) || has_auth(st.issuer), "⟁ missing issuer or contract authority");
-    check((uint32_t)reflection_rate + burn_rate + project_rate <= 10000, "⟁ Total fees cannot exceed 100%");
-    check((uint32_t)reflection_rate + burn_rate + project_rate
-              == (uint32_t)conf_it->reflection_rate + conf_it->burn_rate + conf_it->project_rate,
-          "⟁ cannot change total tax");
-    name project = project_account.value ? project_account : conf_it->project_account;
-    if(project.value) check(is_account(project), "⟁ Project account does not exist");
-    config.modify(conf_it, same_payer, [&](auto& c) {
-        c.reflection_rate = reflection_rate;
-        c.burn_rate = burn_rate;
-        c.project_rate = project_rate;
-        c.project_account = project;
-    });
-}//END setfees()
 
 ACTION complexflex::feeoptout(const name& account, const bool& ban_status, const string& token_symbol) {
     check(is_account(account) && !token_symbol.empty(), "⟁ bad feeoptout data");
@@ -376,7 +382,9 @@ ACTION complexflex::makeitrain(const string& token_symbol, const name& sender) {
     else { nyra.amount = 0; reflc.amount = 0; partner.amount = 0; }
 
     int64_t std_pay = (standard * PAY_NUM) / PAY_DEN;
-    check(std_pay >= min_pool || partner.amount, "⟁ no reflections to distribute");
+    check(std_pay >= min_pool || partner.amount,
+          "⟁ " + asset{std_pay, sym}.to_string() + " / " + asset{min_pool, sym}.to_string()
+              + " needed to make it rain");
 
     flexers flex_table(get_self(), code.raw());
     flexpools pools(get_self(), code.raw());

@@ -37,14 +37,14 @@ flexforex `flexers` secondary index: `byangel`.
 | Field | easy | complex | forex |
 |-------|------|---------|-------|
 | token_symbol, start_key, limit | yes | yes | yes |
-| reflection_rate | default 100 | 100 | 100 |
-| burn_rate | default **100** | 0 | 0 |
-| project_rate, project_account |  -  | 100 / issuer | 100 / issuer |
+| reflection_rate | 0 until `setfees` | 0 until `setfees` | 0 until `setfees` |
+| burn_rate | 0 until `setfees` | 0 until `setfees` | 0 until `setfees` |
+| project_rate, project_account |  -  | 0 / issuer until `setfees` | 0 / issuer until `setfees` |
 | admin_account | issuer | issuer | issuer |
 | reflect_min | issuer `setmin` | issuer `setmin` | via `setdist` |
 | dist_locked, angel_numbers_bps, jackpot_bps, jackpot_winners, jackpot_min_hold, angel_numbers_cooldown, keeper_min, rng_kind, rng_amt |  -  |  -  | forex only |
 
-Rates are bps / 10000. `limit` 1-1000 on `setconfig`. Sum of tax rates ≤ 10000 at create / setconfig. Issuer `setfees` must keep the same sum. `reflect_min == 0` → treat as 1 whole token (`10^precision`).
+Rates are bps / 10000. `limit` 1-1000 on `setconfig`. Sum of tax rates ≤ 10000 on `setfees`. `create` writes 0 rates; issuer `setfees` sets tax. `setconfig` is contract-only (limit / start_key / admin), not tax. Later `setfees`: new total cannot exceed current, reflection cannot fall. `reflect_min == 0` → treat as 1 whole token (`10^precision`).
 
 ## `flexers` (scope = symbol)
 
@@ -71,9 +71,9 @@ Rates are bps / 10000. `limit` 1-1000 on `setconfig`. Sum of tax rates ≤ 10000
 
 | Action | Auth | Notes |
 |--------|------|-------|
-| `create(issuer, maximum_supply, reflection_rate, burn_rate[, project_rate, project_account])` | issuer | Creates `stat` + `settings` with chosen tax; empty project account → issuer |
+| `create(issuer, maximum_supply)` | issuer | Creates `stat` + `settings` with rates at 0 |
+| `setfees` | issuer or contract | easy: refl+burn; complex/forex: + project_rate + project_account. First call any split ≤ 10000. Later: total cannot rise, reflection cannot fall |
 | `issue` / `mint` | issuer | **to must be issuer**; 100% for launch |
-| `setfees(...)` | issuer or contract | Reallocate buckets; **sum must equal** prior total |
 | `burn` | holder | |
 | `transfer` | from (or contract) | Tax unless opted out / contract payout / pre-liftoff Alcor seed |
 | `open` / `close` | ram_payer / owner | |
@@ -99,8 +99,8 @@ checklock(token_symbol)
 
 | Action | Who | Contracts |
 |--------|-----|-----------|
-| `setconfig` | **contract@active only** | all (easy has no project fields); may change total tax |
-| `setfees` | issuer or contract | all; **cannot** change overall tax sum |
+| `setconfig` | **contract@active only** | all; limit / start_key / admin. Does not write tax |
+| `setfees` | issuer or contract | all; tax after create |
 | `feeoptout(account, ban_status, token_symbol)` | self: **true only**; admin/issuer/contract either way | all |
 | `addpool(pool_id, token_symbol, output_symbol, output_contract)` | issuer or contract | all |
 | `choosereward(owner, token_symbol, output_symbol, output_contract)` | owner or issuer/admin/contract; empty output_contract → native (0) | all |
@@ -124,8 +124,8 @@ Flex swap memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0
 ## Signing cheatsheet
 
 ```
-create / issue|mint / startlaunch / liftoff   issuer@active
-setfees / ratios                              issuer or contract
+create / setfees / issue|mint / startlaunch / liftoff   issuer@active
+ratios                                        issuer or contract
 checklock / pullangel / pulljackpot           anyone (chain gates)
 makeitrain                                    sender|keeper@active
 addpool                                       issuer or contract

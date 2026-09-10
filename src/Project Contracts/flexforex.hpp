@@ -4,6 +4,7 @@
 #include <eosio/crypto.hpp>
 #include <eosio/eosio.hpp>
 #include <eosio/time.hpp>
+#include <optional>
 
 namespace eosio {
 
@@ -20,24 +21,24 @@ namespace eosio {
     * Transfer tax splits on receipt: reflection_rate is cut by angel_numbers_bps / jackpot_bps
     * into angel_numbers_pool and jackpot_pool; remainder is reflection_pool. makeitrain
     * splashes only reflection_pool. pullangel / pulljackpot pay their own columns.
-    * Issuer may call setfees (locked total) and ratios on their token; tax totals via setconfig are contract-only.
+    * Issuer may call setfees and ratios on their token; setconfig stays contract-only.
     */
    class [[eosio::contract("flexforex")]] flexforex : public contract {
       public:
          using contract::contract;
 
-         ACTION create(const name& issuer, const asset& maximum_supply, uint16_t reflection_rate, uint16_t burn_rate,
-                       uint16_t project_rate, const name& project_account);
+         ACTION create(const name& issuer, const asset& maximum_supply);
          ACTION mint(const name& to, const asset& quantity, const string& memo);
          ACTION burn(const name& username, const asset& quantity, const string& memo);
          ACTION transfer(const name& from, const name& to, const asset& quantity, const string& memo);
          ACTION open(const name& owner, const symbol& symbol, const name& ram_payer);
          ACTION close(const name& owner, const symbol& symbol);
          ACTION makeitrain(const string& token_symbol, const name& keeper);
-         ACTION setconfig(const symbol& sym, uint64_t start_key, uint32_t limit, uint16_t reflection_rate,
-                          uint16_t burn_rate, uint16_t project_rate, const name& project_account, const name& admin_account);
-         // Issuer or contract: reallocate transfer tax buckets without changing the locked total.
-         ACTION setfees(const string& token_symbol, uint16_t reflection_rate, uint16_t burn_rate, uint16_t project_rate,
+         ACTION setconfig(const symbol& sym, const std::optional<uint64_t>& start_key, const std::optional<uint32_t>& limit,
+                          const std::optional<uint16_t>& reflection_rate, const std::optional<uint16_t>& burn_rate,
+                          const std::optional<uint16_t>& project_rate, const std::optional<name>& project_account,
+                          const std::optional<name>& admin_account);
+         ACTION setfees(const symbol& sym, uint16_t reflection_rate, uint16_t burn_rate, uint16_t project_rate,
                         const name& project_account);
          // Issuer or contract: angel/jackpot share of reflection_rate on transfer.
          ACTION ratios(const string& token_symbol, uint16_t angel_numbers_bps, uint16_t jackpot_bps);

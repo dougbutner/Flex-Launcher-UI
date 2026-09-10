@@ -23,13 +23,7 @@ import {
 } from "@/services/managerStore";
 import { readSettings } from "@/services/flexTables";
 import { ratiosAction, setfeesAction, type ChainAction } from "@/services/launchActions";
-import {
-  hasProjectTax,
-  taxFromSettings,
-  taxSetfeesValid,
-  taxSum,
-  type TaxDraft,
-} from "@/services/taxRates";
+import { hasProjectTax, taxFromSettings, taxRateValid, type TaxDraft } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 export default function Manager() {
@@ -122,53 +116,97 @@ export default function Manager() {
     };
   }, [view?.token.contract, view?.token.symbol, view?.token.updatedAt, view?.token.program]);
 
-  const saveTax = async () => {
-    if (!view || !tax || !settings) return;
-    const locked = taxSum(taxFromSettings(view.token.program, settings), view.token.program);
-    const err = taxSetfeesValid(tax, view.token.program, locked);
+  const saveFees = async () => {
+    if (!view || !tax || !settings || !actor) return;
+    const chain = taxFromSettings(view.token.program, settings);
+    const err = taxRateValid(tax, view.token.program, chain);
     if (err) {
       setTaxMsg(err);
       return;
     }
-    const chain = taxFromSettings(view.token.program, settings);
-    const projectOk = hasProjectTax(view.token.program);
-    const feesChanged =
-      tax.reflectionRate !== chain.reflectionRate ||
-      tax.burnRate !== chain.burnRate ||
-      (projectOk &&
-        (tax.projectRate !== chain.projectRate ||
-          tax.projectAccount.trim().toLowerCase() !== chain.projectAccount.trim().toLowerCase()));
-    const channelsChanged =
-      hasAngelChannels(view.token.program) &&
-      (tax.angelNumbersBps !== chain.angelNumbersBps || tax.jackpotBps !== chain.jackpotBps);
-    const actions: ChainAction[] = [];
-    if (feesChanged) {
-      actions.push(
-        setfeesAction(
-          view.token.contract,
-          view.token.symbol,
-          {
-            reflectionRate: tax.reflectionRate,
-            burnRate: tax.burnRate,
-            projectRate: tax.projectRate,
-            projectAccount: tax.projectAccount,
-          },
-          projectOk
-        )
-      );
-    }
-    if (channelsChanged) {
-      actions.push(ratiosAction(view.token.contract, view.token.symbol, tax.angelNumbersBps, tax.jackpotBps));
-    }
-    if (!actions.length) {
+    const same =
+      tax.reflectionRate === chain.reflectionRate &&
+      tax.burnRate === chain.burnRate &&
+      tax.projectRate === chain.projectRate &&
+      (tax.projectAccount.trim() || actor) === (chain.projectAccount.trim() || actor);
+    if (same) {
       setTaxMsg("No tax changes to sign.");
       return;
     }
+    const actions: ChainAction[] = [
+      setfeesAction(
+        view.token.contract,
+        view.token.precision,
+        view.token.symbol,
+        {
+          reflectionRate: tax.reflectionRate,
+          burnRate: tax.burnRate,
+          projectRate: tax.projectRate,
+          projectAccount: tax.projectAccount,
+        },
+        hasProjectTax(view.token.program),
+        actor
+      ),
+    ];
     setTaxBusy(true);
     setTaxMsg("");
     try {
       const res = await transact(actions);
-      setTaxMsg(`Saved tax · tx ${(txIdFromResult(res) || "ok").slice(0, 12)}…`);
+      const tx = txIdFromResult(res) || "ok";
+      setTaxMsg(`Saved tax · tx ${tx.slice(0, 12)}…`);
+      const row = await readSettings(view.token.contract, view.token.symbol);
+      setSettings(row);
+      setTax(taxFromSettings(view.token.program, row));
+      const saved = await upsertManagerToken({
+        ...view.token,
+        reflectionRate: tax.reflectionRate,
+        burnRate: tax.burnRate,
+        projectRate: tax.projectRate,
+        projectAccount: tax.projectAccount,
+        feesTx: tx,
+        updatedAt: Date.now(),
+      }).catch(() => null);
+      if (saved) {
+        setViews((prev) =>
+          (prev ?? []).map((v) =>
+            managerTokenKey(v.token.contract, v.token.symbol) === managerTokenKey(saved.contract, saved.symbol)
+              ? { ...v, token: { ...v.token, ...saved } }
+              : v
+          )
+        );
+      }
+    } catch (err) {
+      const text = txErrorMessage(err);
+      const hint = hintForError(text);
+      setTaxMsg(hint ? `${text} - ${hint}` : text);
+    } finally {
+      setTaxBusy(false);
+    }
+  };
+
+  const saveTax = async () => {
+    if (!view || !tax || !settings) return;
+    if (!hasAngelChannels(view.token.program)) {
+      setTaxMsg("Only for3x issuers can change angel / jackpot channels.");
+      return;
+    }
+    const chain = taxFromSettings(view.token.program, settings);
+    if (tax.angelNumbersBps + tax.jackpotBps > 10000) {
+      setTaxMsg("Angel + jackpot cannot exceed 100% of the reflection slice.");
+      return;
+    }
+    if (tax.angelNumbersBps === chain.angelNumbersBps && tax.jackpotBps === chain.jackpotBps) {
+      setTaxMsg("No channel changes to sign.");
+      return;
+    }
+    const actions: ChainAction[] = [
+      ratiosAction(view.token.contract, view.token.symbol, tax.angelNumbersBps, tax.jackpotBps),
+    ];
+    setTaxBusy(true);
+    setTaxMsg("");
+    try {
+      const res = await transact(actions);
+      setTaxMsg(`Saved channels · tx ${(txIdFromResult(res) || "ok").slice(0, 12)}…`);
       const row = await readSettings(view.token.contract, view.token.symbol);
       setSettings(row);
       setTax(taxFromSettings(view.token.program, row));
@@ -386,22 +424,30 @@ export default function Manager() {
                   <TaxBucketsForm
                     program={view.token.program}
                     value={tax}
-                    lockedTotal={taxSum(taxFromSettings(view.token.program, settings), view.token.program)}
+                    chain={taxFromSettings(view.token.program, settings)}
                     disabled={taxBusy || busy}
                     onChange={setTax}
                   />
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-sm"
-                    disabled={
-                      taxBusy ||
-                      busy ||
-                      Boolean(taxSetfeesValid(tax, view.token.program, taxSum(taxFromSettings(view.token.program, settings), view.token.program)))
-                    }
-                    onClick={() => void saveTax()}
-                  >
-                    {taxBusy ? "Signing…" : "Save tax on chain"}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      disabled={taxBusy || busy || Boolean(taxRateValid(tax, view.token.program, taxFromSettings(view.token.program, settings)))}
+                      onClick={() => void saveFees()}
+                    >
+                      {taxBusy ? "Signing…" : "Save tax"}
+                    </button>
+                    {hasAngelChannels(view.token.program) ? (
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        disabled={taxBusy || busy}
+                        onClick={() => void saveTax()}
+                      >
+                        {taxBusy ? "Signing…" : "Save reflection channels"}
+                      </button>
+                    ) : null}
+                  </div>
                   {taxMsg ? <p className="text-xs text-muted-foreground">{taxMsg}</p> : null}
                 </div>
               ) : view.progress.create ? (

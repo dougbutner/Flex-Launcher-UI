@@ -18,7 +18,7 @@ export type LaunchDraft = {
   twitter: string;
   telegram: string;
   farcaster: string;
-  /** Transfer tax bps set at create (locked total afterward). */
+  /** Transfer tax bps for setfees after create. */
   reflectionRate: number;
   burnRate: number;
   projectRate: number;
@@ -40,6 +40,7 @@ export type LaunchDraft = {
   rangeWidthId: RangeWidthId | null;
   lockDays: number;
   createTx: string;
+  feesTx: string;
   mintTx: string;
   startTx: string;
   poolId: number | null;
@@ -51,7 +52,7 @@ export type LaunchDraft = {
   liftoffTx: string;
 };
 
-const KEY = "flex-launch-draft-v6";
+const KEY = "flex-launch-draft-v7";
 export const DRAFT_STORAGE_KEY = KEY;
 export const MANAGER_RESUME_KEY = "flex-manager-resume";
 
@@ -96,6 +97,7 @@ export const emptyDraft = (): LaunchDraft => {
     rangeWidthId: null,
     lockDays: LOCK_MIN_DAYS,
     createTx: "",
+    feesTx: "",
     mintTx: "",
     startTx: "",
     poolId: null,
@@ -110,7 +112,7 @@ export const emptyDraft = (): LaunchDraft => {
 
 function load(): LaunchDraft {
   try {
-    const raw = localStorage.getItem(KEY) ?? localStorage.getItem("flex-launch-draft-v5");
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem("flex-launch-draft-v6") ?? localStorage.getItem("flex-launch-draft-v5");
     if (!raw) return emptyDraft();
     const parsed = JSON.parse(raw) as Partial<LaunchDraft>;
     const program = (parsed.program as FlexProgram) || "flexforex";

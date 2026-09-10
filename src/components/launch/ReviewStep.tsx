@@ -60,7 +60,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
         <Row k="Transfer tax" v={`${formatBpsPercent(overall)} overall`} />
         <Row k="Tax buckets" v={buckets} mono={false} />
         {hasProjectTax(draft.program) ? (
-          <Row k="Project account" v={tax.projectAccount.trim() || "issuer (at create)"} />
+          <Row k="Project account" v={tax.projectAccount.trim() || "issuer (blank at setfees)"} />
         ) : null}
         {hasAngelChannels(draft.program) ? (
           <Row
