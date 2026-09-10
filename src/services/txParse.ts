@@ -103,7 +103,6 @@ const HINTS: Array<[string, string]> = [
   ["100% of supply must sit on swap.alcor", "Deposit the full supply; no leftover in the wallet."],
   ["unused Alcor balance must be 0", "addliquid did not consume the deposit."],
   ["lock ≥ 90 days", "Increase unlockTime."],
-  ["one-sided launch", "Start price is inside the range or on the wrong side of tokenA/tokenB."],
   ["fee must be 500, 3000, or 10000", "Invalid fee tier."],
   ["keeper required", "Sign makeitrain as the keeper collecting the tip."],
   ["keeper account does not exist", "The keeper name is not a live account."],

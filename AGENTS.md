@@ -108,7 +108,7 @@ flexforex: + `angel_numbers_pool`, `jackpot_pool` (live pots - `pullangel` / `pu
 
 ## Launch wizard (issuer@active every step)
 
-Pretty price caps are **UI-only**. Contract checks fee, tick spacing, ±443636, one-sided vs current tick, 100% supply on `swap.alcor`, unused Alcor balance 0, lock remaining ≥ `90 * 86400`.
+Pretty price caps are **UI-only**. Contract checks fee, tick spacing, ±443636, 100% supply on `swap.alcor`, unused Alcor balance 0, lock remaining ≥ `90 * 86400`.
 
 Suggested quote caps (not on-chain): EASY 1e6 / token, WON 1e4, GRAMS 1e3, MEME 1e11, xtokens unbounded.
 

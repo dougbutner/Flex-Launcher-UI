@@ -213,16 +213,6 @@ export async function runPreflight(
     })
   );
 
-  const slot = pick(pool, "currSlot") as { tick?: unknown } | undefined;
-  const currTick = num(slot?.tick ?? pick(pool, "currSlotTick", "curr_slot_tick"));
-  const oneSided = plan.launchedIsA ? currTick < plan.tickLower : currTick >= plan.tickUpper;
-  items.push({
-    id: "one-sided",
-    label: "Current tick keeps the range one-sided",
-    pass: Boolean(pool) && oneSided,
-    detail: `tick ${currTick} vs ${plan.tickLower}…${plan.tickUpper}`,
-  });
-
   const need = easyHoldNeed(flexMeta(program).launchEasyMin, prior);
   const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
   items.push({
