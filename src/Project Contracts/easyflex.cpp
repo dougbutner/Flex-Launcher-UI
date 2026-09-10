@@ -103,11 +103,12 @@ void easyflex::maybe_apply_unlock_fee(launches_table& launches, launches_table::
 
 // === Core token lifecycle === //
 
-ACTION easyflex::create(const name& issuer, const asset& maximum_supply) {
+ACTION easyflex::create(const name& issuer, const asset& maximum_supply, uint16_t reflection_rate, uint16_t burn_rate) {
     require_auth(issuer);
     check(is_account(issuer), "⟁ Issuer account does not exist");
     auto sym = maximum_supply.symbol;
     check(sym.is_valid() && maximum_supply.is_valid() && maximum_supply.amount > 0, "⟁ Invalid symbol/supply");
+    check((uint32_t)reflection_rate + burn_rate <= 10000, "⟁ Total fees cannot exceed 100%");
 
     stats statstable(get_self(), sym.code().raw());
     check(statstable.find(sym.code().raw()) == statstable.end(), "⟁ A token with symbol already exists.");
@@ -124,8 +125,8 @@ ACTION easyflex::create(const name& issuer, const asset& maximum_supply) {
         config.emplace(issuer, [&](auto& c) {
             c.token_symbol = sym;
             c.limit = 100;
-            c.reflection_rate = 100;
-            c.burn_rate = 100;
+            c.reflection_rate = reflection_rate;
+            c.burn_rate = burn_rate;
             c.admin_account = issuer;
         });
     }
@@ -273,6 +274,37 @@ ACTION easyflex::setconfig(const symbol& sym, uint64_t start_key, uint32_t limit
     else config.modify(itr, same_payer, write);
 }//END setconfig()
 
+ACTION easyflex::setmin(const string& token_symbol, int64_t reflect_min) {
+    check(!token_symbol.empty(), "⟁ Token symbol is required");
+    check(reflect_min >= 0, "⟁ reflect_min cannot be negative");
+    symbol_code code(token_symbol);
+    stats statstable(get_self(), code.raw());
+    const auto& st = statstable.get(code.raw(), "⟁ token with symbol does not exist");
+    settings_table config(get_self(), code.raw());
+    auto conf_it = config.find(code.raw());
+    check(conf_it != config.end(), "Distribution config not set");
+    require_token_auth(st, *conf_it);
+    config.modify(conf_it, same_payer, [&](auto& c) { c.reflect_min = reflect_min; });
+}//END setmin()
+
+ACTION easyflex::setfees(const string& token_symbol, uint16_t reflection_rate, uint16_t burn_rate) {
+    check(!token_symbol.empty(), "⟁ Token symbol is required");
+    symbol_code code(token_symbol);
+    stats statstable(get_self(), code.raw());
+    const auto& st = statstable.get(code.raw(), "⟁ token with symbol does not exist");
+    settings_table config(get_self(), code.raw());
+    auto conf_it = config.find(code.raw());
+    check(conf_it != config.end(), "Distribution config not set");
+    check(has_auth(get_self()) || has_auth(st.issuer), "⟁ missing issuer or contract authority");
+    check((uint32_t)reflection_rate + burn_rate <= 10000, "⟁ Total fees cannot exceed 100%");
+    check((uint32_t)reflection_rate + burn_rate == (uint32_t)conf_it->reflection_rate + conf_it->burn_rate,
+          "⟁ cannot change total tax");
+    config.modify(conf_it, same_payer, [&](auto& c) {
+        c.reflection_rate = reflection_rate;
+        c.burn_rate = burn_rate;
+    });
+}//END setfees()
+
 ACTION easyflex::feeoptout(const name& account, const bool& ban_status, const string& token_symbol) {
     check(is_account(account) && !token_symbol.empty(), "⟁ bad feeoptout data");
     symbol_code code(token_symbol);
@@ -312,6 +344,7 @@ ACTION easyflex::makeitrain(const string& token_symbol, const name& sender) {
 
     int64_t one = 1;
     for(uint8_t i = 0; i < sym.precision(); ++i) one *= 10;
+    int64_t min_pool = conf.reflect_min > 0 ? conf.reflect_min : one;
 
     int64_t standard = st->reflection_pool.amount;
     asset nyra{(standard * launch_it->dev_bps) / 10000, sym};
@@ -321,7 +354,7 @@ ACTION easyflex::makeitrain(const string& token_symbol, const name& sender) {
     else { nyra.amount = 0; reflc.amount = 0; partner.amount = 0; }
 
     int64_t std_pay = (standard * PAY_NUM) / PAY_DEN;
-    check(std_pay >= one || partner.amount, "⟁ no reflections to distribute");
+    check(std_pay >= min_pool || partner.amount, "⟁ no reflections to distribute");
 
     flexers flex_table(get_self(), code.raw());
     flexpools pools(get_self(), code.raw());

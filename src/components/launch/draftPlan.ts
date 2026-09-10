@@ -4,6 +4,18 @@ import { validSymbol } from "@/services/assets";
 import { validImageUrl } from "@/services/tokenLogo";
 import type { ExtToken } from "@/services/eosioName";
 import { planLaunch, type LaunchPlan } from "@/services/launchMath";
+import { taxCreateValid, type TaxDraft } from "@/services/taxRates";
+
+export function taxFromDraft(draft: LaunchDraft): TaxDraft {
+  return {
+    reflectionRate: draft.reflectionRate,
+    burnRate: draft.burnRate,
+    projectRate: draft.projectRate,
+    projectAccount: draft.projectAccount,
+    angelNumbersBps: draft.angelNumbersBps,
+    jackpotBps: draft.jackpotBps,
+  };
+}
 
 export function quoteFromDraft(draft: LaunchDraft): ExtToken {
   const preset = QUOTE_PRESETS.find((q) => q.id === draft.quoteId) ?? QUOTE_PRESETS[0];
@@ -76,6 +88,8 @@ export function tokenStepValid(draft: LaunchDraft): string | null {
   if (!(Number(draft.maxSupply) > 0)) return "Max supply must be greater than zero.";
   if (draft.precision < 0 || draft.precision > 8) return "Precision must be 0-8.";
   if (draft.pinFailed && !validImageUrl(draft.imageUrl)) return "Pinata failed - paste a public image URL.";
+  const taxErr = taxCreateValid(taxFromDraft(draft), draft.program);
+  if (taxErr) return taxErr;
   return null;
 }
 

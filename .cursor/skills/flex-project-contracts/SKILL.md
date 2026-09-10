@@ -35,7 +35,7 @@ Canonical C++: **`src/Project Contracts/`** (`*.hpp` / `*.cpp`). If header and c
 | Project tax | no | yes | yes |
 | Inheritance | no | yes | yes |
 | Angel / jackpot / `rng` | no | no | yes |
-| Default create rates | refl 100, burn 100 | refl 100, project 100 | refl 100, project 100 |
+| Default create rates | issuer-chosen (default refl 100, burn 100) | issuer-chosen (default refl 100, project 100) | issuer-chosen (default refl 100, project 100) |
 | Liftoff EASY@`mon3y` | 5,000 × (prior+1) | 10,000 × (prior+1) | 50,000 × (prior+1) |
 
 Shared launch law: `create` → mint/issue 100% to issuer → `startlaunch` → issuer seeds `swap.alcor` → `liftoff`. Constants: `PROTO_BPS_HALF=25`, `PAY_NUM/PAY_DEN=382/1000`, `MIN_LOCK_SECS=7776000`, ticks ±443636.
@@ -44,12 +44,12 @@ Shared launch law: `create` → mint/issue 100% to issuer → `startlaunch` → 
 
 **In the Vite app today**
 
-- Launch wizard: create / mint|issue / startlaunch (+ `swap_underlying_default`) / Alcor seed / lockpos / liftoff
+- Launch wizard: create (tax buckets) / mint|issue / startlaunch (+ `swap_underlying_default`) / Alcor seed / lockpos / liftoff; for3x may sign `ratios` with create
 - Post-launch poke: `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot chips)
-- Token manage (`/token/:contract/:symbol`): holder `choosereward` / `feeoptout` / `setangelnum` / inheritance; issuer `setdist` / `ratios` / `addpool` / `setmin` (easy + complex)
+- Token manage (`/token/:contract/:symbol`): holder `choosereward` / `feeoptout` / `setangelnum` / inheritance; issuer `setfees` / `setdist` / `ratios` / `addpool` / `setmin` (easy + complex)
+- Manager (`/manager`): sqlite + chain progress for issuers after first `create`; locked-total `setfees` / for3x `ratios`. No IPFS re-upload.
 - Read-only: leaderboard holders, reflection history filter, portfolio balances (+ “Your launches”)
 - Admin (`/admin`): `token.proton` `reg` / `update` when connected as the flex contract
-- Manager (`/manager`): sqlite + chain progress for issuers after first `create`. No IPFS re-upload.
 
 **Never in UI**
 
@@ -58,7 +58,7 @@ Shared launch law: `create` → mint/issue 100% to issuer → `startlaunch` → 
 | `setconfig` | **contract@active only** |
 | `receiverand` | **rng only** |
 
-Gate angel UI to flexforex; inheritance to complexflex + flexforex. Prefer `launchActions.ts`, `flexTables.ts`, Token page patterns.
+Issuer tax path: `create` tax fields + `setfees` (locked overall sum). Prefer `launchActions.ts`, `flexTables.ts`, Token / Manager patterns.
 
 ## Stale names (never emit)
 
@@ -74,6 +74,6 @@ Non-flex (0.5% skim, proof id **> 0** vs XUSDC or XPR): xtokens, XPR@eosio.token
 ## Do not
 
 - Edit the three token `.cpp`/`.hpp` unless the user asks.
-- Call `setconfig` or `receiverand` from issuer/holder UI.
+- Call `setconfig` or `receiverand` from issuer/holder UI (issuers use `create` tax fields + `setfees`).
 - Treat `angel_numbers_pool` / `jackpot_pool` as unused pads  -  they are live pots.
 - Follow `UI-LAUNCH.md` action names.

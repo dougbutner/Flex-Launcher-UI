@@ -12,7 +12,7 @@ Unless sender is the contract (distribution), fee-opted-out, or pre-liftoff Alco
 | `burn_rate` | → `burn_pool` | usually 0 at create |
 | `project_rate` |  -  | → `project_pool` / `project_account` |
 
-Defaults at create: easy 1% reflect + 1% burn; complex/forex 1% reflect + 1% project.
+Defaults at create (UI may override): easy 1% reflect + 1% burn; complex/forex 1% reflect + 1% project. Issuer picks any sum ≤ 100% at `create`, then may only reallocate with `setfees` (same sum).
 
 flexforex further splits the reflection fee by `angel_numbers_bps` / `jackpot_bps` into live pots (see [flexforex-extras.md](flexforex-extras.md)).
 

@@ -20,9 +20,10 @@ import { XPR_CHAIN_ID_HEX } from "@/services/walletConstants";
 
 /** Live XPR mainnet ABI field names (3asy / fl3x / for3x / swap.alcor). */
 const ABI_FIELDS: Record<string, string[]> = {
-  create: ["issuer", "maximum_supply"],
+  create: ["issuer", "maximum_supply", "reflection_rate", "burn_rate"],
   issue: ["to", "quantity", "memo"],
   mint: ["to", "quantity", "memo"],
+  setfees: ["token_symbol", "reflection_rate", "burn_rate"],
   startlaunch: [
     "token_symbol",
     "quote",
@@ -148,9 +149,35 @@ describe("mainnet launch flow simulation", () => {
     const start = steps.find((s) => s.id === "startlaunch")!.actions[0];
     expect(start.data.xtoken_proof_pool_id).toBe(0);
     expect(start.data.swap_underlying_default).toBe(true);
+    const create = steps.find((s) => s.id === "create")!.actions[0];
+    expect(create.data).toHaveProperty("reflection_rate");
+    expect(create.data).toHaveProperty("burn_rate");
+    if (program === "easyflex") {
+      expect(create.data).not.toHaveProperty("project_rate");
+    } else {
+      expect(create.data).toHaveProperty("project_rate");
+      expect(create.data).toHaveProperty("project_account");
+    }
     for (const step of steps) {
       for (const action of step.actions) {
         expect(FORBIDDEN_UI_ACTIONS).not.toContain(action.name);
+        if (action.name === "create") {
+          const fields =
+            program === "easyflex"
+              ? ABI_FIELDS.create
+              : [...ABI_FIELDS.create, "project_rate", "project_account"];
+          for (const key of fields) {
+            expect(action.data, `${action.name} missing ${key}`).toHaveProperty(key);
+          }
+          for (const key of Object.keys(action.data)) {
+            expect(fields, `${action.name} extra field ${key}`).toContain(key);
+          }
+          continue;
+        }
+        if (action.name === "ratios") {
+          assertMatchesAbi(action.name, action.data);
+          continue;
+        }
         assertMatchesAbi(action.name, action.data);
       }
     }
@@ -164,6 +191,7 @@ describe("mainnet launch flow simulation", () => {
     expect(names).toContain("addpool");
     expect(names).toContain("choosereward");
     expect(names).toContain("feeoptout");
+    expect(names).toContain("setfees");
     expect(names).not.toContain("setconfig");
     expect(names).not.toContain("receiverand");
     if (program === "easyflex") {
@@ -173,6 +201,7 @@ describe("mainnet launch flow simulation", () => {
       expect(names).not.toContain("setdist");
       expect(actions.find((a) => a.name === "makeitrain")?.data).toHaveProperty("sender");
       expect(actions.find((a) => a.name === "makeitrain")?.account).toBe(EASYFLEX_CONTRACT);
+      expect(actions.find((a) => a.name === "setfees")?.data).not.toHaveProperty("project_rate");
     }
     if (program === "complexflex") {
       expect(names).toContain("setmin");
@@ -180,6 +209,7 @@ describe("mainnet launch flow simulation", () => {
       expect(names).toContain("inheritmemo");
       expect(names).not.toContain("setdist");
       expect(actions.find((a) => a.name === "makeitrain")?.account).toBe(COMPLEXFLEX_CONTRACT);
+      expect(actions.find((a) => a.name === "setfees")?.data).toHaveProperty("project_rate");
     }
     if (program === "flexforex") {
       expect(names).not.toContain("setmin");
@@ -190,9 +220,23 @@ describe("mainnet launch flow simulation", () => {
       expect(names).toContain("pulljackpot");
       expect(actions.find((a) => a.name === "makeitrain")?.data).toHaveProperty("keeper");
       expect(actions.find((a) => a.name === "makeitrain")?.account).toBe(FLEXFOREX_CONTRACT);
+      expect(actions.find((a) => a.name === "setfees")?.data).toHaveProperty("project_account");
     }
     for (const action of actions) {
       const extra = action.name === "makeitrain" ? (program === "flexforex" ? ["keeper"] : ["sender"]) : [];
+      if (action.name === "setfees") {
+        const fields =
+          program === "easyflex"
+            ? ABI_FIELDS.setfees
+            : [...ABI_FIELDS.setfees, "project_rate", "project_account"];
+        for (const key of fields) {
+          expect(action.data, `setfees missing ${key}`).toHaveProperty(key);
+        }
+        for (const key of Object.keys(action.data)) {
+          expect(fields, `setfees extra ${key}`).toContain(key);
+        }
+        continue;
+      }
       assertMatchesAbi(action.name, action.data, extra);
     }
   });

@@ -30,6 +30,10 @@ export const previewStat: Record<string, unknown> = {
 
 export const previewSettings: Record<string, unknown> = {
   token_symbol: `${PREVIEW_PRECISION},${PREVIEW_SYMBOL}`,
+  reflection_rate: 100,
+  burn_rate: 0,
+  project_rate: 100,
+  project_account: PREVIEW_ACTOR,
   angel_numbers_bps: 1000,
   jackpot_bps: 500,
   dist_locked: false,

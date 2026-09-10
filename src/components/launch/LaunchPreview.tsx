@@ -1,9 +1,10 @@
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
-import { fmtPrice, planFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
+import { fmtPrice, planFromDraft, quoteFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
 import { StatusIcon, SupplyShortcuts } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
 import { easyHoldNeed, flexAccount, flexMeta } from "@/config/launch";
 import { formatSupplyCommas } from "@/services/assets";
+import { formatBpsPercent, taxSum } from "@/services/taxRates";
 
 export function LaunchPreview({
   draft,
@@ -14,6 +15,7 @@ export function LaunchPreview({
 }) {
   const quote = quoteFromDraft(draft);
   const plan = planFromDraft(draft);
+  const overallTax = formatBpsPercent(taxSum(taxFromDraft(draft), draft.program));
 
   const milestones = [
     { label: `Hold ${easyHoldNeed(flexMeta(draft.program).launchEasyMin).toLocaleString()} EASY`, done: false },
@@ -62,8 +64,8 @@ export function LaunchPreview({
             <div className="font-mono text-sm font-bold">{formatSupplyCommas(draft.maxSupply || "0")}</div>
           </div>
           <div className="stat-box !px-2 !py-2">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Lock</div>
-            <div className="font-mono text-sm font-bold">{Math.max(90, draft.lockDays)}d</div>
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Tax</div>
+            <div className="font-mono text-sm font-bold">{overallTax}</div>
           </div>
         </div>
 

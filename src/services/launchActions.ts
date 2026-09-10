@@ -9,11 +9,59 @@ export type ChainAction = {
   authorization?: Array<{ actor: string; permission: string }>;
 };
 
-export function createTokenAction(tokenContract: string, issuer: string, maximumSupply: string): ChainAction {
+export function createTokenAction(
+  tokenContract: string,
+  issuer: string,
+  maximumSupply: string,
+  tax: {
+    reflectionRate: number;
+    burnRate: number;
+    projectRate?: number;
+    projectAccount?: string;
+  },
+  withProject: boolean
+): ChainAction {
+  const data: Record<string, unknown> = {
+    issuer,
+    maximum_supply: maximumSupply,
+    reflection_rate: tax.reflectionRate,
+    burn_rate: tax.burnRate,
+  };
+  if (withProject) {
+    data.project_rate = tax.projectRate ?? 0;
+    data.project_account = (tax.projectAccount || "").trim() || issuer;
+  }
   return {
     account: tokenContract,
     name: "create",
-    data: { issuer, maximum_supply: maximumSupply },
+    data,
+  };
+}
+
+export function setfeesAction(
+  tokenContract: string,
+  tokenSymbol: string,
+  tax: {
+    reflectionRate: number;
+    burnRate: number;
+    projectRate?: number;
+    projectAccount?: string;
+  },
+  withProject: boolean
+): ChainAction {
+  const data: Record<string, unknown> = {
+    token_symbol: tokenSymbol,
+    reflection_rate: tax.reflectionRate,
+    burn_rate: tax.burnRate,
+  };
+  if (withProject) {
+    data.project_rate = tax.projectRate ?? 0;
+    data.project_account = (tax.projectAccount || "").trim();
+  }
+  return {
+    account: tokenContract,
+    name: "setfees",
+    data,
   };
 }
 

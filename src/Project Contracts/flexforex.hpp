@@ -20,13 +20,14 @@ namespace eosio {
     * Transfer tax splits on receipt: reflection_rate is cut by angel_numbers_bps / jackpot_bps
     * into angel_numbers_pool and jackpot_pool; remainder is reflection_pool. makeitrain
     * splashes only reflection_pool. pullangel / pulljackpot pay their own columns.
-    * Issuer may call ratios on their token; tax / burn / project rates are contract-only.
+    * Issuer may call setfees (locked total) and ratios on their token; tax totals via setconfig are contract-only.
     */
    class [[eosio::contract("flexforex")]] flexforex : public contract {
       public:
          using contract::contract;
 
-         ACTION create(const name& issuer, const asset& maximum_supply);
+         ACTION create(const name& issuer, const asset& maximum_supply, uint16_t reflection_rate, uint16_t burn_rate,
+                       uint16_t project_rate, const name& project_account);
          ACTION mint(const name& to, const asset& quantity, const string& memo);
          ACTION burn(const name& username, const asset& quantity, const string& memo);
          ACTION transfer(const name& from, const name& to, const asset& quantity, const string& memo);
@@ -35,6 +36,9 @@ namespace eosio {
          ACTION makeitrain(const string& token_symbol, const name& keeper);
          ACTION setconfig(const symbol& sym, uint64_t start_key, uint32_t limit, uint16_t reflection_rate,
                           uint16_t burn_rate, uint16_t project_rate, const name& project_account, const name& admin_account);
+         // Issuer or contract: reallocate transfer tax buckets without changing the locked total.
+         ACTION setfees(const string& token_symbol, uint16_t reflection_rate, uint16_t burn_rate, uint16_t project_rate,
+                        const name& project_account);
          // Issuer or contract: angel/jackpot share of reflection_rate on transfer.
          ACTION ratios(const string& token_symbol, uint16_t angel_numbers_bps, uint16_t jackpot_bps);
          // One-shot (issuer) or anytime (contract): Numbers/Jackpot ops + initial ratios. Locks dist_locked for issuer.
@@ -79,6 +83,7 @@ namespace eosio {
          using close_action = eosio::action_wrapper<"close"_n, &flexforex::close>;
          using makeitrain_action = eosio::action_wrapper<"makeitrain"_n, &flexforex::makeitrain>;
          using setconfig_action = eosio::action_wrapper<"setconfig"_n, &flexforex::setconfig>;
+         using setfees_action = eosio::action_wrapper<"setfees"_n, &flexforex::setfees>;
          using ratios_action = eosio::action_wrapper<"ratios"_n, &flexforex::ratios>;
          using setdist_action = eosio::action_wrapper<"setdist"_n, &flexforex::setdist>;
          using setangelnum_action = eosio::action_wrapper<"setangelnum"_n, &flexforex::setangelnum>;

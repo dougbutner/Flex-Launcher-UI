@@ -10,9 +10,9 @@ App UI and wallets: `src/` and `src/services/walletConstants.ts`. Faux UI shapes
 
 ### UI coverage vs ABI
 
-**Shipped:** launch wizard (incl. `swap_underlying_default`), `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot display), token manage (`/token/:contract/:symbol`) with `setdist` / `ratios` / `setangelnum`, easyflex/complexflex `setmin`, `inheritance` / `inheritmemo`, `addpool` / `choosereward`, `feeoptout`.
+**Shipped:** launch wizard (incl. `swap_underlying_default` + transfer-tax buckets at `create`, for3x `ratios` in the create tx), issuer `setfees` (locked overall tax), `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot display), token manage (`/token/:contract/:symbol`) with `setdist` / `ratios` / `setangelnum` / `setfees`, easyflex/complexflex `setmin`, `inheritance` / `inheritmemo`, `addpool` / `choosereward`, `feeoptout`.
 
-Gate by program: angel channels = flexforex only; inheritance = complexflex + flexforex; `setmin` = easyflex + complexflex; flex-to + feeoptout = all three. Never invent `setconfig` or `receiverand` UI.
+Gate by program: angel channels = flexforex only; inheritance = complexflex + flexforex; `setmin` = easyflex + complexflex; flex-to + feeoptout = all three. Never invent `setconfig` or `receiverand` UI. Issuer may set tax **split** at create and reallocate with `setfees` without changing the locked total.
 
 ---
 
@@ -51,11 +51,12 @@ Let the user pick **easyflex | complexflex | flexforex** before create. Shared l
 | Inheritance / inheritmemo | no | yes | yes |
 | `setdist` / `ratios` / `setangelnum` / `pullangel` / `pulljackpot` | no | no | yes |
 | `receiverand` | never in UI | never in UI | never in UI (`rng` only) |
-| Default create fees | refl 100, burn 100 | refl 100, project 100 | refl 100, project 100 |
+| `setfees` (locked total) | yes | yes | yes |
+| Default create fees | issuer-chosen (default refl 100, burn 100) | issuer-chosen (default refl 100, project 100) | issuer-chosen (default refl 100, project 100) |
 | Liftoff EASY@mon3y | 5,000 × (prior + 1) | 10,000 × (prior + 1) | 50,000 × (prior + 1) |
 | Alcor accounts excluded from reflect denom | `alcor`, `mon3y`, `swap.alcor` | `alcor`, `gold.mon3y`, `swap.alcor` | `alcor`, `gold.mon3y`, `swap.alcor` |
 
-`setconfig` = **contract@active only** on all three. Do not put tax sliders on the issuer wizard as if they will work.
+`setconfig` = **contract@active only** on all three (admin hatch that may change the total). Issuer path: tax fields on `create`, then `setfees` with the same overall bps sum. Do not put `setconfig` sliders in the issuer wizard.
 
 ---
 
@@ -116,9 +117,24 @@ Do not call `eosio::buyram` for the token contract. The wizard starts at `create
 
 ### A - `create`
 
+easyflex:
 ```json
-{ "issuer": "alice", "maximum_supply": "1000000.0000 FOO" }
+{ "issuer": "alice", "maximum_supply": "1000000.0000 FOO", "reflection_rate": 100, "burn_rate": 100 }
 ```
+
+complexflex / flexforex:
+```json
+{
+  "issuer": "alice",
+  "maximum_supply": "1000000.0000 FOO",
+  "reflection_rate": 100,
+  "burn_rate": 0,
+  "project_rate": 100,
+  "project_account": "alice"
+}
+```
+
+Empty `project_account` stores the issuer. Sum of tax rates ≤ 10000. for3x may include `ratios` in the same create tx when angel/jackpot channel bps are set.
 
 ### B - mint / issue 100% to issuer
 
@@ -173,7 +189,7 @@ Split txs. Never `liftoff` in the same tx as `createpool`.
 | `feeoptout` | self: `ban_status` **true** only | Irreversible for self |
 | `makeitrain` | signer (`sender` or `keeper`) | Always `require_auth` of that name. flexforex ABI field is `keeper`. Signer pays RAM for new holder rows. Splashes 38.2% of `reflection_pool`. |
 | `checklock` | anyone | After `unlock_time`, may raise protocol skim once. |
-| `setdist` / `ratios` / `setangelnum` / `pullangel` / `pulljackpot` | see ABI | flexforex only |
+| `setfees` / `ratios` / `setdist` / `setangelnum` / `pullangel` / `pulljackpot` | see ABI / flexforex-extras | `setfees` all three (locked total); channels forex only |
 | `setmin` | issuer | easyflex + complexflex (live 3asy / fl3x) |
 | `inheritance` / `inheritmemo` | flexer or contract | not easyflex |
 

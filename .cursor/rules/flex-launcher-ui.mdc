@@ -22,8 +22,8 @@ Always pass **symbol + contract**. `stat` / `settings` / `flexers` / `flexpools`
 
 ## Do not
 
-- Call `receiverand` or `setconfig` from the issuer wizard (`setconfig` is contract-only).
+- Call `receiverand` or `setconfig` from the issuer wizard (`setconfig` is contract-only; issuers use `create` tax fields + `setfees`).
 - Treat `stat.angel_numbers_pool` / `jackpot_pool` as unused ABI pads.
-- Build tax, inheritance, or luck UI on easyflex.
+- Build inheritance or luck UI on easyflex.
 - Edit the three token `.cpp`/`.hpp` unless the user asks.
 - Wire `token.proton::reg` to the issuer wizard. Auth is `tcontract@active` (3asy / fl3x / for3x), not the issuer.

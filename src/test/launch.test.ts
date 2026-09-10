@@ -12,6 +12,7 @@ import {
   supplyAction,
   ratiosAction,
   setdistAction,
+  setfeesAction,
   setangelnumAction,
   addpoolAction,
   chooserewardAction,
@@ -42,6 +43,14 @@ import {
   isFlexContractActor,
   programFromAccount,
 } from "@/config/launch";
+import {
+  defaultTaxDraft,
+  formatBpsPercent,
+  percentInputToBps,
+  taxCreateValid,
+  taxSetfeesValid,
+  taxSum,
+} from "@/services/taxRates";
 import { findXtoken, xtokensByMarketCap } from "@/config/xtokens";
 import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
@@ -196,7 +205,30 @@ describe("launch plan", () => {
       priceUpper: "1000",
     });
     expect(plan.launched.contract).toBe("mon3y");
-    expect(createTokenAction("mon3y", "alice", plan.fullSupply).name).toBe("create");
+    expect(createTokenAction("mon3y", "alice", plan.fullSupply, { reflectionRate: 100, burnRate: 100 }, false).name).toBe(
+      "create"
+    );
+    expect(
+      createTokenAction(
+        "fl3x",
+        "alice",
+        plan.fullSupply,
+        { reflectionRate: 150, burnRate: 50, projectRate: 100, projectAccount: "" },
+        true
+      ).data
+    ).toMatchObject({
+      reflection_rate: 150,
+      burn_rate: 50,
+      project_rate: 100,
+      project_account: "alice",
+    });
+    expect(
+      setfeesAction("3asy", "FOO", { reflectionRate: 150, burnRate: 50 }, false).data
+    ).toEqual({
+      token_symbol: "FOO",
+      reflection_rate: 150,
+      burn_rate: 50,
+    });
     expect(supplyAction("mon3y", "issue", "alice", plan.fullSupply).name).toBe("issue");
     expect(supplyAction("flex.mon3y", "mint", "alice", plan.fullSupply).name).toBe("mint");
     expect(startlaunchAction("mon3y", plan, 0, true).name).toBe("startlaunch");
@@ -331,6 +363,21 @@ describe("holder and issuer manage actions", () => {
       name: "setmin",
       data: { token_symbol: "FOO", reflect_min: 0 },
     });
+  });
+});
+
+describe("tax rates", () => {
+  it("defaults and freezes the overall sum", () => {
+    const easy = defaultTaxDraft("easyflex");
+    const complex = defaultTaxDraft("complexflex");
+    expect(taxSum(easy, "easyflex")).toBe(200);
+    expect(taxSum(complex, "complexflex")).toBe(200);
+    expect(taxCreateValid({ ...easy, reflectionRate: 0, burnRate: 0 }, "easyflex")).toMatch(/greater than 0/);
+    expect(taxCreateValid({ ...easy, reflectionRate: 6000, burnRate: 5000 }, "easyflex")).toMatch(/100%/);
+    expect(taxSetfeesValid({ ...easy, reflectionRate: 150, burnRate: 50 }, "easyflex", 200)).toBeNull();
+    expect(taxSetfeesValid({ ...easy, reflectionRate: 100, burnRate: 50 }, "easyflex", 200)).toMatch(/stay/);
+    expect(percentInputToBps("1.5")).toBe(150);
+    expect(formatBpsPercent(100)).toBe("1%");
   });
 });
 

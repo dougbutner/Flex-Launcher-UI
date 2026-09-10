@@ -1,4 +1,5 @@
 import { LOCK_MIN_DAYS, QUOTE_PRESETS, type FeeTier, type FlexProgram, type RangeWidthId } from "@/config/launch";
+import { defaultTaxDraft } from "@/services/taxRates";
 import { useCallback, useEffect, useState } from "react";
 
 export type LaunchDraft = {
@@ -17,6 +18,15 @@ export type LaunchDraft = {
   twitter: string;
   telegram: string;
   farcaster: string;
+  /** Transfer tax bps set at create (locked total afterward). */
+  reflectionRate: number;
+  burnRate: number;
+  projectRate: number;
+  /** Blank = issuer at create. */
+  projectAccount: string;
+  /** for3x: share of reflection_rate cut into angel / jackpot pots. */
+  angelNumbersBps: number;
+  jackpotBps: number;
   quoteId: (typeof QUOTE_PRESETS)[number]["id"];
   xtokenSymbol: string;
   xtokenPrecision: number;
@@ -41,7 +51,7 @@ export type LaunchDraft = {
   liftoffTx: string;
 };
 
-const KEY = "flex-launch-draft-v5";
+const KEY = "flex-launch-draft-v6";
 export const DRAFT_STORAGE_KEY = KEY;
 export const MANAGER_RESUME_KEY = "flex-manager-resume";
 
@@ -51,50 +61,72 @@ export function writeLaunchDraft(draft: LaunchDraft) {
 
 const easy = QUOTE_PRESETS.find((q) => q.id === "easy") ?? QUOTE_PRESETS[0];
 
-export const emptyDraft = (): LaunchDraft => ({
-  program: "flexforex",
-  name: "",
-  symbol: "",
-  precision: 6,
-  maxSupply: "1000000",
-  imageDataUrl: "",
-  imageCid: "",
-  imageUrl: "",
-  pinFailed: false,
-  logoTx: "",
-  description: "",
-  website: "",
-  twitter: "",
-  telegram: "",
-  farcaster: "",
-  quoteId: "easy",
-  xtokenSymbol: "XUSDC",
-  xtokenPrecision: 6,
-  proofPoolId: "0",
-  swapUnderlyingDefault: true,
-  fee: 3000,
-  priceLower: easy.priceLower,
-  priceUpper: easy.priceUpper,
-  rangeWidthId: null,
-  lockDays: LOCK_MIN_DAYS,
-  createTx: "",
-  mintTx: "",
-  startTx: "",
-  poolId: null,
-  poolTx: "",
-  activateTx: "",
-  depositTx: "",
-  rangeTx: "",
-  lockTx: "",
-  liftoffTx: "",
-});
+export const emptyDraft = (): LaunchDraft => {
+  const tax = defaultTaxDraft("flexforex");
+  return {
+    program: "flexforex",
+    name: "",
+    symbol: "",
+    precision: 6,
+    maxSupply: "1000000",
+    imageDataUrl: "",
+    imageCid: "",
+    imageUrl: "",
+    pinFailed: false,
+    logoTx: "",
+    description: "",
+    website: "",
+    twitter: "",
+    telegram: "",
+    farcaster: "",
+    reflectionRate: tax.reflectionRate,
+    burnRate: tax.burnRate,
+    projectRate: tax.projectRate,
+    projectAccount: tax.projectAccount,
+    angelNumbersBps: tax.angelNumbersBps,
+    jackpotBps: tax.jackpotBps,
+    quoteId: "easy",
+    xtokenSymbol: "XUSDC",
+    xtokenPrecision: 6,
+    proofPoolId: "0",
+    swapUnderlyingDefault: true,
+    fee: 3000,
+    priceLower: easy.priceLower,
+    priceUpper: easy.priceUpper,
+    rangeWidthId: null,
+    lockDays: LOCK_MIN_DAYS,
+    createTx: "",
+    mintTx: "",
+    startTx: "",
+    poolId: null,
+    poolTx: "",
+    activateTx: "",
+    depositTx: "",
+    rangeTx: "",
+    lockTx: "",
+    liftoffTx: "",
+  };
+};
 
 function load(): LaunchDraft {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem("flex-launch-draft-v5");
     if (!raw) return emptyDraft();
-    const saved = { ...emptyDraft(), ...JSON.parse(raw) } as LaunchDraft;
-    return saved;
+    const parsed = JSON.parse(raw) as Partial<LaunchDraft>;
+    const program = (parsed.program as FlexProgram) || "flexforex";
+    const tax = defaultTaxDraft(program);
+    return {
+      ...emptyDraft(),
+      ...tax,
+      ...parsed,
+      program,
+      reflectionRate: parsed.reflectionRate ?? tax.reflectionRate,
+      burnRate: parsed.burnRate ?? tax.burnRate,
+      projectRate: parsed.projectRate ?? tax.projectRate,
+      projectAccount: parsed.projectAccount ?? tax.projectAccount,
+      angelNumbersBps: parsed.angelNumbersBps ?? tax.angelNumbersBps,
+      jackpotBps: parsed.jackpotBps ?? tax.jackpotBps,
+    };
   } catch {
     return emptyDraft();
   }

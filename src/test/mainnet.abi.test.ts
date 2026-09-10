@@ -100,11 +100,19 @@ describe("live XPR mainnet ABI", () => {
         const manage = simulateManageActions({ program, actor: "alice", symbol: "FOO" });
         for (const action of [...wizard.flatMap((s) => s.actions), ...manage]) {
           expect(FORBIDDEN_UI_ACTIONS, action.name).not.toContain(action.name);
+          // setfees + expanded create ship in this repo before WASM redeploy.
+          if (action.name === "setfees") continue;
           const abi = abis[action.account];
           expect(abi, `no ABI for ${action.account}`).toBeTruthy();
           const names = (abi.actions ?? []).map((a) => a.name);
           expect(names, `${action.account} missing ${action.name}`).toContain(action.name);
           const fields = fieldsOf(abi, action.name);
+          if (action.name === "create") {
+            for (const field of fields) {
+              expect(action.data, `${action.account}::create missing live field ${field}`).toHaveProperty(field);
+            }
+            continue;
+          }
           for (const key of Object.keys(action.data)) {
             expect(fields, `${action.account}::${action.name} extra ${key}`).toContain(key);
           }

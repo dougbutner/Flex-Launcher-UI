@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FLEX_PROGRAMS, LOCK_MIN_DAYS, SWAP_ALCOR, flexAccount, flexMeta } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
-import { planFromDraft } from "@/components/launch/draftPlan";
+import { planFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
 import { StatusIcon, StepShell, TxLink } from "@/components/launch/ui";
 import {
   activepoolTransfer,
@@ -12,6 +12,7 @@ import {
   depositAction,
   liftoffAction,
   lockposAction,
+  ratiosAction,
   startlaunchAction,
   supplyAction,
   type ChainAction,
@@ -19,6 +20,8 @@ import {
 import { unlockTimeUnix, type LaunchPlan } from "@/services/launchMath";
 import { readAlcorSystem, readPool, resolvePoolIdAfterCreatepool } from "@/services/flexTables";
 import { assetAmountNumber } from "@/services/assets";
+import { hasAngelChannels } from "@/config/launch";
+import { hasProjectTax } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { persistLaunchDraft } from "@/services/managerApi";
 import { runCreateGates, runPreflight, type PreflightItem } from "@/services/preflight";
@@ -65,7 +68,27 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       detail: `create on ${code}`,
       sig: `${code}::create`,
       txOf: (d) => d.createTx,
-      build: async ({ actor, plan }) => [createTokenAction(code, actor, plan.fullSupply)],
+      build: async ({ actor, plan, draft: d }) => {
+        const tax = taxFromDraft(d);
+        const actions: ChainAction[] = [
+          createTokenAction(
+            code,
+            actor,
+            plan.fullSupply,
+            {
+              reflectionRate: tax.reflectionRate,
+              burnRate: tax.burnRate,
+              projectRate: tax.projectRate,
+              projectAccount: tax.projectAccount,
+            },
+            hasProjectTax(d.program)
+          ),
+        ];
+        if (hasAngelChannels(d.program) && (tax.angelNumbersBps > 0 || tax.jackpotBps > 0)) {
+          actions.push(ratiosAction(code, plan.launched.symbol, tax.angelNumbersBps, tax.jackpotBps));
+        }
+        return actions;
+      },
     },
     {
       id: "supply",

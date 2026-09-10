@@ -26,12 +26,14 @@ import {
   ratiosAction,
   setangelnumAction,
   setdistAction,
+  setfeesAction,
   setminAction,
   startlaunchAction,
   supplyAction,
   type ChainAction,
 } from "@/services/launchActions";
 import type { LaunchPlan } from "@/services/launchMath";
+import { defaultTaxDraft, hasProjectTax, type TaxDraft } from "@/services/taxRates";
 
 /** Never emitted by issuer/holder UI. */
 export const FORBIDDEN_UI_ACTIONS = ["setconfig", "receiverand"] as const;
@@ -52,17 +54,37 @@ export function simulateLaunchFlow(args: {
   swapUnderlyingDefault: boolean;
   poolId: number;
   unlockTime: number;
+  tax?: TaxDraft;
 }): LaunchFlowStep[] {
   const code = flexAccount(args.program);
   const meta = flexMeta(args.program);
   const { actor, plan } = args;
+  const tax = args.tax ?? defaultTaxDraft(args.program);
+  const withProject = hasProjectTax(args.program);
+  const createActions: ChainAction[] = [
+    createTokenAction(
+      code,
+      actor,
+      plan.fullSupply,
+      {
+        reflectionRate: tax.reflectionRate,
+        burnRate: tax.burnRate,
+        projectRate: tax.projectRate,
+        projectAccount: tax.projectAccount,
+      },
+      withProject
+    ),
+  ];
+  if (hasAngelChannels(args.program) && (tax.angelNumbersBps > 0 || tax.jackpotBps > 0)) {
+    createActions.push(ratiosAction(code, plan.launched.symbol, tax.angelNumbersBps, tax.jackpotBps));
+  }
   return [
     {
       id: "create",
       label: "Create token",
       account: code,
       name: "create",
-      actions: [createTokenAction(code, actor, plan.fullSupply)],
+      actions: createActions,
     },
     {
       id: "supply",
@@ -137,6 +159,19 @@ export function simulateManageActions(args: {
   if (hasSetmin(args.program)) {
     out.push(setminAction(code, symbol, 0));
   }
+  out.push(
+    setfeesAction(
+      code,
+      symbol,
+      {
+        reflectionRate: 100,
+        burnRate: hasProjectTax(args.program) ? 0 : 100,
+        projectRate: 100,
+        projectAccount: actor,
+      },
+      hasProjectTax(args.program)
+    )
+  );
   if (hasInheritance(args.program)) {
     out.push(inheritanceAction(code, actor, "bob", 2500, symbol));
     out.push(inheritmemoAction(code, actor, "hi @@", symbol));

@@ -40,7 +40,7 @@ On taxed transfer, `reflection_rate` (bps of transfer) is cut:
 - Always sets `dist_locked = true`
 - If `jackpot_bps > 0` → `jackpot_winners > 0`
 - If `angel_numbers_bps > 0` → `angel_numbers_cooldown > 0`
-- Does **not** change tax / burn / project rates (those are `setconfig` / contract-only)
+- Does **not** change tax / burn / project rates (those are `create` / `setfees` / contract-only `setconfig`)
 
 Typical first-run issuer flow after launch: `setdist` with desired channel ops, then holders `setangelnum`.
 
@@ -116,8 +116,9 @@ On makeitrain, complex/forex split the holder share by `bene_rate` between flexe
 
 | Screen | Actions |
 |--------|---------|
-| `/token/:contract/:symbol` (issuer) | `setdist` (if !dist_locked), `ratios`, `addpool` |
+| `/token/:contract/:symbol` (issuer) | `setfees` (locked total), `setdist` (if !dist_locked), `ratios`, `addpool` |
+| `/manager` | same tax tools for the selected issuer token |
 | `/token/:contract/:symbol` (holder) | `choosereward`, `feeoptout`, `setangelnum` (forex), `inheritance` / `inheritmemo` (complex/forex) |
 | Portfolio / Leaderboard | links + public poke |
 
-Never put tax sliders that call `setconfig` in the issuer wizard.
+Never put tax sliders that call `setconfig` in the issuer wizard. Use `create` tax fields and issuer `setfees`.

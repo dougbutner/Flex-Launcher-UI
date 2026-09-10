@@ -19,7 +19,8 @@ namespace eosio {
       public:
          using contract::contract;
 
-         ACTION create(const name& issuer, const asset& maximum_supply);
+         ACTION create(const name& issuer, const asset& maximum_supply, uint16_t reflection_rate, uint16_t burn_rate,
+                       uint16_t project_rate, const name& project_account);
          ACTION mint(const name& to, const asset& quantity, const string& memo);
          ACTION burn(const name& username, const asset& quantity, const string& memo);
          ACTION transfer(const name& from, const name& to, const asset& quantity, const string& memo);
@@ -28,6 +29,9 @@ namespace eosio {
          ACTION makeitrain(const string& token_symbol, const name& sender);
          ACTION setconfig(const symbol& sym, uint64_t start_key, uint32_t limit, uint16_t reflection_rate,
                           uint16_t burn_rate, uint16_t project_rate, const name& project_account, const name& admin_account);
+         ACTION setmin(const string& token_symbol, int64_t reflect_min);
+         ACTION setfees(const string& token_symbol, uint16_t reflection_rate, uint16_t burn_rate, uint16_t project_rate,
+                        const name& project_account);
          ACTION feeoptout(const name& account, const bool& ban_status, const string& token_symbol);
          ACTION addpool(const uint64_t& pool_id, const string& token_symbol, const symbol& output_symbol,
                         const name& output_contract);
@@ -59,6 +63,8 @@ namespace eosio {
          using close_action = eosio::action_wrapper<"close"_n, &complexflex::close>;
          using makeitrain_action = eosio::action_wrapper<"makeitrain"_n, &complexflex::makeitrain>;
          using setconfig_action = eosio::action_wrapper<"setconfig"_n, &complexflex::setconfig>;
+         using setmin_action = eosio::action_wrapper<"setmin"_n, &complexflex::setmin>;
+         using setfees_action = eosio::action_wrapper<"setfees"_n, &complexflex::setfees>;
          using feeoptout_action = eosio::action_wrapper<"feeoptout"_n, &complexflex::feeoptout>;
          using addpool_action = eosio::action_wrapper<"addpool"_n, &complexflex::addpool>;
          using choosereward_action = eosio::action_wrapper<"choosereward"_n, &complexflex::choosereward>;
@@ -116,6 +122,7 @@ namespace eosio {
             uint16_t  project_rate = 100;
             name      project_account;
             name      admin_account;
+            int64_t   reflect_min = 0;  // std_pay floor; 0 = 1 whole token
             uint64_t primary_key()const { return token_symbol.code().raw(); }
          };
 

@@ -50,6 +50,12 @@ export type ManagerToken = {
   proofPoolId: string;
   swapUnderlyingDefault: boolean;
   fee: FeeTier;
+  reflectionRate: number;
+  burnRate: number;
+  projectRate: number;
+  projectAccount: string;
+  angelNumbersBps: number;
+  jackpotBps: number;
   priceLower: string;
   priceUpper: string;
   lockDays: number;
@@ -109,6 +115,12 @@ export function emptyManagerToken(): ManagerToken {
     proofPoolId: "0",
     swapUnderlyingDefault: true,
     fee: 3000,
+    reflectionRate: 100,
+    burnRate: 0,
+    projectRate: 100,
+    projectAccount: "",
+    angelNumbersBps: 0,
+    jackpotBps: 0,
     priceLower: "",
     priceUpper: "",
     lockDays: 90,
@@ -163,6 +175,12 @@ export function parseManagerToken(raw: unknown): ManagerToken | null {
     proofPoolId: str(o.proofPoolId, 24) || "0",
     swapUnderlyingDefault: o.swapUnderlyingDefault !== false && o.swapUnderlyingDefault !== 0,
     fee,
+    reflectionRate: Math.max(0, Math.min(10000, Math.floor(num(o.reflectionRate, 100)))),
+    burnRate: Math.max(0, Math.min(10000, Math.floor(num(o.burnRate, program === "easyflex" ? 100 : 0)))),
+    projectRate: Math.max(0, Math.min(10000, Math.floor(num(o.projectRate, program === "easyflex" ? 0 : 100)))),
+    projectAccount: str(o.projectAccount, 12).toLowerCase(),
+    angelNumbersBps: Math.max(0, Math.min(10000, Math.floor(num(o.angelNumbersBps, 0)))),
+    jackpotBps: Math.max(0, Math.min(10000, Math.floor(num(o.jackpotBps, 0)))),
     priceLower: str(o.priceLower, 64),
     priceUpper: str(o.priceUpper, 64),
     lockDays: Math.max(90, Math.floor(num(o.lockDays, 90))),

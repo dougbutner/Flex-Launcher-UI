@@ -1,9 +1,10 @@
-import { FEE_TIERS, SWAP_ALCOR, easyHoldNeed, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
+import { FEE_TIERS, SWAP_ALCOR, easyHoldNeed, flexAccount, flexMeta, hasAngelChannels, holdEasyToLaunch } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
-import { fmtPrice, planFromDraft, presetFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
+import { fmtPrice, planFromDraft, presetFromDraft, quoteFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
 import { StepShell } from "@/components/launch/ui";
 import { formatSupplyCommas } from "@/services/assets";
 import { unlockTimeUnix } from "@/services/launchMath";
+import { formatBpsPercent, hasProjectTax, taxSum } from "@/services/taxRates";
 
 type Props = {
   draft: LaunchDraft;
@@ -31,6 +32,11 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
     day: "numeric",
   });
   const skimLabel = preset.flexQuote ? "0%" : "0.25% dev + 0.25% club";
+  const tax = taxFromDraft(draft);
+  const overall = taxSum(tax, draft.program);
+  const buckets = hasProjectTax(draft.program)
+    ? `reflect ${formatBpsPercent(tax.reflectionRate)} · burn ${formatBpsPercent(tax.burnRate)} · project ${formatBpsPercent(tax.projectRate)}`
+    : `reflect ${formatBpsPercent(tax.reflectionRate)} · burn ${formatBpsPercent(tax.burnRate)}`;
 
   return (
     <StepShell
@@ -51,6 +57,22 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
         <Row k="Program" v={`${draft.program} @ ${flexAccount(draft.program)}`} />
         <Row k="Token" v={`${draft.name} (${draft.symbol})`} />
         <Row k="Max supply" v={`${formatSupplyCommas(draft.maxSupply || "0")} ${draft.symbol} · precision ${draft.precision}`} />
+        <Row k="Transfer tax" v={`${formatBpsPercent(overall)} overall`} />
+        <Row k="Tax buckets" v={buckets} mono={false} />
+        {hasProjectTax(draft.program) ? (
+          <Row k="Project account" v={tax.projectAccount.trim() || "issuer (at create)"} />
+        ) : null}
+        {hasAngelChannels(draft.program) ? (
+          <Row
+            k="Reflection channels"
+            v={
+              tax.angelNumbersBps || tax.jackpotBps
+                ? `angel ${formatBpsPercent(tax.angelNumbersBps)} · jackpot ${formatBpsPercent(tax.jackpotBps)} of reflection fee`
+                : "none (set later with ratios / setdist)"
+            }
+            mono={false}
+          />
+        ) : null}
         <Row
           k="Quote"
           v={`${quote.symbol} @ ${quote.contract}${preset.flexQuote ? "" : ` · proof pool #${draft.proofPoolId}`}`}
@@ -85,6 +107,12 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
           Do not try to send it to a friend first. After liftoff, transfers work with the normal flex tax. Protocol skim
           starts at {skimLabel} and rises by +0.25% each if the Alcor lock expires (via checklock or makeitrain).
         </p>
+        {hasAngelChannels(draft.program) && (tax.angelNumbersBps > 0 || tax.jackpotBps > 0) ? (
+          <p className="text-warning/80">
+            Angel / jackpot pulls need setdist (winners, cooldown) after launch. ratios alone only sets the channel
+            split.
+          </p>
+        ) : null}
       </div>
     </StepShell>
   );

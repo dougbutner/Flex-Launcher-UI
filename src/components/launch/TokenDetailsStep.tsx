@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
 import { FLEX_PROGRAMS, easyHoldNeed, flexAccount, holdEasyToLaunch, type FlexProgram } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
-import { tokenStepValid } from "@/components/launch/draftPlan";
+import { taxFromDraft, tokenStepValid } from "@/components/launch/draftPlan";
+import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
 import { Field, StepShell, SupplyShortcuts } from "@/components/launch/ui";
 import { formatSupplyCommas, parseSupplyInput, validSymbol } from "@/services/assets";
 import { pinLogoFile } from "@/services/ipfsPin";
+import { defaultTaxDraft } from "@/services/taxRates";
 import { validateTokenLogo, validImageUrl } from "@/services/tokenLogo";
 import { txErrorMessage } from "@/services/txParse";
 
@@ -74,7 +76,18 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
                 key={p.id}
                 type="button"
                 disabled={programLocked}
-                onClick={() => patch({ program: p.id as FlexProgram })}
+                onClick={() => {
+                  const tax = defaultTaxDraft(p.id as FlexProgram);
+                  patch({
+                    program: p.id as FlexProgram,
+                    reflectionRate: tax.reflectionRate,
+                    burnRate: tax.burnRate,
+                    projectRate: tax.projectRate,
+                    projectAccount: tax.projectAccount,
+                    angelNumbersBps: tax.angelNumbersBps,
+                    jackpotBps: tax.jackpotBps,
+                  });
+                }}
                 className={`rounded-xl border px-3 py-3 text-left transition-colors ${
                   selected ? "border-primary bg-primary/10" : "border-border bg-background/40 hover:border-primary/40"
                 } ${programLocked ? "opacity-60" : ""}`}
@@ -212,6 +225,22 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           />
         </Field>
       </div>
+
+      <TaxBucketsForm
+        program={draft.program}
+        value={taxFromDraft(draft)}
+        disabled={programLocked}
+        onChange={(tax) =>
+          patch({
+            reflectionRate: tax.reflectionRate,
+            burnRate: tax.burnRate,
+            projectRate: tax.projectRate,
+            projectAccount: tax.projectAccount,
+            angelNumbersBps: tax.angelNumbersBps,
+            jackpotBps: tax.jackpotBps,
+          })
+        }
+      />
 
       <Field label="Description" hint="Optional - shown on the token page.">
         <textarea

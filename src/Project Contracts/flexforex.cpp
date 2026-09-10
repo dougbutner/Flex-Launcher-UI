@@ -151,12 +151,16 @@ void flexforex::request_rng(uint64_t assoc_id, uint8_t kind, int64_t amt) {
 
 // === Create === //
 // --- Create a new reflection token and default settings --- //
-ACTION flexforex::create(const name& issuer, const asset& maximum_supply) {
+ACTION flexforex::create(const name& issuer, const asset& maximum_supply, uint16_t reflection_rate, uint16_t burn_rate,
+                         uint16_t project_rate, const name& project_account) {
     // - Auth + issuer exists
     require_auth(issuer);
     check(is_account(issuer), "⟁ Issuer account does not exist");
     auto sym = maximum_supply.symbol;
     check(sym.is_valid() && maximum_supply.is_valid() && maximum_supply.amount > 0, "⟁ Invalid symbol/supply");
+    check((uint32_t)reflection_rate + burn_rate + project_rate <= 10000, "⟁ Total fees cannot exceed 100%");
+    name project = project_account.value ? project_account : issuer;
+    if(project.value) check(is_account(project), "⟁ Project account does not exist");
 
     stats statstable(get_self(), sym.code().raw());
     check(statstable.find(sym.code().raw()) == statstable.end(), "⟁ A token with symbol already exists.");
@@ -176,9 +180,10 @@ ACTION flexforex::create(const name& issuer, const asset& maximum_supply) {
         config.emplace(issuer, [&](auto& c) {
             c.token_symbol = sym;
             c.limit = 100;
-            c.reflection_rate = 100;
-            c.project_rate = 100;
-            c.project_account = issuer;
+            c.reflection_rate = reflection_rate;
+            c.burn_rate = burn_rate;
+            c.project_rate = project_rate;
+            c.project_account = project;
             c.admin_account = issuer;
         });
     }
@@ -350,6 +355,32 @@ ACTION flexforex::setconfig(const symbol& sym, uint64_t start_key, uint32_t limi
     if(itr == config.end()) config.emplace(get_self(), write);
     else config.modify(itr, same_payer, write);
 }//END setconfig()
+
+// === Set fees === //
+// --- Issuer or contract: reallocate tax buckets; total must match create / prior setfees --- //
+ACTION flexforex::setfees(const string& token_symbol, uint16_t reflection_rate, uint16_t burn_rate, uint16_t project_rate,
+                          const name& project_account) {
+    check(!token_symbol.empty(), "⟁ Token symbol is required");
+    symbol_code code(token_symbol);
+    stats statstable(get_self(), code.raw());
+    const auto& st = statstable.get(code.raw(), "⟁ token with symbol does not exist");
+    settings_table config(get_self(), code.raw());
+    auto conf_it = config.find(code.raw());
+    check(conf_it != config.end(), "Distribution config not set");
+    check(has_auth(get_self()) || has_auth(st.issuer), "⟁ missing issuer or contract authority");
+    check((uint32_t)reflection_rate + burn_rate + project_rate <= 10000, "⟁ Total fees cannot exceed 100%");
+    check((uint32_t)reflection_rate + burn_rate + project_rate
+              == (uint32_t)conf_it->reflection_rate + conf_it->burn_rate + conf_it->project_rate,
+          "⟁ cannot change total tax");
+    name project = project_account.value ? project_account : conf_it->project_account;
+    if(project.value) check(is_account(project), "⟁ Project account does not exist");
+    config.modify(conf_it, same_payer, [&](auto& c) {
+        c.reflection_rate = reflection_rate;
+        c.burn_rate = burn_rate;
+        c.project_rate = project_rate;
+        c.project_account = project;
+    });
+}//END setfees()
 
 // === Set ratios === //
 // --- Issuer (own token) or contract: angel numbers / jackpot bps; remainder is standard --- //

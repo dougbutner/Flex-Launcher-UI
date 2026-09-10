@@ -1,15 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { hasAngelChannels, hasSetmin, type FlexProgram } from "@/config/launch";
 import { Field } from "@/components/launch/ui";
+import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
 import { validAccount, validSymbol } from "@/services/assets";
 import {
   abiSymbol,
   addpoolAction,
   ratiosAction,
   setdistAction,
+  setfeesAction,
   setminAction,
   type ChainAction,
 } from "@/services/launchActions";
+import {
+  hasProjectTax,
+  taxFromSettings,
+  taxSetfeesValid,
+  taxSum,
+  type TaxDraft,
+} from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]): unknown {
@@ -31,12 +40,12 @@ type Props = {
 export function IssuerTools({ program, contract, symbol, settings, busy, transact, onDone }: Props) {
   const angelOk = hasAngelChannels(program);
   const setminOk = hasSetmin(program);
+  const projectOk = hasProjectTax(program);
   const distLocked = Boolean(pick(settings, "dist_locked"));
-  const curAngel = Number(pick(settings, "angel_numbers_bps") ?? 0);
-  const curJack = Number(pick(settings, "jackpot_bps") ?? 0);
+  const chainTax = taxFromSettings(program, settings);
+  const lockedTotal = taxSum(chainTax, program);
 
-  const [angelBps, setAngelBps] = useState(String(curAngel || 1000));
-  const [jackBps, setJackBps] = useState(String(curJack || 1000));
+  const [tax, setTax] = useState<TaxDraft>(chainTax);
   const [winners, setWinners] = useState(String(Number(pick(settings, "jackpot_winners") ?? 3) || 3));
   const [minHold, setMinHold] = useState(String(Number(pick(settings, "jackpot_min_hold") ?? 0)));
   const [cooldown, setCooldown] = useState(String(Number(pick(settings, "angel_numbers_cooldown") ?? 86400) || 86400));
@@ -52,11 +61,20 @@ export function IssuerTools({ program, contract, symbol, settings, busy, transac
   const [signing, setSigning] = useState(false);
   const disabled = busy || signing;
 
-  const run = async (action: ChainAction) => {
+  useEffect(() => {
+    setTax(taxFromSettings(program, settings));
+    setWinners(String(Number(pick(settings, "jackpot_winners") ?? 3) || 3));
+    setMinHold(String(Number(pick(settings, "jackpot_min_hold") ?? 0)));
+    setCooldown(String(Number(pick(settings, "angel_numbers_cooldown") ?? 86400) || 86400));
+    setKeeperMin(String(Number(pick(settings, "keeper_min") ?? 0)));
+    setReflectMin(String(Number(pick(settings, "reflect_min") ?? 0)));
+  }, [program, settings]);
+
+  const run = async (actions: ChainAction[]) => {
     setSigning(true);
     setMsg({});
     try {
-      const res = await transact([action]);
+      const res = await transact(actions);
       setMsg({ tx: txIdFromResult(res) || "ok" });
       onDone();
     } catch (err) {
@@ -68,147 +86,165 @@ export function IssuerTools({ program, contract, symbol, settings, busy, transac
     }
   };
 
+  const feesErr = taxSetfeesValid(tax, program, lockedTotal);
+  const channelsChanged =
+    angelOk && (tax.angelNumbersBps !== chainTax.angelNumbersBps || tax.jackpotBps !== chainTax.jackpotBps);
+  const feesChanged =
+    tax.reflectionRate !== chainTax.reflectionRate ||
+    tax.burnRate !== chainTax.burnRate ||
+    (projectOk &&
+      (tax.projectRate !== chainTax.projectRate ||
+        tax.projectAccount.trim().toLowerCase() !== chainTax.projectAccount.trim().toLowerCase()));
+
   return (
     <section className="space-y-5 rounded-xl border border-primary/25 bg-primary/5 p-4">
       <div>
         <h3 className="text-sm font-bold tracking-tight">Issuer tools</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Add flex reward pools
+          Reallocate the locked transfer tax, add flex reward pools
           {angelOk ? "; configure angel / jackpot channels" : ""}
-          {setminOk ? "; set the makeitrain pool floor" : ""}. Tax rates stay contract-only (`setconfig`).
+          {setminOk ? "; set the makeitrain pool floor" : ""}.
         </p>
       </div>
 
-      {angelOk ? (
-        <>
-          <Field
-            label="Channel ratios"
-            hint="Share of reflection_rate cut into angel / jackpot pots on transfer (bps). Sum ≤ 10000."
-          >
-            <div className="flex flex-wrap gap-2">
-              <input
-                className="input w-28"
-                inputMode="numeric"
-                placeholder="angel bps"
-                value={angelBps}
-                disabled={disabled}
-                onChange={(e) => setAngelBps(e.target.value.replace(/\D/g, ""))}
-              />
-              <input
-                className="input w-28"
-                inputMode="numeric"
-                placeholder="jackpot bps"
-                value={jackBps}
-                disabled={disabled}
-                onChange={(e) => setJackBps(e.target.value.replace(/\D/g, ""))}
-              />
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                disabled={disabled}
-                onClick={() => {
-                  const a = Number(angelBps);
-                  const j = Number(jackBps);
-                  if (!Number.isFinite(a) || !Number.isFinite(j) || a + j > 10000) {
-                    setMsg({ err: "angel + jackpot bps must sum to ≤ 10000." });
-                    return;
-                  }
-                  void run(ratiosAction(contract, symbol, a, j));
-                }}
-              >
-                {signing ? "Signing…" : "Save ratios"}
-              </button>
-            </div>
-          </Field>
+      <TaxBucketsForm
+        program={program}
+        value={tax}
+        lockedTotal={lockedTotal}
+        disabled={disabled || !settings}
+        onChange={setTax}
+      />
+      <button
+        type="button"
+        className="btn btn-primary btn-sm"
+        disabled={disabled || !settings || Boolean(feesErr) || (!feesChanged && !channelsChanged)}
+        onClick={() => {
+          if (feesErr) {
+            setMsg({ err: feesErr });
+            return;
+          }
+          if (angelOk && tax.angelNumbersBps + tax.jackpotBps > 10000) {
+            setMsg({ err: "angel + jackpot bps must sum to ≤ 10000." });
+            return;
+          }
+          const actions: ChainAction[] = [];
+          if (feesChanged) {
+            actions.push(
+              setfeesAction(
+                contract,
+                symbol,
+                {
+                  reflectionRate: tax.reflectionRate,
+                  burnRate: tax.burnRate,
+                  projectRate: tax.projectRate,
+                  projectAccount: tax.projectAccount,
+                },
+                projectOk
+              )
+            );
+          }
+          if (channelsChanged) {
+            actions.push(ratiosAction(contract, symbol, tax.angelNumbersBps, tax.jackpotBps));
+          }
+          if (!actions.length) {
+            setMsg({ err: "No fee changes to sign." });
+            return;
+          }
+          void run(actions);
+        }}
+      >
+        {signing ? "Signing…" : "Save tax buckets"}
+      </button>
+      {feesErr ? <p className="text-xs text-destructive">{feesErr}</p> : null}
 
-          <Field
-            label="Distribution ops (setdist)"
-            hint={
-              distLocked
-                ? "Already locked - issuer cannot re-run. Use ratios for channel bps; contract can still reset ops."
-                : "One-shot for issuer: channel bps + winners, cooldown, keeper/reflect mins. Locks after success."
-            }
-          >
-            <div className="grid gap-2 sm:grid-cols-2">
-              <input
-                className="input"
-                inputMode="numeric"
-                placeholder="jackpot winners"
-                value={winners}
-                disabled={disabled || distLocked}
-                onChange={(e) => setWinners(e.target.value.replace(/\D/g, ""))}
-              />
-              <input
-                className="input"
-                inputMode="numeric"
-                placeholder="jackpot min hold (raw)"
-                value={minHold}
-                disabled={disabled || distLocked}
-                onChange={(e) => setMinHold(e.target.value.replace(/\D/g, ""))}
-              />
-              <input
-                className="input"
-                inputMode="numeric"
-                placeholder="angel cooldown (sec)"
-                value={cooldown}
-                disabled={disabled || distLocked}
-                onChange={(e) => setCooldown(e.target.value.replace(/\D/g, ""))}
-              />
-              <input
-                className="input"
-                inputMode="numeric"
-                placeholder="keeper_min (raw)"
-                value={keeperMin}
-                disabled={disabled || distLocked}
-                onChange={(e) => setKeeperMin(e.target.value.replace(/\D/g, ""))}
-              />
-              <input
-                className="input"
-                inputMode="numeric"
-                placeholder="reflect_min (raw)"
-                value={reflectMin}
-                disabled={disabled || distLocked}
-                onChange={(e) => setReflectMin(e.target.value.replace(/\D/g, ""))}
-              />
-            </div>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm mt-2"
+      {angelOk ? (
+        <Field
+          label="Distribution ops (setdist)"
+          hint={
+            distLocked
+              ? "Already locked - issuer cannot re-run. Use ratios above for channel bps; contract can still reset ops."
+              : "One-shot for issuer: channel bps + winners, cooldown, keeper/reflect mins. Locks after success."
+          }
+        >
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input
+              className="input"
+              inputMode="numeric"
+              placeholder="jackpot winners"
+              value={winners}
               disabled={disabled || distLocked}
-              onClick={() => {
-                const a = Number(angelBps);
-                const j = Number(jackBps);
-                const w = Number(winners);
-                const cool = Number(cooldown);
-                if (!Number.isFinite(a) || !Number.isFinite(j) || a + j > 10000) {
-                  setMsg({ err: "angel + jackpot bps must sum to ≤ 10000." });
-                  return;
-                }
-                if (j > 0 && !(w > 0)) {
-                  setMsg({ err: "jackpot_bps > 0 needs winners > 0." });
-                  return;
-                }
-                if (a > 0 && !(cool > 0)) {
-                  setMsg({ err: "angel_numbers_bps > 0 needs cooldown > 0." });
-                  return;
-                }
-                void run(
-                  setdistAction(contract, symbol, {
-                    angelNumbersBps: a,
-                    jackpotBps: j,
-                    jackpotWinners: w,
-                    jackpotMinHold: Number(minHold) || 0,
-                    angelNumbersCooldown: cool,
-                    keeperMin: Number(keeperMin) || 0,
-                    reflectMin: Number(reflectMin) || 0,
-                  })
-                );
-              }}
-            >
-              {distLocked ? "setdist locked" : signing ? "Signing…" : "Lock setdist"}
-            </button>
-          </Field>
-        </>
+              onChange={(e) => setWinners(e.target.value.replace(/\D/g, ""))}
+            />
+            <input
+              className="input"
+              inputMode="numeric"
+              placeholder="jackpot min hold (raw)"
+              value={minHold}
+              disabled={disabled || distLocked}
+              onChange={(e) => setMinHold(e.target.value.replace(/\D/g, ""))}
+            />
+            <input
+              className="input"
+              inputMode="numeric"
+              placeholder="angel cooldown (sec)"
+              value={cooldown}
+              disabled={disabled || distLocked}
+              onChange={(e) => setCooldown(e.target.value.replace(/\D/g, ""))}
+            />
+            <input
+              className="input"
+              inputMode="numeric"
+              placeholder="keeper_min (raw)"
+              value={keeperMin}
+              disabled={disabled || distLocked}
+              onChange={(e) => setKeeperMin(e.target.value.replace(/\D/g, ""))}
+            />
+            <input
+              className="input"
+              inputMode="numeric"
+              placeholder="reflect_min (raw)"
+              value={reflectMin}
+              disabled={disabled || distLocked}
+              onChange={(e) => setReflectMin(e.target.value.replace(/\D/g, ""))}
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm mt-2"
+            disabled={disabled || distLocked}
+            onClick={() => {
+              const a = tax.angelNumbersBps;
+              const j = tax.jackpotBps;
+              const w = Number(winners);
+              const cool = Number(cooldown);
+              if (a + j > 10000) {
+                setMsg({ err: "angel + jackpot bps must sum to ≤ 10000." });
+                return;
+              }
+              if (j > 0 && !(w > 0)) {
+                setMsg({ err: "jackpot_bps > 0 needs winners > 0." });
+                return;
+              }
+              if (a > 0 && !(cool > 0)) {
+                setMsg({ err: "angel_numbers_bps > 0 needs cooldown > 0." });
+                return;
+              }
+              void run([
+                setdistAction(contract, symbol, {
+                  angelNumbersBps: a,
+                  jackpotBps: j,
+                  jackpotWinners: w,
+                  jackpotMinHold: Number(minHold) || 0,
+                  angelNumbersCooldown: cool,
+                  keeperMin: Number(keeperMin) || 0,
+                  reflectMin: Number(reflectMin) || 0,
+                }),
+              ]);
+            }}
+          >
+            {distLocked ? "setdist locked" : signing ? "Signing…" : "Lock setdist"}
+          </button>
+        </Field>
       ) : null}
 
       {setminOk ? (
@@ -229,7 +265,7 @@ export function IssuerTools({ program, contract, symbol, settings, busy, transac
               type="button"
               className="btn btn-outline btn-sm"
               disabled={disabled}
-              onClick={() => void run(setminAction(contract, symbol, Number(reflectMin) || 0))}
+              onClick={() => void run([setminAction(contract, symbol, Number(reflectMin) || 0)])}
             >
               {signing ? "Signing…" : "Save setmin"}
             </button>
@@ -237,10 +273,7 @@ export function IssuerTools({ program, contract, symbol, settings, busy, transac
         </Field>
       ) : null}
 
-      <Field
-        label="Add flex reward pool"
-        hint="Alcor pool must pair this token with the output asset and be active."
-      >
+      <Field label="Add flex reward pool" hint="Alcor pool must pair this token with the output asset and be active.">
         <div className="grid gap-2 sm:grid-cols-2">
           <input
             className="input"
@@ -284,7 +317,7 @@ export function IssuerTools({ program, contract, symbol, settings, busy, transac
               setMsg({ err: "Need pool id, valid output symbol, precision, and contract." });
               return;
             }
-            void run(addpoolAction(contract, id, symbol, abiSymbol(prec, outSym), outContract));
+            void run([addpoolAction(contract, id, symbol, abiSymbol(prec, outSym), outContract)]);
           }}
         >
           {signing ? "Signing…" : "Add pool"}

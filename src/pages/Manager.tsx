@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Field, StatusIcon } from "@/components/launch/ui";
+import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
 import { TokenIcon } from "@/components/TokenIcon";
+import { hasAngelChannels } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { MANAGER_RESUME_KEY, writeLaunchDraft } from "@/hooks/useLaunchDraft";
 import { listIssuerTokens } from "@/services/issuerTokens";
@@ -19,10 +21,19 @@ import {
   type ManagerToken,
   type ManagerView,
 } from "@/services/managerStore";
-import { txErrorMessage } from "@/services/txParse";
+import { readSettings } from "@/services/flexTables";
+import { ratiosAction, setfeesAction, type ChainAction } from "@/services/launchActions";
+import {
+  hasProjectTax,
+  taxFromSettings,
+  taxSetfeesValid,
+  taxSum,
+  type TaxDraft,
+} from "@/services/taxRates";
+import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 export default function Manager() {
-  const { actor, isLoggedIn, addWebAuthWallet } = useWallet();
+  const { actor, isLoggedIn, addWebAuthWallet, transact } = useWallet();
   const navigate = useNavigate();
   const [views, setViews] = useState<ManagerView[] | null>(null);
   const [selected, setSelected] = useState("");
@@ -32,6 +43,10 @@ export default function Manager() {
   const [error, setError] = useState("");
   const [saveMsg, setSaveMsg] = useState("");
   const [storeHint, setStoreHint] = useState("");
+  const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
+  const [tax, setTax] = useState<TaxDraft | null>(null);
+  const [taxBusy, setTaxBusy] = useState(false);
+  const [taxMsg, setTaxMsg] = useState("");
 
   const load = useCallback(async () => {
     if (!actor) return;
@@ -74,6 +89,9 @@ export default function Manager() {
   useEffect(() => {
     if (!view) {
       setMeta(null);
+      setSettings(null);
+      setTax(null);
+      setTaxMsg("");
       return;
     }
     setMeta({
@@ -86,7 +104,82 @@ export default function Manager() {
       imageUrl: view.token.imageUrl,
     });
     setSaveMsg("");
-  }, [view?.token.contract, view?.token.symbol, view?.token.updatedAt]);
+    setTaxMsg("");
+    let cancelled = false;
+    void readSettings(view.token.contract, view.token.symbol)
+      .then((row) => {
+        if (cancelled) return;
+        setSettings(row);
+        setTax(taxFromSettings(view.token.program, row));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSettings(null);
+        setTax(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [view?.token.contract, view?.token.symbol, view?.token.updatedAt, view?.token.program]);
+
+  const saveTax = async () => {
+    if (!view || !tax || !settings) return;
+    const locked = taxSum(taxFromSettings(view.token.program, settings), view.token.program);
+    const err = taxSetfeesValid(tax, view.token.program, locked);
+    if (err) {
+      setTaxMsg(err);
+      return;
+    }
+    const chain = taxFromSettings(view.token.program, settings);
+    const projectOk = hasProjectTax(view.token.program);
+    const feesChanged =
+      tax.reflectionRate !== chain.reflectionRate ||
+      tax.burnRate !== chain.burnRate ||
+      (projectOk &&
+        (tax.projectRate !== chain.projectRate ||
+          tax.projectAccount.trim().toLowerCase() !== chain.projectAccount.trim().toLowerCase()));
+    const channelsChanged =
+      hasAngelChannels(view.token.program) &&
+      (tax.angelNumbersBps !== chain.angelNumbersBps || tax.jackpotBps !== chain.jackpotBps);
+    const actions: ChainAction[] = [];
+    if (feesChanged) {
+      actions.push(
+        setfeesAction(
+          view.token.contract,
+          view.token.symbol,
+          {
+            reflectionRate: tax.reflectionRate,
+            burnRate: tax.burnRate,
+            projectRate: tax.projectRate,
+            projectAccount: tax.projectAccount,
+          },
+          projectOk
+        )
+      );
+    }
+    if (channelsChanged) {
+      actions.push(ratiosAction(view.token.contract, view.token.symbol, tax.angelNumbersBps, tax.jackpotBps));
+    }
+    if (!actions.length) {
+      setTaxMsg("No tax changes to sign.");
+      return;
+    }
+    setTaxBusy(true);
+    setTaxMsg("");
+    try {
+      const res = await transact(actions);
+      setTaxMsg(`Saved tax · tx ${(txIdFromResult(res) || "ok").slice(0, 12)}…`);
+      const row = await readSettings(view.token.contract, view.token.symbol);
+      setSettings(row);
+      setTax(taxFromSettings(view.token.program, row));
+    } catch (err) {
+      const text = txErrorMessage(err);
+      const hint = hintForError(text);
+      setTaxMsg(hint ? `${text} - ${hint}` : text);
+    } finally {
+      setTaxBusy(false);
+    }
+  };
 
   const save = async () => {
     if (!view || !meta || !actor) return;
@@ -287,6 +380,33 @@ export default function Manager() {
                 )}
               </div>
               {saveMsg ? <p className="text-xs text-muted-foreground">{saveMsg}</p> : null}
+
+              {tax && settings ? (
+                <div className="space-y-3 border-t border-border pt-5">
+                  <TaxBucketsForm
+                    program={view.token.program}
+                    value={tax}
+                    lockedTotal={taxSum(taxFromSettings(view.token.program, settings), view.token.program)}
+                    disabled={taxBusy || busy}
+                    onChange={setTax}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    disabled={
+                      taxBusy ||
+                      busy ||
+                      Boolean(taxSetfeesValid(tax, view.token.program, taxSum(taxFromSettings(view.token.program, settings), view.token.program)))
+                    }
+                    onClick={() => void saveTax()}
+                  >
+                    {taxBusy ? "Signing…" : "Save tax on chain"}
+                  </button>
+                  {taxMsg ? <p className="text-xs text-muted-foreground">{taxMsg}</p> : null}
+                </div>
+              ) : view.progress.create ? (
+                <p className="text-xs text-muted-foreground">Reading on-chain tax settings…</p>
+              ) : null}
 
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Launch steps</p>
