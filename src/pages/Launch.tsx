@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { SWAP_ALCOR, allFlexAccounts, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
+import { SWAP_ALCOR, allFlexAccounts, easyHoldNeed, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
 import { MANAGER_RESUME_KEY, useLaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { Stepper, type WizardStep } from "@/components/launch/Stepper";
@@ -94,7 +94,7 @@ export default function Launch() {
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Signing against <span className="font-mono">XPR Network</span>. Create on {flexAccount(draft.program)}, seed
           one-sided Alcor liquidity, then liftoff. Non-flex quotes (XPR / XMD / LOAN / xtoken) need a proof pool id &gt;
-          0. {holdEasyToLaunch(flexMeta(draft.program).launchEasyMin)} - that balance is read from{" "}
+          0. {holdEasyToLaunch(easyHoldNeed(flexMeta(draft.program).launchEasyMin))} - that balance is read from{" "}
           <span className="font-mono">mon3y</span>.
         </p>
       </div>

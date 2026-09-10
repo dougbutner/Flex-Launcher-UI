@@ -2,7 +2,7 @@ import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
 import { StatusIcon, SupplyShortcuts } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
-import { flexAccount, flexMeta } from "@/config/launch";
+import { easyHoldNeed, flexAccount, flexMeta } from "@/config/launch";
 import { formatSupplyCommas } from "@/services/assets";
 
 export function LaunchPreview({
@@ -16,7 +16,7 @@ export function LaunchPreview({
   const plan = planFromDraft(draft);
 
   const milestones = [
-    { label: `Hold ${flexMeta(draft.program).launchEasyMin.toLocaleString()} EASY`, done: false },
+    { label: `Hold ${easyHoldNeed(flexMeta(draft.program).launchEasyMin).toLocaleString()} EASY`, done: false },
     { label: "Created", done: Boolean(draft.createTx) },
     { label: "Supply", done: Boolean(draft.mintTx) },
     { label: "startlaunch", done: Boolean(draft.startTx) },

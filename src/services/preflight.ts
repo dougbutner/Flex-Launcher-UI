@@ -6,6 +6,7 @@ import {
   flexAccount,
   flexMeta,
   holdEasyToLaunch,
+  easyHoldNeed,
   type FlexProgram,
 } from "@/config/launch";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
@@ -96,7 +97,7 @@ export async function runCreateGates(
     readAccounts(MON3Y, issuer, EASY_SYMBOL).catch(() => ({ rows: [] as Record<string, unknown>[] })),
     countIssuerLaunched(code, issuer),
   ]);
-  const need = meta.launchEasyMin * (prior + 1);
+  const need = easyHoldNeed(meta.launchEasyMin, prior);
   const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
   return createGateItems({ stat, easyBal, need, symbol, prior });
 }
@@ -229,7 +230,7 @@ export async function runPreflight(
     detail: `tick ${currTick} vs ${plan.tickLower}…${plan.tickUpper}`,
   });
 
-  const need = flexMeta(program).launchEasyMin * (prior + 1);
+  const need = easyHoldNeed(flexMeta(program).launchEasyMin, prior);
   const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
   items.push({
     id: "easy-stake",

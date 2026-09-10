@@ -24,7 +24,7 @@ export const FLEX_PROGRAMS: Array<{
   {
     id: "easyflex",
     title: "easyflex",
-    blurb: "Simple reflections + burn. Issue supply. No inheritance or luck. Hold 5,000 EASY to launch.",
+    blurb: "Simple reflections + burn. Issue supply. No inheritance or luck.",
     supply: "issue",
     payoutSigner: "sender",
     launchEasyMin: 5_000,
@@ -34,7 +34,7 @@ export const FLEX_PROGRAMS: Array<{
   {
     id: "complexflex",
     title: "complexflex",
-    blurb: "Reflections + project tax + inheritance. Grams-style. Hold 10,000 EASY to launch.",
+    blurb: "Reflections + project tax + inheritance. Grams-style.",
     supply: "mint",
     payoutSigner: "sender",
     launchEasyMin: 10_000,
@@ -43,7 +43,7 @@ export const FLEX_PROGRAMS: Array<{
   {
     id: "flexforex",
     title: "flexforex",
-    blurb: "Full stack: inheritance, angel numbers, jackpot, optional keeper. Hold 50,000 EASY to launch.",
+    blurb: "Full stack: inheritance, angel numbers, jackpot, optional keeper.",
     supply: "mint",
     payoutSigner: "keeper",
     launchEasyMin: 50_000,
@@ -86,16 +86,20 @@ export function holdEasyToLaunch(amount: number) {
   return `Hold ${amount.toLocaleString()} EASY to launch`;
 }
 
-/** Promo start: 90% off the EASY hold, then -10% each calendar month until 0. */
-export const EASY_HOLD_PROMO_START = Date.UTC(2026, 8, 1);
+/** First promo month starts 2026-09-09 00:00 UTC. 90% off, then -10% every 30 days until 0. */
+export const EASY_HOLD_PROMO_START_SEC = 1_788_912_000;
+const PROMO_MONTH_SECS = 30 * 86_400;
 
 export function easyHoldOffPercent(nowMs = Date.now()): number {
-  const start = new Date(EASY_HOLD_PROMO_START);
-  const now = new Date(nowMs);
-  const months =
-    (now.getUTCFullYear() - start.getUTCFullYear()) * 12 + (now.getUTCMonth() - start.getUTCMonth());
-  if (months < 0) return 90;
+  const nowSec = Math.floor(nowMs / 1000);
+  if (nowSec < EASY_HOLD_PROMO_START_SEC) return 90;
+  const months = Math.floor((nowSec - EASY_HOLD_PROMO_START_SEC) / PROMO_MONTH_SECS);
   return Math.max(0, 90 - 10 * months);
+}
+
+export function easyHoldNeed(baseWhole: number, prior = 0, nowMs = Date.now()): number {
+  const full = baseWhole * (prior + 1);
+  return (full * (100 - easyHoldOffPercent(nowMs))) / 100;
 }
 
 export function easyHoldPromoCopy(nowMs = Date.now()): string | null {

@@ -35,6 +35,7 @@ import {
   hasAngelChannels,
   hasInheritance,
   hasSetmin,
+  easyHoldNeed,
   holdEasyToLaunch,
   easyHoldOffPercent,
   easyHoldPromoCopy,
@@ -224,11 +225,15 @@ describe("launch plan", () => {
     expect(flexMeta("flexforex").payoutSigner).toBe("keeper");
     expect(holdEasyToLaunch(5000)).toBe("Hold 5,000 EASY to launch");
     expect(easyHoldOffPercent(Date.UTC(2026, 8, 9))).toBe(90);
-    expect(easyHoldOffPercent(Date.UTC(2026, 9, 1))).toBe(80);
-    expect(easyHoldOffPercent(Date.UTC(2027, 2, 1))).toBe(30);
-    expect(easyHoldOffPercent(Date.UTC(2027, 5, 1))).toBe(0);
+    expect(easyHoldOffPercent(Date.UTC(2026, 9, 8))).toBe(90);
+    expect(easyHoldOffPercent(Date.UTC(2026, 9, 9))).toBe(80);
+    expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 8, 10))).toBe(1_000);
+    expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 9, 9))).toBe(2_000);
+    expect(easyHoldNeed(50_000, 0, Date.UTC(2026, 8, 10))).toBe(5_000);
+    expect(easyHoldOffPercent(Date.UTC(2026, 8, 9) + 6 * 30 * 86400 * 1000)).toBe(30);
+    expect(easyHoldOffPercent(Date.UTC(2026, 8, 9) + 9 * 30 * 86400 * 1000)).toBe(0);
     expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9))).toMatch(/90%/);
-    expect(easyHoldPromoCopy(Date.UTC(2027, 5, 1))).toBeNull();
+    expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9) + 9 * 30 * 86400 * 1000)).toBeNull();
   });
 });
 

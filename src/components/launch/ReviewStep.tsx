@@ -1,4 +1,4 @@
-import { FEE_TIERS, SWAP_ALCOR, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
+import { FEE_TIERS, SWAP_ALCOR, easyHoldNeed, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, presetFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
 import { StepShell } from "@/components/launch/ui";
@@ -75,7 +75,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
         <Row k="Lock" v={`${Math.max(90, draft.lockDays)} days · until ~${unlockDate}`} />
         <Row
           k="EASY to launch"
-          v={`${holdEasyToLaunch(flexMeta(draft.program).launchEasyMin)}; more after each prior launch`}
+          v={`${holdEasyToLaunch(easyHoldNeed(flexMeta(draft.program).launchEasyMin))}; more after each prior launch`}
         />
       </div>
 

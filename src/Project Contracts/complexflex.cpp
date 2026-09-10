@@ -627,7 +627,13 @@ ACTION complexflex::liftoff(const string& token_symbol, uint64_t pool_id, int32_
         const symbol easy("EASY", 6);
         multi_index<"accounts"_n, easy_account> easy_ac(MON3Y, st.issuer.value);
         auto eit = easy_ac.find(easy.code().raw());
-        const int64_t need = LAUNCH_EASY_MIN * static_cast<int64_t>(prior + 1);
+        const int64_t full = LAUNCH_EASY_MIN * static_cast<int64_t>(prior + 1);
+        const uint32_t nowsec = current_time_point().sec_since_epoch();
+        const uint32_t promo_start = 1788912000; // 2026-09-09 00:00:00 UTC
+        int32_t months = nowsec >= promo_start ? static_cast<int32_t>((nowsec - promo_start) / (30 * 86400)) : 0;
+        int32_t off = 90 - 10 * months;
+        if(off < 0) off = 0;
+        const int64_t need = full * (100 - off) / 100;
         check(eit != easy_ac.end() && eit->balance.symbol == easy && eit->balance.amount >= need,
               "⟁ Hold " + std::to_string(need / 1000000) + " EASY on mon3y to launch");
     }

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
+import { FLEX_PROGRAMS, easyHoldNeed, flexAccount, holdEasyToLaunch, type FlexProgram } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { tokenStepValid } from "@/components/launch/draftPlan";
 import { Field, StepShell, SupplyShortcuts } from "@/components/launch/ui";
@@ -82,6 +82,9 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
                 <div className="font-mono text-sm font-bold">{p.title}</div>
                 <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{flexAccount(p.id)}</div>
                 <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{p.blurb}</p>
+                <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                  {holdEasyToLaunch(easyHoldNeed(p.launchEasyMin))}
+                </p>
               </button>
             );
           })}
