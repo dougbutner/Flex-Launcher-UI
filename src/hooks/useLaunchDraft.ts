@@ -1,3 +1,4 @@
+import { randomPlaceholderToken } from "@/components/launch/randomTokenName";
 import { LOCK_MIN_DAYS, QUOTE_PRESETS, type FeeTier, type FlexProgram, type RangeWidthId } from "@/config/launch";
 import { defaultTaxDraft } from "@/services/taxRates";
 import { useCallback, useEffect, useState } from "react";
@@ -6,6 +7,8 @@ export type LaunchDraft = {
   program: FlexProgram;
   name: string;
   symbol: string;
+  /** True after a mythic seed or any saved name/ticker. Stops a later load from refilling blanks. */
+  identitySeeded: boolean;
   precision: number;
   maxSupply: string;
   imageDataUrl: string;
@@ -62,12 +65,21 @@ export function writeLaunchDraft(draft: LaunchDraft) {
 
 const easy = QUOTE_PRESETS.find((q) => q.id === "easy") ?? QUOTE_PRESETS[0];
 
+/** Fill name + ticker once when both are still blank. Never replaces a typed field. */
+function seedIfBlank(d: LaunchDraft): LaunchDraft {
+  if (d.identitySeeded) return d;
+  if (d.name.trim() || d.symbol.trim()) return { ...d, identitySeeded: true };
+  const { name, symbol } = randomPlaceholderToken();
+  return { ...d, name, symbol, identitySeeded: true };
+}
+
 export const emptyDraft = (): LaunchDraft => {
   const tax = defaultTaxDraft("flexforex");
   return {
     program: "flexforex",
     name: "",
     symbol: "",
+    identitySeeded: false,
     precision: 6,
     maxSupply: "1000000",
     imageDataUrl: "",
@@ -113,11 +125,11 @@ export const emptyDraft = (): LaunchDraft => {
 function load(): LaunchDraft {
   try {
     const raw = localStorage.getItem(KEY) ?? localStorage.getItem("flex-launch-draft-v6") ?? localStorage.getItem("flex-launch-draft-v5");
-    if (!raw) return emptyDraft();
+    if (!raw) return seedIfBlank(emptyDraft());
     const parsed = JSON.parse(raw) as Partial<LaunchDraft>;
     const program = (parsed.program as FlexProgram) || "flexforex";
     const tax = defaultTaxDraft(program);
-    return {
+    return seedIfBlank({
       ...emptyDraft(),
       ...tax,
       ...parsed,
@@ -128,20 +140,28 @@ function load(): LaunchDraft {
       projectAccount: parsed.projectAccount ?? tax.projectAccount,
       angelNumbersBps: parsed.angelNumbersBps ?? tax.angelNumbersBps,
       jackpotBps: parsed.jackpotBps ?? tax.jackpotBps,
-    };
+    });
   } catch {
-    return emptyDraft();
+    return seedIfBlank(emptyDraft());
   }
 }
 
 export function useLaunchDraft() {
-  const [draft, setDraft] = useState<LaunchDraft>(emptyDraft);
-  const [hydrated, setHydrated] = useState(false);
+  const [draft, setDraft] = useState<LaunchDraft>(() => {
+    try {
+      if (typeof localStorage === "undefined") return emptyDraft();
+      return load();
+    } catch {
+      return emptyDraft();
+    }
+  });
+  const [hydrated, setHydrated] = useState(() => typeof localStorage !== "undefined");
 
   useEffect(() => {
+    if (hydrated) return;
     setDraft(load());
     setHydrated(true);
-  }, []);
+  }, [hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -153,7 +173,7 @@ export function useLaunchDraft() {
   }, []);
 
   const reset = useCallback(() => {
-    const next = emptyDraft();
+    const next = seedIfBlank(emptyDraft());
     setDraft(next);
     localStorage.setItem(KEY, JSON.stringify(next));
   }, []);

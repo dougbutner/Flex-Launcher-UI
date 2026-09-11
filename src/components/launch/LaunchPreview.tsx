@@ -16,6 +16,8 @@ export function LaunchPreview({
   const quote = quoteFromDraft(draft);
   const plan = planFromDraft(draft);
   const overallTax = formatBpsPercent(taxSum(taxFromDraft(draft), draft.program));
+  const showName = draft.name;
+  const showSymbol = draft.symbol;
 
   const milestones = [
     { label: `Hold ${easyHoldNeed(flexMeta(draft.program).launchEasyMin).toLocaleString()} EASY`, done: false },
@@ -41,14 +43,14 @@ export function LaunchPreview({
           />
         ) : (
           <div className="absolute -bottom-8 left-5 flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-card bg-secondary text-2xl font-black text-muted-foreground shadow-xl">
-            {(draft.symbol || "?").slice(0, 1)}
+            {showSymbol.slice(0, 1)}
           </div>
         )}
       </div>
       <div className="px-5 pb-5 pt-10">
-        <div className="text-lg font-bold tracking-tight">{draft.name || "Unnamed token"}</div>
+        <div className="text-lg font-bold tracking-tight">{showName}</div>
         <div className="mt-1 flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
-          ${draft.symbol || "?????"} · {draft.program} @ {flexAccount(draft.program)} ·
+          ${showSymbol} · {draft.program} @ {flexAccount(draft.program)} ·
           <TokenIcon contract={quote.contract} symbol={quote.symbol} size={14} />
           {quote.symbol} pair
         </div>
@@ -72,7 +74,7 @@ export function LaunchPreview({
 
         {plan ? (
           <p className="mt-3 text-center text-[11px] text-muted-foreground">
-            {fmtPrice(plan.quotePerTokenLower)} - {fmtPrice(plan.quotePerTokenUpper)} {quote.symbol} / {draft.symbol}
+            {fmtPrice(plan.quotePerTokenLower)} - {fmtPrice(plan.quotePerTokenUpper)} {quote.symbol} / {showSymbol}
           </p>
         ) : null}
 
