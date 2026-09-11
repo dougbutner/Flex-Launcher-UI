@@ -47,6 +47,15 @@ export function formatPriceInput(n: number): string {
   return s || "0.000001";
 }
 
+/** Start price from FDV in USD (or quote units when quoteUsd is 0). Does not touch max price. */
+export function applyStartMarketCap(draft: LaunchDraft, usdCap: number, quoteUsd = 0): Pick<LaunchDraft, "priceLower"> {
+  const supply = Number(draft.maxSupply);
+  if (!(supply > 0) || !(usdCap > 0) || !Number.isFinite(supply)) return { priceLower: draft.priceLower };
+  const denom = quoteUsd > 0 ? supply * quoteUsd : supply;
+  if (!(denom > 0)) return { priceLower: draft.priceLower };
+  return { priceLower: formatPriceInput(usdCap / denom) };
+}
+
 export function applyRangeWidth(draft: LaunchDraft, id: RangeWidthId): Pick<LaunchDraft, "priceLower" | "priceUpper" | "rangeWidthId"> {
   const width = RANGE_WIDTH_PRESETS.find((w) => w.id === id) ?? RANGE_WIDTH_PRESETS[0];
   const quotePreset = presetFromDraft(draft);

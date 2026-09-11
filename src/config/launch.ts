@@ -175,6 +175,31 @@ export const RANGE_WIDTH_PRESETS = [
 
 export type RangeWidthId = (typeof RANGE_WIDTH_PRESETS)[number]["id"];
 
+/** Start FDV presets (USD). Only rewrite priceLower. */
+export const START_MCAP_PRESETS = [
+  { id: "10k", usd: 10_000, label: "$10k" },
+  { id: "100k", usd: 100_000, label: "$100k" },
+  { id: "1m", usd: 1_000_000, label: "$1M" },
+] as const;
+
+export const START_MCAP_MORE_ROWS = [
+  [
+    { id: "1k", usd: 1_000, label: "$1k" },
+    { id: "10k", usd: 10_000, label: "$10k" },
+    { id: "100k", usd: 100_000, label: "$100k" },
+  ],
+  [
+    { id: "10k", usd: 10_000, label: "$10k" },
+    { id: "100k", usd: 100_000, label: "$100k" },
+    { id: "1m", usd: 1_000_000, label: "$1M" },
+  ],
+  [
+    { id: "500k", usd: 500_000, label: "$500k" },
+    { id: "5m", usd: 5_000_000, label: "$5M" },
+    { id: "10m", usd: 10_000_000, label: "$10M" },
+  ],
+] as const;
+
 export type QuotePreset = {
   id: "easy" | "won" | "grams" | "meme" | "xpr" | "xmd" | "loan" | "xtoken";
   symbol: string;

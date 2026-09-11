@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FEE_TIERS, LOCK_MIN_DAYS, LOCK_SLIDER_MAX_DAYS, RANGE_WIDTH_PRESETS } from "@/config/launch";
+import { FEE_TIERS, LOCK_MIN_DAYS, LOCK_SLIDER_MAX_DAYS, RANGE_WIDTH_PRESETS, START_MCAP_MORE_ROWS, START_MCAP_PRESETS } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import {
   applyRangeWidth,
+  applyStartMarketCap,
   fmtPrice,
   planFromDraft,
   presetFromDraft,
@@ -39,15 +40,6 @@ function fmtPct(n: number | null | undefined): string {
   return `${n.toPrecision(2)}%`;
 }
 
-function fmtQuoteAmt(n: number, symbol: string): string {
-  if (!(n > 0) || !Number.isFinite(n)) return `- ${symbol}`;
-  if (n >= 1e9) return `${(n / 1e9).toPrecision(3)}B ${symbol}`;
-  if (n >= 1e6) return `${(n / 1e6).toPrecision(3)}M ${symbol}`;
-  if (n >= 1000) return `${n.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${symbol}`;
-  if (n >= 1) return `${n.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${symbol}`;
-  return `${n.toPrecision(3)} ${symbol}`;
-}
-
 function ImpactStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div>
@@ -58,11 +50,9 @@ function ImpactStat({ label, value, hint }: { label: string; value: string; hint
   );
 }
 
-function impactDoubleLabel(impact: RangeImpact, quoteSymbol: string): string {
-  const usd = fmtUsd(impact.usdToDouble);
-  const q = fmtQuoteAmt(impact.quoteToDouble, quoteSymbol);
-  if (impact.usdToDouble != null && impact.usdToDouble > 0) return `${usd} (${q})`;
-  return q;
+function impactDoubleLabel(impact: RangeImpact): string {
+  if (impact.usdToDouble != null && impact.usdToDouble > 0) return fmtUsd(impact.usdToDouble);
+  return "-";
 }
 
 export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Props) {
@@ -74,6 +64,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const eosioMaxDays = maxLockDays();
   const sliderMax = Math.min(eosioMaxDays, Math.max(LOCK_SLIDER_MAX_DAYS, draft.lockDaysMax || 0, draft.lockDays));
   const days = Math.min(sliderMax, Math.max(LOCK_MIN_DAYS, draft.lockDays));
+  const [moreMcap, setMoreMcap] = useState(false);
   const [editLock, setEditLock] = useState(false);
   const [lockText, setLockText] = useState("");
   const lockInputRef = useRef<HTMLInputElement>(null);
@@ -195,7 +186,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
                 {wi ? (
                   <div className="mt-1.5 space-y-0.5 text-[10px] leading-tight text-muted-foreground">
                     <div>
-                      2x {wi.usdToDouble != null && wi.usdToDouble > 0 ? fmtUsd(wi.usdToDouble) : fmtQuoteAmt(wi.quoteToDouble, quote.symbol)}
+                      2x {wi.usdToDouble != null && wi.usdToDouble > 0 ? fmtUsd(wi.usdToDouble) : "-"}
                     </div>
                     <div>
                       ${USD_BUY_PROBE} {fmtPct(wi.supplyPctForUsd)}
@@ -205,6 +196,52 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
               </button>
             );
           })}
+        </div>
+      </Field>
+
+      <Field
+        label="Starting market cap"
+        aside={
+          <button type="button" className="link text-xs" onClick={() => setMoreMcap((v) => !v)}>
+            {moreMcap ? "fewer" : "more options"}
+          </button>
+        }
+        hint={
+          quoteUsd > 0
+            ? "Sets start price from max supply and USD. Max price stays put."
+            : `No USD yet. These set start FDV in ${quote.symbol}. Max price stays put.`
+        }
+      >
+        <div className="space-y-2">
+          {(moreMcap ? START_MCAP_MORE_ROWS : [START_MCAP_PRESETS]).map((row, i) => (
+            <div key={i} className="grid grid-cols-3 gap-2">
+              {row.map((m) => {
+                const supply = Number(draft.maxSupply);
+                const implied =
+                  supply > 0 && Number(draft.priceLower) > 0
+                    ? supply * Number(draft.priceLower) * (quoteUsd > 0 ? quoteUsd : 1)
+                    : 0;
+                const selected = implied > 0 && Math.abs(implied - m.usd) / m.usd < 0.04;
+                return (
+                  <button
+                    key={`${i}-${m.id}`}
+                    type="button"
+                    disabled={locked || !(supply > 0)}
+                    onClick={() => patch(applyStartMarketCap(draft, m.usd, quoteUsd))}
+                    className={`rounded-xl border px-3 py-5 text-center transition-all ${
+                      selected
+                        ? "border-primary bg-primary/10"
+                        : "border-input bg-background/50 hover:border-primary/40"
+                    } ${locked || !(supply > 0) ? "opacity-60" : ""}`}
+                  >
+                    <div className={`font-mono text-lg font-black tracking-tight ${selected ? "text-primary" : ""}`}>
+                      {m.label}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </Field>
 
@@ -242,11 +279,11 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
           />
           <ImpactStat
             label="Cost to 2x"
-            value={impactDoubleLabel(impact, quote.symbol)}
+            value={impactDoubleLabel(impact)}
             hint={
               impact.doubledCapped
                 ? "Max is under 2x. This is the cost to walk the whole range."
-                : `Quote to move start to ${fmtPrice(impact.doubledQuotePerToken)} ${quote.symbol}. Includes swap fee.`
+                : `USD to move start to ${fmtPrice(impact.doubledQuotePerToken)} ${quote.symbol}. Includes swap fee.`
             }
           />
           <ImpactStat
@@ -254,10 +291,10 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
             value={fmtPct(impact.supplyPctForUsd)}
             hint={
               impact.tokensForUsd != null
-                ? `${fmtPrice(impact.tokensForUsd)} ${draft.symbol || "TOKEN"} at constant ${quote.symbol} USD`
+                ? `${fmtPrice(impact.tokensForUsd)} ${draft.symbol || "TOKEN"} at constant USD`
                 : quoteUsd > 0
-                  ? `Need a ${quote.symbol} USD price from Alcor.`
-                  : `Waiting on ${quote.symbol} USD from Alcor.`
+                  ? "Need a USD price from Alcor."
+                  : "Waiting on USD from Alcor."
             }
           />
         </div>
@@ -348,7 +385,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
             per {draft.symbol} as they walk the range.
           </p>
           <p className="text-[10px] text-muted-foreground/80">
-            USD uses Alcor spot for {quote.symbol} and holds it constant. Curve math is the Alcor tick range (Uniswap v3
+            USD uses Alcor spot and holds it constant. Curve math is the Alcor tick range (Uniswap v3
             amounts), including the {FEE_TIERS.find((t) => t.fee === draft.fee)?.label ?? "swap"} fee.
           </p>
           <p className="break-all font-mono text-[10px] text-muted-foreground/70">sqrtPriceX64 {plan.sqrtPriceX64}</p>

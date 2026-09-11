@@ -56,7 +56,7 @@ import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
 import { protonSymbol, protonSyncGaps, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
 import { logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
-import { applyRangeWidth, tokenStepValid } from "@/components/launch/draftPlan";
+import { applyRangeWidth, applyStartMarketCap, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { validImageUrl } from "@/services/tokenLogo";
 import { localTokenIconSrc, tokenIconKey } from "@/services/tokenIcons";
@@ -457,6 +457,14 @@ describe("range width presets", () => {
     });
     expect(plan.tickUpper).toBeLessThanOrEqual(443636);
     expect(plan.tickLower).toBeLessThan(plan.tickUpper);
+  });
+
+  it("start market cap only rewrites priceLower", () => {
+    const d = { ...emptyDraft(), maxSupply: "1000000", priceLower: "1", priceUpper: "50" };
+    const next = applyStartMarketCap(d, 10_000, 1);
+    expect(next.priceLower).toBe("0.01");
+    expect(d.priceUpper).toBe("50");
+    expect("priceUpper" in next).toBe(false);
   });
 });
 

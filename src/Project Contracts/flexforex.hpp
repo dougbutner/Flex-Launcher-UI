@@ -15,8 +15,8 @@ namespace eosio {
     *
     * Create path: create (issuer) + mint 100% → startlaunch → issuer seeds swap.alcor
     * (createpool, deposit, one-sided addliquid, lockpos ≥90d) → liftoff.
-    * Until liftoff, transfers may only go to swap.alcor. After liftoff, standard
-    * reflections apply; protocol skim bps start at liftoff and may rise once if the
+    * Until liftoff, the only legal `to` is swap.alcor (seed/lock). swap.alcor cannot send out.
+    * After liftoff, standard reflections apply; protocol skim bps start at liftoff and may rise once if the
     * launch LP unlocks (`checklock` / `makeitrain` after `unlock_time`).
     * Transfer tax splits on receipt: reflection_rate is cut by angel_numbers_bps / jackpot_bps
     * into angel_numbers_pool and jackpot_pool; remainder is reflection_pool. makeitrain
@@ -103,6 +103,10 @@ namespace eosio {
          static constexpr name SWAP_ALCOR = "swap.alcor"_n;
          static constexpr name XTOKENS = "xtokens"_n;
          static constexpr name MON3Y = "mon3y"_n;
+         // XPR mainnet launch accounts: easyflex@3asy, complexflex@fl3x, flexforex@flex
+         static constexpr name XPR_EASYFLEX = "3asy"_n;
+         static constexpr name XPR_COMPLEXFLEX = "fl3x"_n;
+         static constexpr name XPR_FLEXFOREX = "flex"_n;
          static constexpr int64_t LAUNCH_EASY_MIN = 50000000000; // 50000.000000 EASY per already-launched token + 1
          static constexpr name RNG = "rng"_n;
          static constexpr uint8_t RNG_NUMBERS = 1;

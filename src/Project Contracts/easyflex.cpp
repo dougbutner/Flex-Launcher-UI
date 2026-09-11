@@ -108,9 +108,30 @@ ACTION easyflex::create(const name& issuer, const asset& maximum_supply) {
     check(is_account(issuer), "⟁ Issuer account does not exist");
     auto sym = maximum_supply.symbol;
     check(sym.is_valid() && maximum_supply.is_valid() && maximum_supply.amount > 0, "⟁ Invalid symbol/supply");
+    {
+        const auto sc = sym.code();
+        check(sc != symbol_code("EASY") && sc != symbol_code("GRAMS") && sc != symbol_code("MEME") &&
+                  sc != symbol_code("WON") && sc != symbol_code("XPR") && sc != symbol_code("XMD") &&
+                  sc != symbol_code("LOAN"),
+              "⟁ EASY, GRAMS, MEME, WON, XPR, XMD, and LOAN are reserved");
+    }
 
     stats statstable(get_self(), sym.code().raw());
-    check(statstable.find(sym.code().raw()) == statstable.end(), "⟁ A token with symbol already exists.");
+    check(statstable.find(sym.code().raw()) == statstable.end(),
+          "⟁ A token with symbol already exists in the FLEX ecosystem");
+    {
+        struct other_stat {
+            asset    supply;
+            uint64_t primary_key() const { return supply.symbol.code().raw(); }
+        };
+        const uint64_t raw = sym.code().raw();
+        for(const name acct : {XPR_EASYFLEX, XPR_COMPLEXFLEX, XPR_FLEXFOREX, XTOKENS}) {
+            if(acct == get_self()) continue;
+            multi_index<"stat"_n, other_stat> others(acct, raw);
+            check(others.find(raw) == others.end(),
+                  "⟁ A token with symbol already exists in the FLEX ecosystem");
+        }
+    }
 
     statstable.emplace(issuer, [&](auto& s) {
         s.supply.symbol = sym;
@@ -200,13 +221,13 @@ ACTION easyflex::transfer(const name& from, const name& to, const asset& quantit
     require_recipient(from);
     require_recipient(to);
 
-    const bool is_dist = (from == get_self());
-    const bool from_alcor = (from == "alcor"_n || from == "swap.alcor"_n || from == "mon3y"_n);
+    const bool is_dist = (from == get_self() || from == XPR_EASYFLEX || from == XPR_COMPLEXFLEX || from == XPR_FLEXFOREX);
+    const bool from_alcor = (from == "alcor"_n || from == SWAP_ALCOR);
     launches_table launches(get_self(), get_self().value);
     auto launch_it = launches.find(sym.raw());
     const bool launched = launch_it != launches.end() && launch_it->launched;
     const bool to_alcor = (to == SWAP_ALCOR);
-    if(!launched && !to_alcor && !is_dist && !from_alcor)
+    if(!launched && !to_alcor)
         check(false, "⟁ Place a one-sided Alcor range, lock ≥ 90 days, then liftoff to activate this token");
 
     flexers flex_table(get_self(), sym.raw());
@@ -374,7 +395,7 @@ ACTION easyflex::makeitrain(const string& token_symbol, const name& sender) {
 
     asset total_supply = get_supply(get_self(), code);
     asset alcor{0, sym};
-    for(name a : {"alcor"_n, "mon3y"_n, "swap.alcor"_n}) {
+    for(name a : {"alcor"_n, "swap.alcor"_n}) {
         accounts ac(get_self(), a.value);
         auto it = ac.find(code.raw());
         if(it != ac.end()) alcor += it->balance;
@@ -405,7 +426,8 @@ ACTION easyflex::makeitrain(const string& token_symbol, const name& sender) {
     if(std_pay >= one) {
         int64_t remaining = std_pay;
         while(itr != flex_table.end() && processed < conf.limit && remaining > 0) {
-            if(itr->owner != get_self() && !itr->fee_opted_out &&
+            if(itr->owner != get_self() && itr->owner != "alcor"_n && itr->owner != SWAP_ALCOR &&
+               !itr->fee_opted_out &&
                itr->balance.symbol == sym && itr->balance.amount >= one) {
                 int64_t share_amt = (int64_t)((__int128)std_pay * itr->balance.amount / denom);
                 if(share_amt > remaining) share_amt = remaining;
@@ -642,12 +664,6 @@ ACTION easyflex::liftoff(const string& token_symbol, uint64_t pool_id, int32_t t
     check(quote_side.contract == launch_it->quote.contract &&
               quote_side.quantity.symbol == launch_it->quote.quantity.symbol,
           "⟁ pool quote does not match startlaunch");
-
-    int32_t tick = pool.currSlot.tick;
-    if(a_is_ours)
-        check(tick < tick_lower, "⟁ one-sided launch: current tick must sit below the range (all tokenA)");
-    else
-        check(tick >= tick_upper, "⟁ one-sided launch: current tick must sit at or above the range (all tokenB)");
 
     auto pos = alcor::get_position(SWAP_ALCOR, pool_id, st.issuer, tick_lower, tick_upper);
     check(pos.liquidity > 0, "⟁ issuer position has no liquidity");
