@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Field, StatusIcon } from "@/components/launch/ui";
+import { Field, StatusIcon, TxLink } from "@/components/launch/ui";
 import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
 import { TokenIcon } from "@/components/TokenIcon";
-import { hasAngelChannels } from "@/config/launch";
+import { flexMeta, hasAngelChannels } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { MANAGER_RESUME_KEY, writeLaunchDraft } from "@/hooks/useLaunchDraft";
 import { listIssuerTokens } from "@/services/issuerTokens";
@@ -21,10 +21,17 @@ import {
   type ManagerToken,
   type ManagerView,
 } from "@/services/managerStore";
+import { formatSupplyCommas, parseAsset } from "@/services/assets";
 import { readSettings } from "@/services/flexTables";
-import { ratiosAction, setfeesAction, type ChainAction } from "@/services/launchActions";
+import { payoutAction, ratiosAction, setfeesAction, type ChainAction } from "@/services/launchActions";
 import { hasProjectTax, taxFromSettings, taxRateValid, type TaxDraft } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+
+function formatManagerSupply(raw: string): string {
+  const parsed = parseAsset(raw);
+  if (parsed) return `${formatSupplyCommas(parsed.amount)} ${parsed.symbol}`;
+  return formatSupplyCommas(raw);
+}
 
 export default function Manager() {
   const { actor, isLoggedIn, addWebAuthWallet, transact } = useWallet();
@@ -41,6 +48,10 @@ export default function Manager() {
   const [tax, setTax] = useState<TaxDraft | null>(null);
   const [taxBusy, setTaxBusy] = useState(false);
   const [taxMsg, setTaxMsg] = useState("");
+  const [taxTx, setTaxTx] = useState<{ label: string; id: string } | null>(null);
+  const [raining, setRaining] = useState(false);
+  const [rainMsg, setRainMsg] = useState("");
+  const [rainTx, setRainTx] = useState("");
 
   const load = useCallback(async () => {
     if (!actor) return;
@@ -99,6 +110,9 @@ export default function Manager() {
     });
     setSaveMsg("");
     setTaxMsg("");
+    setTaxTx(null);
+    setRainMsg("");
+    setRainTx("");
     let cancelled = false;
     void readSettings(view.token.contract, view.token.symbol)
       .then((row) => {
@@ -121,6 +135,7 @@ export default function Manager() {
     const chain = taxFromSettings(view.token.program, settings);
     const err = taxRateValid(tax, view.token.program, chain);
     if (err) {
+      setTaxTx(null);
       setTaxMsg(err);
       return;
     }
@@ -130,6 +145,7 @@ export default function Manager() {
       tax.projectRate === chain.projectRate &&
       (tax.projectAccount.trim() || actor) === (chain.projectAccount.trim() || actor);
     if (same) {
+      setTaxTx(null);
       setTaxMsg("No tax changes to sign.");
       return;
     }
@@ -150,10 +166,12 @@ export default function Manager() {
     ];
     setTaxBusy(true);
     setTaxMsg("");
+    setTaxTx(null);
     try {
       const res = await transact(actions);
       const tx = txIdFromResult(res) || "ok";
-      setTaxMsg(`Saved tax · tx ${tx.slice(0, 12)}…`);
+      setTaxMsg("");
+      setTaxTx({ label: "Saved tax", id: tx });
       const row = await readSettings(view.token.contract, view.token.symbol);
       setSettings(row);
       setTax(taxFromSettings(view.token.program, row));
@@ -187,15 +205,18 @@ export default function Manager() {
   const saveTax = async () => {
     if (!view || !tax || !settings) return;
     if (!hasAngelChannels(view.token.program)) {
+      setTaxTx(null);
       setTaxMsg("Only for3x issuers can change angel / jackpot channels.");
       return;
     }
     const chain = taxFromSettings(view.token.program, settings);
     if (tax.angelNumbersBps + tax.jackpotBps > 10000) {
+      setTaxTx(null);
       setTaxMsg("Angel + jackpot cannot exceed 100% of the reflection slice.");
       return;
     }
     if (tax.angelNumbersBps === chain.angelNumbersBps && tax.jackpotBps === chain.jackpotBps) {
+      setTaxTx(null);
       setTaxMsg("No channel changes to sign.");
       return;
     }
@@ -204,9 +225,12 @@ export default function Manager() {
     ];
     setTaxBusy(true);
     setTaxMsg("");
+    setTaxTx(null);
     try {
       const res = await transact(actions);
-      setTaxMsg(`Saved channels · tx ${(txIdFromResult(res) || "ok").slice(0, 12)}…`);
+      const tx = txIdFromResult(res) || "ok";
+      setTaxMsg("");
+      setTaxTx({ label: "Saved channels", id: tx });
       const row = await readSettings(view.token.contract, view.token.symbol);
       setSettings(row);
       setTax(taxFromSettings(view.token.program, row));
@@ -242,6 +266,25 @@ export default function Manager() {
       setSaveMsg(txErrorMessage(err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const makeItRain = async () => {
+    if (!view || !actor || view.inProgress) return;
+    setRaining(true);
+    setRainMsg("");
+    setRainTx("");
+    try {
+      const res = await transact([
+        payoutAction(view.token.contract, view.token.symbol, actor, flexMeta(view.token.program).payoutSigner),
+      ]);
+      setRainTx(txIdFromResult(res) || "ok");
+    } catch (err) {
+      const text = txErrorMessage(err);
+      const hint = hintForError(text);
+      setRainMsg(hint ? `${text} - ${hint}` : text);
+    } finally {
+      setRaining(false);
     }
   };
 
@@ -348,10 +391,29 @@ export default function Manager() {
                   <TokenIcon contract={view.token.contract} symbol={view.token.symbol} size={64} rounded="xl" />
                 )}
                 <div>
-                  <p className="font-mono text-lg font-bold">${view.token.symbol}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-mono text-lg font-bold">${view.token.symbol}</p>
+                    {!view.inProgress ? (
+                      <button
+                        type="button"
+                        className="btn-rain btn-sm"
+                        disabled={raining || busy}
+                        onClick={() => void makeItRain()}
+                      >
+                        {raining ? "Signing…" : "Make it rain"}
+                      </button>
+                    ) : null}
+                  </div>
+                  {rainTx ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Make it rain · <TxLink tx={rainTx} />
+                    </p>
+                  ) : rainMsg ? (
+                    <p className="mt-1 text-xs text-muted-foreground">{rainMsg}</p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">
                     {view.token.precision} decimals · {view.token.program} @ {view.token.contract}
-                    {view.token.maxSupply ? ` · max ${view.token.maxSupply}` : ""}
+                    {view.token.maxSupply ? ` · max ${formatManagerSupply(view.token.maxSupply)}` : ""}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">Ticker, precision, and program are fixed on chain.</p>
                 </div>
@@ -448,7 +510,13 @@ export default function Manager() {
                       </button>
                     ) : null}
                   </div>
-                  {taxMsg ? <p className="text-xs text-muted-foreground">{taxMsg}</p> : null}
+                  {taxTx ? (
+                    <p className="text-xs text-muted-foreground">
+                      {taxTx.label} · <TxLink tx={taxTx.id} />
+                    </p>
+                  ) : taxMsg ? (
+                    <p className="text-xs text-muted-foreground">{taxMsg}</p>
+                  ) : null}
                 </div>
               ) : view.progress.create ? (
                 <p className="text-xs text-muted-foreground">Reading on-chain tax settings…</p>

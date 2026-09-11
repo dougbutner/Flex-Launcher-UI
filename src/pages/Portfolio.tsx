@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
-import { FLEX_PROGRAMS, alcorSwapUrl, explorerTx, flexAccount, type FlexProgram } from "@/config/launch";
+import { FLEX_PROGRAMS, alcorSwapUrl, flexAccount, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { readAccounts, readFlexers, readLaunches, readStat, readXprBalance } from "@/services/flexTables";
@@ -397,16 +398,7 @@ export default function Portfolio() {
                   <Link to={`/token/${h.contract}/${h.symbol}`} className="btn btn-outline btn-sm">
                     Manage
                   </Link>
-                  {msg?.tx ? (
-                    <a
-                      href={explorerTx(msg.tx)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-xs text-success"
-                    >
-                      tx {msg.tx.slice(0, 10)}…
-                    </a>
-                  ) : null}
+                  {msg?.tx ? <TxLink tx={msg.tx} prefix="tx " /> : null}
                   {msg?.err ? <span className="text-xs text-destructive">{msg.err}</span> : null}
                 </div>
               </article>

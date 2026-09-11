@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
@@ -151,6 +152,21 @@ export default function Token() {
           <div className="mt-1 flex items-center gap-3">
             <TokenIcon contract={code} symbol={sym} size={48} rounded="xl" />
             <h1 className="font-mono text-3xl font-black tracking-tight">${sym}</h1>
+            {isLoggedIn && actor ? (
+              <button
+                type="button"
+                className="btn-rain btn-sm"
+                disabled={poking != null || !launched}
+                onClick={() => void poke("rain")}
+              >
+                {poking === "rain" ? "Signing…" : "Make it rain"}
+              </button>
+            ) : (
+              <button type="button" className="btn-rain btn-sm" onClick={() => void addWebAuthWallet()}>
+                Make it rain
+              </button>
+            )}
+            {pokeMsg.tx ? <TxLink tx={pokeMsg.tx} prefix="tx " /> : null}
             {quoteSymbol ? (
               <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={28} />
             ) : null}
@@ -208,14 +224,6 @@ export default function Token() {
               <>
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm"
-                  disabled={poking != null || !launched}
-                  onClick={() => void poke("rain")}
-                >
-                  {poking === "rain" ? "Signing…" : "Make it rain"}
-                </button>
-                <button
-                  type="button"
                   className="btn btn-outline btn-sm"
                   disabled={poking != null}
                   onClick={() => void poke("checklock")}
@@ -255,10 +263,10 @@ export default function Token() {
                 rel="noopener noreferrer"
                 className="btn btn-outline btn-sm"
               >
-                Trade
+                Swap
               </a>
             ) : null}
-            {pokeMsg.tx ? <span className="font-mono text-xs text-success">tx {pokeMsg.tx.slice(0, 10)}…</span> : null}
+            {pokeMsg.tx ? <TxLink tx={pokeMsg.tx} prefix="tx " /> : null}
             {pokeMsg.err ? <span className="text-xs text-destructive">{pokeMsg.err}</span> : null}
           </div>
 

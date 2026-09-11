@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { explorerTx, isFlexContractActor, programFromAccount } from "@/config/launch";
-import { Field } from "@/components/launch/ui";
+import { Field, TxLink } from "@/components/launch/ui";
+import { isFlexContractActor, programFromAccount } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { validSymbol } from "@/services/assets";
 import { validImageUrl } from "@/services/tokenLogo";
@@ -169,11 +169,7 @@ export default function Admin() {
             onChange={(e) => patchDraft(t.symbol, { iconurl: e.target.value })}
           />
         </Field>
-        {status?.tx && status.tx !== "ok" ? (
-          <a href={explorerTx(status.tx)} className="link font-mono text-xs" target="_blank" rel="noopener noreferrer">
-            tx {status.tx.slice(0, 12)}…
-          </a>
-        ) : null}
+        {status?.tx && status.tx !== "ok" ? <TxLink tx={status.tx} prefix="tx " /> : null}
         {status?.err ? <p className="text-xs font-medium text-destructive">{status.err}</p> : null}
         <button
           type="button"

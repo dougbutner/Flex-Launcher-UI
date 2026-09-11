@@ -72,6 +72,10 @@
     @apply btn text-muted-foreground hover:bg-secondary hover:text-foreground;
   }
 
+  .btn-rain {
+    @apply btn border-0 bg-transparent text-[#3b82f6] shadow-none hover:bg-[#1e3a8a] hover:text-primary active:scale-[0.98];
+  }
+
   .btn-sm {
     @apply h-9 rounded-md px-3 text-xs;
   }

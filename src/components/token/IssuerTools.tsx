@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { hasAngelChannels, hasSetmin, type FlexProgram } from "@/config/launch";
-import { Field } from "@/components/launch/ui";
+import { Field, TxLink } from "@/components/launch/ui";
 import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
 import { validAccount, validSymbol } from "@/services/assets";
 import {
@@ -317,7 +317,7 @@ export function IssuerTools({ program, contract, symbol, precision, actor, setti
         </button>
       </Field>
 
-      {msg.tx ? <p className="font-mono text-xs text-success">tx {msg.tx.slice(0, 12)}…</p> : null}
+      {msg.tx ? <p><TxLink tx={msg.tx} prefix="tx " /></p> : null}
       {msg.err ? <p className="text-xs text-destructive">{msg.err}</p> : null}
     </section>
   );

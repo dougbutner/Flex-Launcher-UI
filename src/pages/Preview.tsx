@@ -185,7 +185,7 @@ export default function Preview() {
               Pull jackpot
             </button>
             <button type="button" className="btn btn-outline btn-sm" disabled>
-              Trade
+              Swap
             </button>
             <button type="button" className="btn btn-outline btn-sm" disabled>
               Manage
@@ -210,6 +210,20 @@ export default function Preview() {
             <div className="mt-1 font-mono text-[10px] text-muted-foreground/70">pool #2142</div>
           </button>
           <div className="card space-y-4 p-6">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-bold">Top flexers · ${PREVIEW_SYMBOL}</h2>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn btn-outline btn-sm" disabled>
+                  Manage
+                </button>
+                <button type="button" className="btn btn-outline btn-sm" disabled>
+                  Swap
+                </button>
+                <button type="button" className="btn-rain btn-sm" disabled>
+                  Make it rain
+                </button>
+              </div>
+            </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <span className="chip-muted">skim dev 0.25% · club 0.25%</span>
               <span className="chip-muted">LP unlock Dec 2026</span>
@@ -226,9 +240,6 @@ export default function Preview() {
               </button>
               <button type="button" className="btn btn-outline btn-sm" disabled>
                 Pull jackpot
-              </button>
-              <button type="button" className="btn btn-outline btn-sm" disabled>
-                Manage
               </button>
             </div>
             <table className="w-full text-sm">
@@ -299,7 +310,12 @@ export default function Preview() {
         </p>
 
         <div className="mt-4">
-          <h1 className="font-mono text-3xl font-black tracking-tight">${PREVIEW_SYMBOL}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="font-mono text-3xl font-black tracking-tight">${PREVIEW_SYMBOL}</h1>
+            <button type="button" className="btn-rain btn-sm" disabled>
+              Make it rain
+            </button>
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {PREVIEW_PROGRAM} @ {PREVIEW_CONTRACT} · issuer {PREVIEW_ACTOR}
           </p>
@@ -315,9 +331,6 @@ export default function Preview() {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" className="btn btn-primary btn-sm" disabled>
-            Make it rain
-          </button>
           <button type="button" className="btn btn-outline btn-sm" disabled>
             Check lock
           </button>

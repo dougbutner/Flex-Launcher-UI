@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
-import { FLEX_PROGRAMS, alcorSwapUrl, explorerAccount, explorerTx, flexAccount, type FlexProgram } from "@/config/launch";
+import { FLEX_PROGRAMS, alcorSwapUrl, explorerAccount, flexAccount, flexMeta, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { readFlexers, readLaunches, readStat } from "@/services/flexTables";
-import { checklockAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
+import { checklockAction, payoutAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
@@ -25,7 +26,7 @@ type StatPots = {
   precision: number;
 };
 
-type PokeKind = "checklock" | "pullangel" | "pulljackpot";
+type PokeKind = "rain" | "checklock" | "pullangel" | "pulljackpot";
 
 function pick(row: LaunchRow, ...keys: string[]): unknown {
   for (const k of keys) if (row[k] != null) return row[k];
@@ -68,7 +69,7 @@ function unlockLabel(unlock: unknown): string {
 }
 
 export default function Leaderboard() {
-  const { isLoggedIn, transact } = useWallet();
+  const { actor, isLoggedIn, addWebAuthWallet, transact } = useWallet();
   const [launches, setLaunches] = useState<LaunchItem[] | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -149,16 +150,23 @@ export default function Leaderboard() {
   }, [selectedLaunch, loadFlexers, loadPots]);
 
   const poke = async (kind: PokeKind) => {
-    if (!selectedLaunch || !isLoggedIn) return;
+    if (!selectedLaunch || !isLoggedIn || !actor) return;
     setPoking(kind);
     setPokeMsg({});
     try {
       const action =
-        kind === "checklock"
-          ? checklockAction(selectedLaunch.code, selectedLaunch.symbol)
-          : kind === "pullangel"
-            ? pullangelAction(selectedLaunch.code, selectedLaunch.symbol)
-            : pulljackpotAction(selectedLaunch.code, selectedLaunch.symbol);
+        kind === "rain"
+          ? payoutAction(
+              selectedLaunch.code,
+              selectedLaunch.symbol,
+              actor,
+              flexMeta(selectedLaunch.program).payoutSigner
+            )
+          : kind === "checklock"
+            ? checklockAction(selectedLaunch.code, selectedLaunch.symbol)
+            : kind === "pullangel"
+              ? pullangelAction(selectedLaunch.code, selectedLaunch.symbol)
+              : pulljackpotAction(selectedLaunch.code, selectedLaunch.symbol);
       const res = await transact([action]);
       setPokeMsg({ tx: txIdFromResult(res) || "ok" });
       loadPots(selectedLaunch);
@@ -226,7 +234,7 @@ export default function Leaderboard() {
           </ul>
 
           <section className="card space-y-5 p-6">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-lg font-bold">
                 {selectedLaunch ? (
                   <TokenIcon contract={selectedLaunch.code} symbol={selectedLaunch.symbol} size={28} rounded="xl" />
@@ -252,8 +260,22 @@ export default function Leaderboard() {
                     rel="noopener noreferrer"
                     className="btn btn-outline btn-sm"
                   >
-                    Trade
+                    Swap
                   </a>
+                  {isLoggedIn && actor ? (
+                    <button
+                      type="button"
+                      className="btn-rain btn-sm"
+                      disabled={poking != null}
+                      onClick={() => void poke("rain")}
+                    >
+                      {poking === "rain" ? "Signing…" : "Make it rain"}
+                    </button>
+                  ) : (
+                    <button type="button" className="btn-rain btn-sm" onClick={() => void addWebAuthWallet()}>
+                      Make it rain
+                    </button>
+                  )}
                 </div>
               ) : null}
             </div>
@@ -320,16 +342,7 @@ export default function Leaderboard() {
                   {!isLoggedIn ? (
                     <span className="text-xs text-muted-foreground">Connect a wallet to poke.</span>
                   ) : null}
-                  {pokeMsg.tx ? (
-                    <a
-                      href={explorerTx(pokeMsg.tx)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-xs text-success"
-                    >
-                      tx {pokeMsg.tx.slice(0, 10)}…
-                    </a>
-                  ) : null}
+                  {pokeMsg.tx ? <TxLink tx={pokeMsg.tx} prefix="tx " /> : null}
                   {pokeMsg.err ? <span className="text-xs text-destructive">{pokeMsg.err}</span> : null}
                 </div>
               </div>

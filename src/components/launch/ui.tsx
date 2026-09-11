@@ -52,11 +52,15 @@ export function StepShell(props: {
   );
 }
 
-export function TxLink({ tx }: { tx: string }) {
+export function TxLink({ tx, prefix = "" }: { tx: string; prefix?: string }) {
   if (!tx || tx === "skipped") return <span className="text-xs text-muted-foreground">skipped</span>;
+  const label = `${prefix}${tx.slice(0, 10)}…`;
+  if (!/^[0-9a-fA-F]{16,}$/.test(tx)) {
+    return <span className="font-mono text-xs text-success">{prefix}{tx}</span>;
+  }
   return (
-    <a href={explorerTx(tx)} target="_blank" rel="noopener noreferrer" className="link font-mono text-xs">
-      {tx.slice(0, 10)}…
+    <a href={explorerTx(tx)} target="_blank" rel="noopener noreferrer" className="link font-mono text-xs text-success">
+      {label}
     </a>
   );
 }
