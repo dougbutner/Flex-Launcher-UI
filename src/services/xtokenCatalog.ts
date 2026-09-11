@@ -159,29 +159,41 @@ export async function fetchXtokensByPopularity(): Promise<XtokenRow[]> {
 
 type UsdCache = { at: number; rows: Map<string, number> };
 let usdCache: UsdCache | null = null;
+let usdInflight: Promise<Map<string, number>> | null = null;
 const USD_TTL_MS = 60_000;
 
 function tokenUsdKey(contract: string, symbol: string) {
   return `${contract.toLowerCase()}:${symbol.toUpperCase()}`;
 }
 
+async function alcorUsdRows(): Promise<Map<string, number>> {
+  const now = Date.now();
+  if (usdCache && now - usdCache.at <= USD_TTL_MS) return usdCache.rows;
+  if (!usdInflight) {
+    usdInflight = (async () => {
+      const res = await fetch(ALCOR_TOKENS);
+      if (!res.ok) throw new Error(`tokens HTTP ${res.status}`);
+      const tokens = (await res.json()) as AlcorToken[];
+      const rows = new Map<string, number>();
+      for (const t of tokens) {
+        if (!t.contract || !t.symbol) continue;
+        const usd = Number(t.usd_price || 0);
+        if (!(usd > 0)) continue;
+        rows.set(tokenUsdKey(t.contract, t.symbol), usd);
+      }
+      usdCache = { at: Date.now(), rows };
+      return rows;
+    })().finally(() => {
+      usdInflight = null;
+    });
+  }
+  return usdInflight;
+}
+
 /** Spot USD from Alcor `api/v2/tokens`. Held constant for range estimates. */
 export async function fetchAlcorUsdPrice(contract: string, symbol: string): Promise<number> {
-  const now = Date.now();
-  if (!usdCache || now - usdCache.at > USD_TTL_MS) {
-    const res = await fetch(ALCOR_TOKENS);
-    if (!res.ok) throw new Error(`tokens HTTP ${res.status}`);
-    const tokens = (await res.json()) as AlcorToken[];
-    const rows = new Map<string, number>();
-    for (const t of tokens) {
-      if (!t.contract || !t.symbol) continue;
-      const usd = Number(t.usd_price || 0);
-      if (!(usd > 0)) continue;
-      rows.set(tokenUsdKey(t.contract, t.symbol), usd);
-    }
-    usdCache = { at: now, rows };
-  }
-  const hit = usdCache.rows.get(tokenUsdKey(contract, symbol));
+  const rows = await alcorUsdRows();
+  const hit = rows.get(tokenUsdKey(contract, symbol));
   if (hit && hit > 0) return hit;
   if (symbol.toUpperCase() === "XUSDC" && contract === XTOKENS) return 1;
   return 0;
