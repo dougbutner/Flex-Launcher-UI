@@ -12,6 +12,7 @@ import {
   previewFlexers,
   previewHolding,
   previewIssued,
+  previewLaunch,
   previewPools,
   previewSettings,
 } from "@/demo/fixtures";
@@ -355,6 +356,8 @@ export default function Preview() {
             flexer={previewFlexer}
             settings={previewSettings}
             pools={previewPools}
+            swapUnderlyingDefault={Boolean(previewLaunch.swap_underlying_default)}
+            quoteSymbol="EASY"
             busy={false}
             transact={fauxTransact}
             onDone={() => undefined}
@@ -366,6 +369,8 @@ export default function Preview() {
             precision={PREVIEW_PRECISION}
             actor={PREVIEW_ACTOR}
             settings={previewSettings}
+            launch={previewLaunch}
+            pools={previewPools}
             busy={false}
             transact={fauxTransact}
             onDone={() => undefined}

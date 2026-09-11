@@ -44,7 +44,7 @@ Shared launch law: `create` → `setfees` → mint/issue 100% to issuer → `sta
 
 **In the Vite app today**
 
-- Launch wizard: two-field `create` / Flexonomics `setfees` / mint|issue / startlaunch (+ `swap_underlying_default`) / Alcor seed / lockpos / liftoff; for3x may sign `ratios` with setfees
+- Launch wizard: two-field `create` / Flexonomics `setfees` / mint|issue / startlaunch (`swap_underlying_default` default true) / Alcor seed / lockpos / liftoff / `addpool` of the launch quote pair; for3x may sign `ratios` with setfees
 - Post-launch poke: `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot chips)
 - Token manage (`/token/:contract/:symbol`): holder `choosereward` / `feeoptout` / `setangelnum` / inheritance; issuer `setfees` / `setdist` / `ratios` / `addpool` / `setmin` (easy + complex)
 - Manager (`/manager`): sqlite + chain progress for issuers after first `create`; Save tax (`setfees`) separate from metadata; for3x `ratios`. No IPFS re-upload.

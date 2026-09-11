@@ -79,7 +79,11 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
         />
         <Row
           k="Reflect default"
-          v={draft.swapUnderlyingDefault ? `Swap unpaid holders into ${quote.symbol}` : "Pay native token"}
+          v={
+            draft.swapUnderlyingDefault
+              ? `swap_underlying_default true (pid 0 → ${quote.symbol})`
+              : "swap_underlying_default false (pid 0 pays native)"
+          }
           mono={false}
         />
         <Row k="Fee tier" v={feeLabel} />

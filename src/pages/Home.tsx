@@ -4,7 +4,7 @@ import "./Home.css";
 
 const GOLDS = ["#c4a035", "#d4af37", "#e0b84a", "#b8952a", "#c9a227"] as const;
 const LIGHTS = ["#ffe566", "#fff1a8", "#fff8d0", "#ffef9a"] as const;
-const TOUCHES = ["#22c55e", "#8b5cf6", "#f97316"] as const;
+const TOUCHES = ["#22c55e", "#8b5cf6", "#ffe566"] as const;
 
 function pickHex(list: readonly string[]) {
   return list[Math.floor(Math.random() * list.length)];

@@ -281,6 +281,8 @@ export default function Token() {
                 flexer={flexer}
                 settings={settings}
                 pools={pools}
+                swapUnderlyingDefault={Boolean(pick(launch, "swap_underlying_default"))}
+                quoteSymbol={quoteSymbol}
                 busy={busy || poking != null}
                 transact={transact}
                 onDone={() => void load()}
@@ -293,6 +295,8 @@ export default function Token() {
                   precision={precision}
                   actor={actor ?? ""}
                   settings={settings}
+                  launch={launch}
+                  pools={pools}
                   busy={busy || poking != null}
                   transact={transact}
                   onDone={() => void load()}

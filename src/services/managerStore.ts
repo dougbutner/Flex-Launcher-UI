@@ -13,6 +13,7 @@ export const LAUNCH_STEP_IDS = [
   "addliquid",
   "lockpos",
   "liftoff",
+  "addpool",
 ] as const;
 
 export type LaunchStepId = (typeof LAUNCH_STEP_IDS)[number];
@@ -23,13 +24,17 @@ export const LAUNCH_STEPS: Record<LaunchStepId, { label: string; prompt: string 
   create: { label: "Create token", prompt: "Sign create on the token contract. This is the first on-chain step." },
   setfees: { label: "Set fees", prompt: "Sign setfees. Rates start at 0 after create. Later calls cannot raise the total or lower reflection." },
   supply: { label: "Mint or issue 100%", prompt: "Mint or issue the full supply to yourself before startlaunch." },
-  startlaunch: { label: "Start launch", prompt: "Sign startlaunch with quote, fee, ticks, and sqrt price." },
+  startlaunch: { label: "Start launch", prompt: "Sign startlaunch with quote, fee, ticks, sqrt price, and swap_underlying_default." },
   createpool: { label: "Create Alcor pool", prompt: "Sign swap.alcor::createpool with zero amounts and the same sqrt price." },
   activate: { label: "Activate pool", prompt: "Pay activeFee with memo activepool#id if the pool is still inactive." },
   deposit: { label: "Deposit supply", prompt: "Transfer the full supply to swap.alcor with memo deposit." },
   addliquid: { label: "Add liquidity", prompt: "Sign addliquid one-sided using the startlaunch ticks." },
   lockpos: { label: "Lock position", prompt: "Sign lockpos for at least 90 days." },
   liftoff: { label: "Liftoff", prompt: "Sign liftoff so the token can transfer beyond swap.alcor." },
+  addpool: {
+    label: "Add launch quote pool",
+    prompt: "Sign addpool with the launch Alcor id so holders can choosereward the quote.",
+  },
 };
 
 export type ManagerToken = {
@@ -71,6 +76,7 @@ export type ManagerToken = {
   rangeTx: string;
   lockTx: string;
   liftoffTx: string;
+  addpoolTx: string;
   feesTx: string;
   createdAt: number;
   updatedAt: number;
@@ -137,6 +143,7 @@ export function emptyManagerToken(): ManagerToken {
     rangeTx: "",
     lockTx: "",
     liftoffTx: "",
+    addpoolTx: "",
     feesTx: "",
     createdAt: 0,
     updatedAt: 0,
@@ -198,6 +205,7 @@ export function parseManagerToken(raw: unknown): ManagerToken | null {
     rangeTx: str(o.rangeTx, 128),
     lockTx: str(o.lockTx, 128),
     liftoffTx: str(o.liftoffTx, 128),
+    addpoolTx: str(o.addpoolTx, 128),
     feesTx: str(o.feesTx, 128),
     createdAt: Math.max(0, Math.floor(num(o.createdAt))),
     updatedAt: Math.max(0, Math.floor(num(o.updatedAt))),
@@ -232,11 +240,13 @@ export type LaunchEvidence = {
   hasPosition?: boolean;
   hasLock?: boolean;
   feesSet?: boolean;
+  quotePoolAdded?: boolean;
   txs?: Partial<Record<LaunchStepId | "mint", string>>;
 };
 
 export function launchProgressFrom(ev: LaunchEvidence): LaunchProgress {
   const tx = ev.txs ?? {};
+  const addpoolDone = txDone(tx.addpool) || Boolean(ev.quotePoolAdded);
   const launched = Boolean(ev.launched) || txDone(tx.liftoff);
   const hasLock = launched || Boolean(ev.hasLock) || txDone(tx.lockpos);
   const hasPosition = hasLock || Boolean(ev.hasPosition) || txDone(tx.addliquid);
@@ -267,6 +277,7 @@ export function launchProgressFrom(ev: LaunchEvidence): LaunchProgress {
     addliquid: hasPosition,
     lockpos: hasLock,
     liftoff: launched,
+    addpool: addpoolDone || launched,
   };
 }
 
@@ -332,6 +343,7 @@ export function mergeManagerViews(chain: ChainIssuerToken[], stored: ManagerToke
         addliquid: row.rangeTx,
         lockpos: row.lockTx,
         liftoff: row.liftoffTx,
+        addpool: row.addpoolTx,
       },
     });
     const next = nextLaunchStep(progress);
@@ -387,6 +399,7 @@ export function mergeManagerViews(chain: ChainIssuerToken[], stored: ManagerToke
         addliquid: token.rangeTx,
         lockpos: token.lockTx,
         liftoff: token.liftoffTx,
+        addpool: token.addpoolTx,
       },
     });
     const next = nextLaunchStep(progress);

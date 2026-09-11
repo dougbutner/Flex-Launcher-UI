@@ -21,5 +21,5 @@ description: >-
 
 ## UI gap (quick)
 
-Shipped: launch wizard (`create` → `setfees` → mint|issue → … → liftoff), `makeitrain`, `checklock`, `pullangel` / `pulljackpot`, `swap_underlying_default`, token manage (`setfees` / `setdist` / `ratios` / `setangelnum`, inheritance, `addpool` / `choosereward`, `feeoptout`), admin `token.proton` sync when connected as the flex contract.  
+Shipped: launch wizard (`create` → `setfees` → mint|issue → startlaunch (`swap_underlying_default` default true) → … → liftoff → `addpool` launch quote pair), `makeitrain`, `checklock`, `pullangel` / `pulljackpot`, token manage (`setfees` / `setdist` / `ratios` / `setangelnum`, inheritance, `addpool` / `choosereward`, `feeoptout`), admin `token.proton` sync when connected as the flex contract.  
 Never: `setconfig`, `receiverand`. Overall tax is issuer `setfees` after create (rates start at 0).

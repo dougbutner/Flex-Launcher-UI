@@ -19,7 +19,7 @@ flexforex `flexers` secondary index: `byangel`.
 - Missing / `launched == false` → wizard in progress; transfers only to `swap.alcor` (plus contract self-pays / Alcor-path list).
 - `launched == true` → do not re-seed Alcor; `startlaunch` refuses further edits.
 - Liftoff sets skim: `0` if `flex_quote`, else `25` each. After LP actually unlocks, `checklock` / `makeitrain` may raise both to `PROTO_BPS_HALF` extra (`0→25` or `25→50`).
-- `swap_underlying_default`: unpaid holders (`flex_reward_pool_id == 0`) swap into launch quote via `pure_liquid_alcor_pool_id` on makeitrain.
+- `swap_underlying_default`: unpaid holders (`flex_reward_pool_id == 0`) swap into launch quote via `pure_liquid_alcor_pool_id` on makeitrain. Wizard default true.
 
 ## `stat` (scope = symbol)
 
@@ -93,6 +93,7 @@ checklock(token_symbol)
 - Auth: issuer for startlaunch/liftoff; **anyone** for checklock.
 - Flex quotes → proof id **0**. Non-flex → proof id **> 0**, pool active, quote vs XUSDC or XPR, inventory ≥ 10 XUSDC or 1000 XPR valued.
 - Liftoff: issuer EASY@mon3y ≥ base×(prior launched by this issuer + 1). Base raw: easy 5e9, complex 1e10, forex 5e10 (precision 6).
+- After liftoff: issuer `addpool(pure_liquid_alcor_pool_id, token_symbol, quote.quantity.symbol, quote.contract)`.
 - Issuer signs Alcor (`createpool`, deposit, `addliquid`, `lockpos` ≥90d)  -  not the flex contract. Never liftoff in same tx as createpool.
 
 ## Actions  -  config / holder prefs

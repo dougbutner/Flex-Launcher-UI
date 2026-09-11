@@ -8,6 +8,7 @@ import {
 } from "@/config/launch";
 import {
   addliquidAction,
+  addLaunchQuotePoolAction,
   addpoolAction,
   abiSymbol,
   checklockAction,
@@ -141,6 +142,13 @@ export function simulateLaunchFlow(args: {
       account: code,
       name: "liftoff",
       actions: [liftoffAction(code, plan, args.poolId)],
+    },
+    {
+      id: "addpool",
+      label: "Add launch quote pool",
+      account: code,
+      name: "addpool",
+      actions: [addLaunchQuotePoolAction(code, args.poolId, plan.launched.symbol, plan.quote)],
     },
   ];
 }

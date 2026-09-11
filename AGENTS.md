@@ -10,7 +10,7 @@ App UI and wallets: `src/` and `src/services/walletConstants.ts`. Faux UI shapes
 
 ### UI coverage vs ABI
 
-**Shipped:** launch wizard (Flexonomics `setfees` after two-field `create`, then mint|issue / startlaunch / Alcor seed / liftoff; for3x may sign `ratios` with setfees), `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot display), token manage (`/token/:contract/:symbol`) with `setfees` / `setdist` / `ratios` / `setangelnum`, easyflex/complexflex `setmin`, `inheritance` / `inheritmemo`, `addpool` / `choosereward`, `feeoptout`.
+**Shipped:** launch wizard (Flexonomics `setfees` after two-field `create`, then mint|issue / startlaunch with `swap_underlying_default` default true / Alcor seed / liftoff / `addpool` of the launch quote pair; for3x may sign `ratios` with setfees), `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot display), token manage (`/token/:contract/:symbol`) with `setfees` / `setdist` / `ratios` / `setangelnum`, easyflex/complexflex `setmin`, `inheritance` / `inheritmemo`, `addpool` / `choosereward`, `feeoptout`.
 
 Gate by program: angel channels = flexforex only; inheritance = complexflex + flexforex; `setmin` = easyflex + complexflex; flex-to + feeoptout = all three. Never invent `setconfig` or `receiverand` UI. `setconfig` is contract@active only (pagination / admin). Overall transfer tax is issuer `setfees` after create (rates start at 0). for3x issuers split the reflection slice with `ratios` / `setdist` (not extra tax).
 
@@ -70,7 +70,7 @@ Code = chosen token contract. Scope for `stat` / `settings` / `flexers` / `flexp
 - Missing or `launched == false` → wizard in progress.
 - `launched == true` → do not re-seed Alcor; show dashboard.
 - `unlock_time` is copied from Alcor at liftoff. After it, `checklock` or `makeitrain` may add another `PROTO_BPS_HALF` to `dev_bps` and `club_bps`.
-- `swap_underlying_default`: when true, holders with `flex_reward_pool_id == 0` get makeitrain swapped into the launch quote via `pure_liquid_alcor_pool_id`.
+- `swap_underlying_default`: when true, holders with `flex_reward_pool_id == 0` get makeitrain swapped into the launch quote via `pure_liquid_alcor_pool_id`. Wizard default is true.
 
 Protocol skim: at liftoff `dev_bps`/`club_bps` = `0` if `flex_quote`, else `25` (0.25% each to `nyra` / `reflections`). May rise once if the LP unlocks.
 
@@ -112,7 +112,7 @@ Pretty price caps are **UI-only**. Contract checks fee, tick spacing, ±443636, 
 
 Suggested quote caps (not on-chain): EASY 1e6 / token, WON 1e4, GRAMS 1e3, MEME 1e11, xtokens unbounded.
 
-Do not call `eosio::buyram` for the token contract. The wizard starts at `create`, then **`setfees`**, then mint/issue. Alcor pool RAM on `createpool` is separate and stays on the issuer path. After a successful create tx, Token / Flexonomics / Quote / Range stay viewable but frozen until liftoff.
+Do not call `eosio::buyram` for the token contract. The wizard starts at `create`, then **`setfees`**, then mint/issue. Alcor pool RAM on `createpool` is separate and stays on the issuer path. After a successful create tx, Token / Flexonomics / Quote / Range stay viewable but frozen until liftoff. After liftoff the issuer `addpool`s the launch quote pair.
 
 ### A - `create`
 
@@ -160,7 +160,7 @@ easyflex: `issue`. Others: `mint`. `to` **must** be issuer.
 - `token_symbol` = **code string only**. Quote amount **0**.
 - Flex quotes: `(mon3y, EASY)`, `(w3won, WON)`, `(m3m3, MEME)`, `(gold.mon3y, GRAMS)` → `xtoken_proof_pool_id = 0`.
 - Else quote may be `xtokens`, `XPR@eosio.token`, `XMD@xmd.token`, or `LOAN@loan.token`, with **proof pool id &gt; 0** vs XUSDC or XPR; inventory ≥ 10 XUSDC or 1000 XPR.
-- `swap_underlying_default`: unpaid holders (`flex_reward_pool_id == 0`) get makeitrain swapped into the launch quote.
+- `swap_underlying_default`: unpaid holders (`flex_reward_pool_id == 0`) get makeitrain swapped into the launch quote. Wizard default true.
 - `fee` ∈ {500→10, 3000→60, 10000→200}. Repeatable until `liftoff`.
 
 ### D-H - Alcor (issuer, not the flex contract)
@@ -179,6 +179,14 @@ Split txs. Never `liftoff` in the same tx as `createpool`.
 { "token_symbol": "FOO", "pool_id": 1234, "tick_lower": -120, "tick_upper": 222000 }
 ```
 
+### J - `addpool` launch pair (issuer, after liftoff)
+
+```json
+{ "pool_id": 1234, "token_symbol": "FOO", "output_symbol": "6,EASY", "output_contract": "mon3y" }
+```
+
+`pool_id` is `pure_liquid_alcor_pool_id`. Output is the startlaunch quote (`quote.quantity.symbol`, `quote.contract`). Example GEASY@fl3x: `addpool(11525, "GEASY", 6,EASY, mon3y)`.
+
 ---
 
 ## After launch
@@ -186,8 +194,8 @@ Split txs. Never `liftoff` in the same tx as `createpool`.
 | Action | Auth | Notes |
 |--------|------|-------|
 | `transfer` | from | Tax unless opted out / contract payout / pre-liftoff Alcor seed |
-| `addpool` | issuer or contract | Fail copy: `⟁ Only the issuer can add a flex reward token.` |
-| `choosereward` | owner (or issuer/admin/contract) | Empty `output_contract` → native |
+| `addpool` | issuer or contract | Launch pair after liftoff, then extra routes. Fail copy: `⟁ Only the issuer can add a flex reward token.` |
+| `choosereward` | owner (or issuer/admin/contract) | Empty `output_contract` → native (pid 0). pid 0 uses the quote only if `swap_underlying_default` was true at startlaunch. |
 | `feeoptout` | self: `ban_status` **true** only | Irreversible for self |
 | `makeitrain` | signer (`sender` or `keeper`) | Always `require_auth` of that name. flexforex ABI field is `keeper`. Signer pays RAM for new holder rows. Splashes 38.2% of `reflection_pool`. |
 | `checklock` | anyone | After `unlock_time`, may raise protocol skim once. |
@@ -211,7 +219,7 @@ Check strings start with `⟁`. Surface them verbatim.
 3. Flexonomics: reflection + burn (easyflex) or reflection + burn + project + optional project account (complex/forex). for3x optional angel/jackpot share of reflection. Signed as `setfees` after create.
 4. Quote: EASY/WON/GRAMS/MEME or xtoken + proof pool.
 5. Range: snap ticks, 90d+ lock.
-6. Execute: create → setfees → mint/issue → startlaunch → createpool → activate → deposit → addliquid → lockpos → liftoff. After liftoff, celebration modal + reset draft. Manager is ready.
+6. Execute: create → setfees → mint/issue → startlaunch → createpool → activate → deposit → addliquid → lockpos → liftoff → addpool (launch quote pair). After addpool, celebration modal + reset draft. Manager is ready.
 7. Token home (`/token/:contract/:symbol`): poke + holder prefs + issuer tools (incl. `setfees`); Portfolio / Leaderboard link here.
 8. Admin (`/admin`): nav only when connected as `3asy` / `fl3x` / `for3x`. Syncs missing token metadata to `token.proton` (`reg` / `update`). Prefills from issuer Manager sqlite when present.
 9. Manager (`/manager`): nav for logged-in issuers after the first successful `create`. SQLite stores metadata + step txs keyed by account; chain fills progress so a new device can resume. Save metadata is separate from Save tax (`setfees`). No IPFS re-upload (URL paste only). Admin later pushes to `token.proton`.

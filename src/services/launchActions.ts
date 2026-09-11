@@ -281,7 +281,23 @@ export function addpoolAction(
   };
 }
 
-/** Empty `outputContract` clears reward → native / underlying-default (`flex_reward_pool_id = 0`). */
+/** After liftoff: flexpools row for the launch pair. Example GEASY@fl3x: addpool(11525, "GEASY", "6,EASY", "mon3y"). */
+export function addLaunchQuotePoolAction(
+  tokenContract: string,
+  poolId: number,
+  tokenSymbol: string,
+  quote: { precision: number; symbol: string; contract: string }
+): ChainAction {
+  return addpoolAction(
+    tokenContract,
+    poolId,
+    tokenSymbol,
+    abiSymbol(quote.precision, quote.symbol),
+    quote.contract
+  );
+}
+
+/** Empty `outputContract` clears reward → native (`flex_reward_pool_id = 0`). pid 0 pays the launch quote only if startlaunch set swap_underlying_default. */
 export function chooserewardAction(
   tokenContract: string,
   owner: string,

@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { hasAngelChannels, hasSetmin, type FlexProgram } from "@/config/launch";
 import { Field, TxLink } from "@/components/launch/ui";
 import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
-import { validAccount, validSymbol } from "@/services/assets";
+import { parseAsset, validAccount, validSymbol } from "@/services/assets";
 import {
   abiSymbol,
+  addLaunchQuotePoolAction,
   addpoolAction,
   ratiosAction,
   setdistAction,
@@ -28,12 +29,26 @@ type Props = {
   precision: number;
   actor: string;
   settings: Record<string, unknown> | null;
+  launch?: Record<string, unknown> | null;
+  pools?: Record<string, unknown>[];
   busy: boolean;
   transact: (actions: ChainAction[]) => Promise<unknown>;
   onDone: () => void;
 };
 
-export function IssuerTools({ program, contract, symbol, precision, actor, settings, busy, transact, onDone }: Props) {
+export function IssuerTools({
+  program,
+  contract,
+  symbol,
+  precision,
+  actor,
+  settings,
+  launch = null,
+  pools = [],
+  busy,
+  transact,
+  onDone,
+}: Props) {
   const angelOk = hasAngelChannels(program);
   const setminOk = hasSetmin(program);
   const distLocked = Boolean(pick(settings, "dist_locked"));
@@ -48,12 +63,28 @@ export function IssuerTools({ program, contract, symbol, precision, actor, setti
 
   const [poolId, setPoolId] = useState("");
   const [outSym, setOutSym] = useState("");
-  const [outPrec, setOutPrec] = useState("4");
+  const [outPrec, setOutPrec] = useState("");
   const [outContract, setOutContract] = useState("");
 
   const [msg, setMsg] = useState<{ tx?: string; err?: string }>({});
   const [signing, setSigning] = useState(false);
   const disabled = busy || signing;
+  const launchPoolId = Number(pick(launch, "pure_liquid_alcor_pool_id") ?? 0);
+  const launchQuote = pick(launch, "quote") as { quantity?: string; contract?: string } | undefined;
+  const launchQuoteParsed = parseAsset(launchQuote?.quantity ?? "");
+  const launchQuoteContract = String(launchQuote?.contract ?? "");
+  const launchPairAdded = pools.some((p) => Number(pick(p, "id")) === launchPoolId && launchPoolId > 0);
+
+  const launchQuotePrecision = launchQuoteParsed?.precision;
+  const launchQuoteSymbol = launchQuoteParsed?.symbol ?? "";
+
+  useEffect(() => {
+    if (!(launchPoolId > 0) || launchQuotePrecision == null || !launchQuoteSymbol || !launchQuoteContract) return;
+    setPoolId((prev) => prev || String(launchPoolId));
+    setOutSym((prev) => prev || launchQuoteSymbol);
+    setOutPrec((prev) => prev || String(launchQuotePrecision));
+    setOutContract((prev) => prev || launchQuoteContract);
+  }, [launchPoolId, launchQuoteContract, launchQuotePrecision, launchQuoteSymbol]);
 
   useEffect(() => {
     setTax(taxFromSettings(program, settings));
@@ -266,7 +297,32 @@ export function IssuerTools({ program, contract, symbol, precision, actor, setti
         </Field>
       ) : null}
 
-      <Field label="Add flex reward pool" hint="Alcor pool must pair this token with the output asset and be active.">
+      <Field
+        label="Add flex reward pool"
+        hint="Alcor pool must pair this token with the output asset and be active. Launch pair uses pure_liquid_alcor_pool_id and the startlaunch quote."
+      >
+        {launchPoolId > 0 && launchQuoteParsed && validAccount(launchQuoteContract) ? (
+          <button
+            type="button"
+            className="btn btn-outline btn-sm mb-2"
+            disabled={disabled}
+            onClick={() =>
+              void run([
+                addLaunchQuotePoolAction(contract, launchPoolId, symbol, {
+                  precision: launchQuoteParsed.precision,
+                  symbol: launchQuoteParsed.symbol,
+                  contract: launchQuoteContract,
+                }),
+              ])
+            }
+          >
+            {signing
+              ? "Signing…"
+              : launchPairAdded
+                ? `Refresh launch pair #${launchPoolId} → ${launchQuoteParsed.precision},${launchQuoteParsed.symbol} @ ${launchQuoteContract}`
+                : `Add launch pair #${launchPoolId} → ${launchQuoteParsed.precision},${launchQuoteParsed.symbol} @ ${launchQuoteContract}`}
+          </button>
+        ) : null}
         <div className="grid gap-2 sm:grid-cols-2">
           <input
             className="input"

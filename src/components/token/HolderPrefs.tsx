@@ -37,6 +37,8 @@ type Props = {
   flexer: Record<string, unknown> | null;
   settings: Record<string, unknown> | null;
   pools: Record<string, unknown>[];
+  swapUnderlyingDefault?: boolean;
+  quoteSymbol?: string;
   busy: boolean;
   transact: (actions: ChainAction[]) => Promise<unknown>;
   onDone: () => void;
@@ -51,6 +53,8 @@ export function HolderPrefs({
   flexer,
   settings,
   pools,
+  swapUnderlyingDefault = false,
+  quoteSymbol = "",
   busy,
   transact,
   onDone,
@@ -104,9 +108,9 @@ export function HolderPrefs({
       <Field
         label="Flex reward"
         hint={
-          pools.length
-            ? "Native uses flex_reward_pool_id 0 (or launch quote if swap_underlying_default)."
-            : "Issuer has not addpool’d any routes yet - only native is available."
+          swapUnderlyingDefault
+            ? `Empty output_contract = native (pid 0). pid 0 pays ${quoteSymbol || "the launch quote"} because swap_underlying_default was true at startlaunch.`
+            : "Empty output_contract = native (pid 0). pid 0 pays the native ticker unless swap_underlying_default was true at startlaunch."
         }
       >
         <div className="flex flex-wrap gap-2">
@@ -116,7 +120,7 @@ export function HolderPrefs({
             disabled={disabled}
             onChange={(e) => setRewardKey(e.target.value)}
           >
-            <option value="native">Native / underlying default</option>
+            <option value="native">Native (pid 0)</option>
             {pools.map((p) => {
               const id = String(pick(p, "id") ?? "");
               return (

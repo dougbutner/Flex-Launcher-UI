@@ -55,7 +55,7 @@ Then:
   `swapexactin#<oid>#<recipient>#<min> <SYM>@<contract>#0#reflections`
 - Else: pay native token to holder (and beneficiary split if inheritance)
 
-Issuer chooses `swap_underlying_default` at `startlaunch` (wizard checkbox). Holders override via `choosereward` once issuer `addpool`s routes.
+Issuer sets `swap_underlying_default` at `startlaunch` (wizard checkbox, default **on**). After liftoff the issuer `addpool`s the launch pair (`pure_liquid_alcor_pool_id`, token, quote symbol, quote contract). Holders override via `choosereward`. Empty `output_contract` = native (pid 0). pid 0 uses the quote only if `swap_underlying_default` was true.
 
 ## Quote classes (skim + proof)
 

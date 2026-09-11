@@ -13,6 +13,7 @@ import {
   ratiosAction,
   setdistAction,
   setangelnumAction,
+  addLaunchQuotePoolAction,
   addpoolAction,
   chooserewardAction,
   feeoptoutAction,
@@ -352,6 +353,18 @@ describe("holder and issuer manage actions", () => {
       name: "setangelnum",
       data: { owner: "alice", token_symbol: "FOO", angel_number: 42 },
     });
+    expect(addLaunchQuotePoolAction("fl3x", 11525, "GEASY", { precision: 6, symbol: "EASY", contract: "mon3y" })).toEqual(
+      {
+        account: "fl3x",
+        name: "addpool",
+        data: {
+          pool_id: 11525,
+          token_symbol: "GEASY",
+          output_symbol: "6,EASY",
+          output_contract: "mon3y",
+        },
+      }
+    );
     expect(addpoolAction("flexforex", 99, "FOO", abiSymbol(6, "EASY"), "mon3y")).toEqual({
       account: "flexforex",
       name: "addpool",
@@ -506,7 +519,7 @@ describe("XPR mainnet launcher defaults", () => {
     expect(d.quoteId).toBe("easy");
     expect(d.xtokenSymbol).toBe(XUSDC_SYMBOL);
     expect(d.proofPoolId).toBe("0");
-    expect(d.swapUnderlyingDefault).toBe(false);
+    expect(d.swapUnderlyingDefault).toBe(true);
     expect(d.precision).toBe(6);
     expect(
       alcorSwapUrl("EASY", "mon3y", "FOO", "for3x")

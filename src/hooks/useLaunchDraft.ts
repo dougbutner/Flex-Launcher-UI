@@ -34,7 +34,7 @@ export type LaunchDraft = {
   xtokenSymbol: string;
   xtokenPrecision: number;
   proofPoolId: string;
-  /** startlaunch: holders with flex_reward_pool_id==0 get swapped into the launch quote. */
+  /** startlaunch last bool: pid 0 rain pays the launch quote (holders can choosereward another route). */
   swapUnderlyingDefault: boolean;
   fee: FeeTier;
   priceLower: string;
@@ -55,6 +55,7 @@ export type LaunchDraft = {
   rangeTx: string;
   lockTx: string;
   liftoffTx: string;
+  addpoolTx: string;
 };
 
 const KEY = "flex-launch-draft-v7";
@@ -104,7 +105,7 @@ export const emptyDraft = (): LaunchDraft => {
     xtokenSymbol: "XUSDC",
     xtokenPrecision: 6,
     proofPoolId: "0",
-    swapUnderlyingDefault: false,
+    swapUnderlyingDefault: true,
     fee: 3000,
     priceLower: easy.priceLower,
     priceUpper: easy.priceUpper,
@@ -122,6 +123,7 @@ export const emptyDraft = (): LaunchDraft => {
     rangeTx: "",
     lockTx: "",
     liftoffTx: "",
+    addpoolTx: "",
   };
 };
 

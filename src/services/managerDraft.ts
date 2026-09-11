@@ -49,6 +49,7 @@ export function managerFromDraft(issuer: string, draft: LaunchDraft, extra: Part
     rangeTx: draft.rangeTx,
     lockTx: draft.lockTx,
     liftoffTx: draft.liftoffTx,
+    addpoolTx: draft.addpoolTx,
     createdAt: extra.createdAt || now,
     updatedAt: now,
   };
@@ -98,5 +99,6 @@ export function draftFromManager(row: ManagerToken): LaunchDraft {
     rangeTx: row.rangeTx,
     lockTx: row.lockTx,
     liftoffTx: row.liftoffTx,
+    addpoolTx: row.addpoolTx,
   };
 }

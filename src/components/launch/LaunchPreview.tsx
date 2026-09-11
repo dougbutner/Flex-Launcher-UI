@@ -30,6 +30,7 @@ export function LaunchPreview({
     { label: "Ranged", done: Boolean(draft.rangeTx) },
     { label: "Locked", done: Boolean(draft.lockTx) },
     { label: "Liftoff", done: Boolean(draft.liftoffTx) },
+    { label: "Quote pool", done: Boolean(draft.addpoolTx) },
   ];
 
   return (

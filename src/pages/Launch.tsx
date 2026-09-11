@@ -40,17 +40,17 @@ export default function Launch() {
   useEffect(() => {
     try {
       if (sessionStorage.getItem(MANAGER_RESUME_KEY) !== "1") return;
-      if (!draft.createTx || draft.liftoffTx) return;
+      if (!draft.createTx || draft.addpoolTx) return;
       sessionStorage.removeItem(MANAGER_RESUME_KEY);
       setStep(EXECUTE_STEP);
     } catch {
       /* ignore */
     }
-  }, [draft.createTx, draft.liftoffTx]);
+  }, [draft.createTx, draft.addpoolTx]);
 
   useEffect(() => {
-    if (draft.liftoffTx) setCelebrate(true);
-  }, [draft.liftoffTx]);
+    if (draft.addpoolTx) setCelebrate(true);
+  }, [draft.addpoolTx]);
 
   const steps: WizardStep[] = useMemo(
     () => [
@@ -93,7 +93,7 @@ export default function Launch() {
         id: "execute",
         title: "Execute",
         desc: "Sign the launch transactions",
-        done: Boolean(draft.liftoffTx),
+        done: Boolean(draft.addpoolTx),
         locked: !tokenOk || !taxOk,
       },
     ],
@@ -193,7 +193,7 @@ export default function Launch() {
         </div>
       </div>
 
-      {celebrate && draft.liftoffTx ? <LiftoffModal draft={draft} onReset={dismissLiftoff} /> : null}
+      {celebrate && draft.addpoolTx ? <LiftoffModal draft={draft} onReset={dismissLiftoff} /> : null}
     </div>
   );
 }

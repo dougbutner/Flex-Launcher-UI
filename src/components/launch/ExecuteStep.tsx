@@ -6,6 +6,7 @@ import { planFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
 import { StatusIcon, StepShell, TxLink } from "@/components/launch/ui";
 import {
   activepoolTransfer,
+  addLaunchQuotePoolAction,
   addliquidAction,
   createTokenAction,
   createpoolAction,
@@ -114,7 +115,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
     {
       id: "startlaunch",
       label: "Start launch",
-      detail: `Quote, fee, ticks, sqrtPriceX64 on ${code}`,
+      detail: `Quote, fee, ticks, sqrtPriceX64, swap_underlying_default=${draft.swapUnderlyingDefault} on ${code}`,
       sig: `${code}::startlaunch`,
       txOf: (d) => d.startTx,
       build: async ({ plan, draft: d }) => [
@@ -191,6 +192,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
   const [preflight, setPreflight] = useState<PreflightItem[] | null>(null);
   const [preflightBusy, setPreflightBusy] = useState(false);
   const [liftoffError, setLiftoffError] = useState("");
+  const [addpoolError, setAddpoolError] = useState("");
   const [manualPoolId, setManualPoolId] = useState("");
   const [gates, setGates] = useState<PreflightItem[] | null>(null);
   const [gatesBusy, setGatesBusy] = useState(false);
@@ -271,11 +273,31 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
       const next = { ...draft, liftoffTx: txIdFromResult(result) || "ok" };
       patch({ liftoffTx: next.liftoffTx });
       void persistLaunchDraft(actor, next);
-      onDone();
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
       setLiftoffError(hint ? `${msg} - ${hint}` : msg);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const addLaunchPool = async () => {
+    if (!actor || !plan || draft.poolId == null) return;
+    setBusyId("addpool");
+    setAddpoolError("");
+    try {
+      const result = await transact([
+        addLaunchQuotePoolAction(code, draft.poolId, plan.launched.symbol, plan.quote),
+      ]);
+      const next = { ...draft, addpoolTx: txIdFromResult(result) || "ok" };
+      patch({ addpoolTx: next.addpoolTx });
+      void persistLaunchDraft(actor, next);
+      onDone();
+    } catch (err) {
+      const msg = txErrorMessage(err);
+      const hint = hintForError(msg);
+      setAddpoolError(hint ? `${msg} - ${hint}` : msg);
     } finally {
       setBusyId(null);
     }
@@ -302,7 +324,8 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
             Back
           </button>
           <span className="text-xs text-muted-foreground">
-            {steps.filter((s) => s.txOf(draft)).length}/{steps.length + 1} complete
+            {steps.filter((s) => s.txOf(draft)).length + (draft.liftoffTx ? 1 : 0) + (draft.addpoolTx ? 1 : 0)}/
+            {steps.length + 2} complete
           </span>
         </>
       }
@@ -429,6 +452,27 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
             onClick={() => void liftoff()}
           >
             {busyId === "liftoff" ? "Signing…" : "Liftoff - make it transferable"}
+          </button>
+        </div>
+      ) : null}
+
+      {draft.liftoffTx && !draft.addpoolTx ? (
+        <div className="space-y-3 rounded-2xl border border-primary/30 bg-primary/5 p-4">
+          <span className="text-sm font-semibold text-primary">Register launch quote in flexpools</span>
+          <p className="text-xs text-muted-foreground">
+            addpool({draft.poolId ?? "pool"}, "{plan.launched.symbol}", {plan.quote.precision},{plan.quote.symbol},{" "}
+            {plan.quote.contract}). Holders can then choosereward this pair. Empty output_contract returns to native (pid
+            0).
+          </p>
+          {addpoolError ? <p className="text-xs font-medium text-destructive">{addpoolError}</p> : null}
+          <p className="font-mono text-[11px] text-muted-foreground">Wallet will ask for {code}::addpool</p>
+          <button
+            type="button"
+            className="btn btn-accent btn-lg w-full"
+            disabled={draft.poolId == null || busyId != null}
+            onClick={() => void addLaunchPool()}
+          >
+            {busyId === "addpool" ? "Signing…" : `Add ${plan.quote.symbol} reward pool`}
           </button>
         </div>
       ) : null}

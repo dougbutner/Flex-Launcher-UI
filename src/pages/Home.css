@@ -12,8 +12,8 @@
   --home-dim: #a8b2a8;
   --home-green: #22c55e;
   --home-violet: #8b5cf6;
-  --home-orange: #f97316;
-  --home-gold: #f0d34a;
+  --home-orange: #ffe566;
+  --home-gold: #ffe566;
   position: relative;
   width: 100%;
   color: var(--home-ink);

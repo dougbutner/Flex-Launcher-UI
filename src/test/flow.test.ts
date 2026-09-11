@@ -136,6 +136,7 @@ describe("mainnet launch flow simulation", () => {
       "addliquid",
       "lockpos",
       "liftoff",
+      "addpool",
     ]);
     expect(steps.find((s) => s.id === "create")?.account).toBe(code);
     expect(steps.find((s) => s.id === "liftoff")?.name).toBe("liftoff");
@@ -150,6 +151,13 @@ describe("mainnet launch flow simulation", () => {
     const start = steps.find((s) => s.id === "startlaunch")!.actions[0];
     expect(start.data.xtoken_proof_pool_id).toBe(0);
     expect(start.data.swap_underlying_default).toBe(true);
+    const addp = steps.find((s) => s.id === "addpool")!.actions[0];
+    expect(addp.data).toEqual({
+      pool_id: 2142,
+      token_symbol: "FOO",
+      output_symbol: `6,${plan!.quote.symbol}`,
+      output_contract: plan!.quote.contract,
+    });
     const create = steps.find((s) => s.id === "create")!.actions[0];
     expect(create.data).toEqual({ issuer: "alice", maximum_supply: plan!.fullSupply });
     expect(create.data).not.toHaveProperty("reflection_rate");

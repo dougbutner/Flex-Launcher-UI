@@ -464,9 +464,11 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
           onChange={(e) => patch({ swapUnderlyingDefault: e.target.checked })}
         />
         <span>
-          <span className="block text-sm font-semibold">Pay unpaid holders in {quote.symbol}</span>
+          <span className="block text-sm font-semibold">Default quote rain ({quote.symbol})</span>
           <span className="mt-1 block text-xs text-muted-foreground">
-            On: rain pays {quote.symbol} from the pool. Off: rain pays your token.
+            startlaunch last bool: swap_underlying_default. On: unpaid holders (pid 0) receive {quote.symbol} unless they
+            choosereward another route. Off: pid 0 pays the native ticker. Empty output_contract on choosereward returns
+            to pid 0.
           </span>
         </span>
       </label>

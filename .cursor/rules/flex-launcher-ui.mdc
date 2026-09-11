@@ -14,11 +14,11 @@ Read **`AGENTS.md`** before changing this app. Contract source of truth is **`sr
 
 ## Identity and tables
 
-Always pass **symbol + contract**. `stat` / `settings` / `flexers` / `flexpools` scope = **symbol code**. `launches` scope = **contract**. Native flex = `flex_reward_pool_id == 0`. `addpool` then `choosereward(output_symbol, output_contract)`. Empty output contract unflexes.
+Always pass **symbol + contract**. `stat` / `settings` / `flexers` / `flexpools` scope = **symbol code**. `launches` scope = **contract**. Native flex = `flex_reward_pool_id == 0`. After liftoff `addpool` the launch pair, then extra routes. `choosereward` empty output contract = native. pid 0 uses the quote only if `swap_underlying_default` was true at startlaunch.
 
 ## Wizard order
 
-`create` → `setfees` → `mint`/`issue` 100% to issuer → `startlaunch` → Alcor `createpool` / `activepool#id` / `transfer` memo `deposit` / one-sided `addliquid` / `lockpos` ≥90d → `liftoff`. Issuer signs Alcor, not the flex contract. Until `launches.launched`, only `to=swap.alcor`. Do not gift `eosio::buyram` to the token contract. After a successful create, freeze Token / Flexonomics / Quote / Range so execute preflight cannot drift.
+`create` → `setfees` → `mint`/`issue` 100% to issuer → `startlaunch` (`swap_underlying_default` default true) → Alcor `createpool` / `activepool#id` / `transfer` memo `deposit` / one-sided `addliquid` / `lockpos` ≥90d → `liftoff` → `addpool` launch quote pair. Issuer signs Alcor, not the flex contract. Until `launches.launched`, only `to=swap.alcor`. Do not gift `eosio::buyram` to the token contract. After a successful create, freeze Token / Flexonomics / Quote / Range so execute preflight cannot drift.
 
 ## Do not
 
