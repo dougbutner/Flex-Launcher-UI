@@ -1,5 +1,5 @@
 import { randomPlaceholderToken } from "@/components/launch/randomTokenName";
-import { LOCK_MIN_DAYS, QUOTE_PRESETS, type FeeTier, type FlexProgram, type RangeWidthId } from "@/config/launch";
+import { LOCK_MIN_DAYS, LOCK_SLIDER_MAX_DAYS, QUOTE_PRESETS, type FeeTier, type FlexProgram, type RangeWidthId } from "@/config/launch";
 import { defaultTaxDraft } from "@/services/taxRates";
 import { useCallback, useEffect, useState } from "react";
 
@@ -42,6 +42,8 @@ export type LaunchDraft = {
   /** Width preset last applied; cleared when prices are typed by hand. */
   rangeWidthId: RangeWidthId | null;
   lockDays: number;
+  /** Slider end in days. Grows when the typed lock is longer than the default 730. */
+  lockDaysMax: number;
   createTx: string;
   feesTx: string;
   mintTx: string;
@@ -102,12 +104,13 @@ export const emptyDraft = (): LaunchDraft => {
     xtokenSymbol: "XUSDC",
     xtokenPrecision: 6,
     proofPoolId: "0",
-    swapUnderlyingDefault: true,
+    swapUnderlyingDefault: false,
     fee: 3000,
     priceLower: easy.priceLower,
     priceUpper: easy.priceUpper,
     rangeWidthId: null,
     lockDays: LOCK_MIN_DAYS,
+    lockDaysMax: LOCK_SLIDER_MAX_DAYS,
     createTx: "",
     feesTx: "",
     mintTx: "",

@@ -132,6 +132,10 @@ export const ALCOR_SWAP = "https://alcor.exchange/v/xpr/swap";
 
 export const LOCK_MIN_SECONDS = 7_776_000;
 export const LOCK_MIN_DAYS = 90;
+/** Default slider end. Typing a larger day count stretches this, up to EOSIO_MAX_TIME_SEC. */
+export const LOCK_SLIDER_MAX_DAYS = 730;
+/** uint32 / time_point_sec max. 2106-02-07T06:28:15Z. Alcor lockpos.unlockTime. */
+export const EOSIO_MAX_TIME_SEC = 4_294_967_295;
 
 export const ALCOR_MIN_TICK = -443636;
 export const ALCOR_MAX_TICK = 443636;

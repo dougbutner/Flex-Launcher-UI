@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatAsset, formatSupplyCommas, parseSupplyInput, validSymbol, zeroAsset } from "@/services/assets";
 import { compareExtTokens, nameToU64, sortPair, symbolCodeToU64 } from "@/services/eosioName";
-import { planLaunch } from "@/services/launchMath";
+import { planLaunch, rangeImpact } from "@/services/launchMath";
 import {
   createTokenAction,
   checklockAction,
@@ -247,6 +247,62 @@ describe("launch plan", () => {
     expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9))).toMatch(/90%/);
     expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9) + 9 * 30 * 86400 * 1000)).toBeNull();
   });
+
+  it("matches GEASY@fl3x mainnet issuer liquidity and 2x walk", () => {
+    const d = {
+      ...emptyDraft(),
+      program: "complexflex" as const,
+      name: "GEASY",
+      symbol: "GEASY",
+      identitySeeded: true,
+      precision: 6,
+      maxSupply: "420000000",
+      quoteId: "easy" as const,
+      fee: 10000 as const,
+      priceLower: "0.0010081331518189368",
+    };
+    const fast = applyRangeWidth(d, "fast");
+    const plan = planLaunch({
+      symbol: "GEASY",
+      precision: 6,
+      maxSupply: "420000000",
+      contract: COMPLEXFLEX_CONTRACT,
+      quote: { symbol: "EASY", contract: MON3Y, precision: 6 },
+      fee: 10000,
+      priceLower: d.priceLower,
+      priceUpper: fast.priceUpper,
+    });
+    expect(plan.launchedIsA).toBe(true);
+    expect(plan.tickLower).toBe(-69000);
+    expect(plan.tickUpper).toBe(443600);
+    expect(plan.startTick).toBe(-69200);
+    const easyUsd = 0.018643997356;
+    const impact = rangeImpact(plan, "420000000", easyUsd);
+    expect(impact?.liquidity).toBe("13335467295280");
+    expect(impact?.doubledCapped).toBe(false);
+    expect(impact?.quoteToDouble).toBeGreaterThan(177000);
+    expect(impact?.quoteToDouble).toBeLessThan(177300);
+    expect(impact?.usdToDouble).toBeGreaterThan(3290);
+    expect(impact?.usdToDouble).toBeLessThan(3320);
+    expect(impact?.initialMarketCapUsd).toBeGreaterThan(7800);
+    expect(impact?.initialMarketCapUsd).toBeLessThan(8000);
+    expect(impact?.supplyPctForUsd).toBeGreaterThan(1.2);
+    expect(impact?.supplyPctForUsd).toBeLessThan(1.3);
+    const slow = applyRangeWidth(d, "slow");
+    const slowPlan = planLaunch({
+      symbol: "GEASY",
+      precision: 6,
+      maxSupply: "420000000",
+      contract: COMPLEXFLEX_CONTRACT,
+      quote: { symbol: "EASY", contract: MON3Y, precision: 6 },
+      fee: 10000,
+      priceLower: slow.priceLower,
+      priceUpper: slow.priceUpper,
+    });
+    const slowImpact = rangeImpact(slowPlan, "420000000", easyUsd);
+    expect(slowImpact?.quoteToDouble).toBeGreaterThan(impact!.quoteToDouble);
+    expect(slowImpact?.quoteToDouble).toBeLessThan(impact!.quoteToDouble * 1.2);
+  });
 });
 
 describe("post-launch poke actions", () => {
@@ -442,7 +498,7 @@ describe("XPR mainnet launcher defaults", () => {
     expect(d.quoteId).toBe("easy");
     expect(d.xtokenSymbol).toBe(XUSDC_SYMBOL);
     expect(d.proofPoolId).toBe("0");
-    expect(d.swapUnderlyingDefault).toBe(true);
+    expect(d.swapUnderlyingDefault).toBe(false);
     expect(d.precision).toBe(6);
     expect(
       alcorSwapUrl("EASY", "mon3y", "FOO", "for3x")

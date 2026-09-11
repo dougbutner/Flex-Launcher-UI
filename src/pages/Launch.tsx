@@ -14,12 +14,13 @@ import { LaunchPreview } from "@/components/launch/LaunchPreview";
 import { EasyHoldNotice } from "@/components/launch/EasyHoldNotice";
 import { quoteStepValid, rangeStepValid, taxStepValid, tokenStepValid } from "@/components/launch/draftPlan";
 import { readChainStatus, type ChainStatus } from "@/services/chainStatus";
+import { hasProjectTax } from "@/services/taxRates";
 
 const EXECUTE_STEP = 5;
 
 export default function Launch() {
   const { draft, patch, reset } = useLaunchDraft();
-  const { isLoggedIn } = useWallet();
+  const { isLoggedIn, actor } = useWallet();
   const [step, setStep] = useState(0);
   const [celebrate, setCelebrate] = useState(false);
   const tokenOk = !tokenStepValid(draft);
@@ -30,6 +31,11 @@ export default function Launch() {
   useEffect(() => {
     void readChainStatus().then(setChain).catch(() => setChain(null));
   }, []);
+
+  useEffect(() => {
+    if (started || !actor || !hasProjectTax(draft.program) || draft.projectAccount.trim()) return;
+    patch({ projectAccount: actor });
+  }, [actor, started, draft.program, draft.projectAccount, patch]);
 
   useEffect(() => {
     try {
