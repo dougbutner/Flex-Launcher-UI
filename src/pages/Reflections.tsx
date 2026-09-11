@@ -207,9 +207,10 @@ export default function Reflections() {
               return (
                 <article
                   key={d.key}
+                  role="button"
                   tabIndex={0}
                   aria-label={`Make it rain ${d.symbol}`}
-                  className="group card flex min-h-[13.5rem] cursor-pointer flex-col transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] focus-visible:border-[#1e3a8a] focus-visible:bg-[#1e3a8a] focus-visible:outline-none"
+                  className="group card flex min-h-[13.5rem] cursor-pointer flex-col transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] focus:border-[#1e3a8a] focus:bg-[#1e3a8a] focus:outline-none"
                   onClick={() => void rain(d)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -219,22 +220,22 @@ export default function Reflections() {
                   }}
                 >
                   <div className="flex flex-1 flex-col items-center justify-center px-2 pt-3">
-                    <span className="font-mono text-xl font-black tracking-tight text-foreground group-hover:text-primary group-focus-visible:text-primary sm:text-2xl">
+                    <span className="font-mono text-xl font-black tracking-tight text-foreground group-hover:text-primary group-focus:text-primary sm:text-2xl">
                       {d.symbol}
                     </span>
-                    <span className="mt-1 h-5 text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                    <span className="mt-1 h-5 text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
                       {raining === d.key ? "Signing…" : "Make it rain"}
                     </span>
                   </div>
-                  <div className="flex min-h-[4.5rem] flex-col items-center justify-end px-2 pb-3 text-center">
-                    <div className="flex flex-col items-center gap-0.5 group-hover:hidden group-focus-visible:hidden">
+                  <div className="relative min-h-[4.75rem] px-2 pb-3 text-center">
+                    <div className="flex flex-col items-center gap-0.5 transition-opacity group-hover:opacity-0 group-focus:opacity-0">
                       <span className="break-all font-mono text-[11px] leading-tight text-muted-foreground">
                         {fmtPool(d.pool, d.precision)} {d.symbol}
                       </span>
                       <span className="font-mono text-sm font-semibold text-primary">{fmtUsd(d.usd)}</span>
                     </div>
-                    <div className="hidden flex-col items-center group-hover:flex group-focus-visible:flex">
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-primary/90">
+                    <div className="pointer-events-none absolute inset-x-2 bottom-3 flex flex-col items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-primary">
                         splash 38.2%
                       </span>
                       <span className="break-all font-mono text-base font-bold leading-tight text-white">
