@@ -26,7 +26,9 @@ namespace eosio {
          ACTION transfer(const name& from, const name& to, const asset& quantity, const string& memo);
          ACTION open(const name& owner, const symbol& symbol, const name& ram_payer);
          ACTION close(const name& owner, const symbol& symbol);
-         ACTION makeitrain(const string& token_symbol, const name& sender);
+         ACTION makeitrain(const string& token_symbol, const name& sender,
+                          const std::optional<int64_t>& min_hold = {},
+                          const std::optional<int64_t>& min_pool = {});
          ACTION setconfig(const symbol& sym, const std::optional<uint64_t>& start_key, const std::optional<uint32_t>& limit,
                           const std::optional<uint16_t>& reflection_rate, const std::optional<uint16_t>& burn_rate,
                           const std::optional<name>& admin_account);

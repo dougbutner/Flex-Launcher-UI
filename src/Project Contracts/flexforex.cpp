@@ -632,7 +632,9 @@ ACTION flexforex::receiverand(uint64_t assoc_id, const checksum256& random_value
 }//END receiverand()
 
 // === makeitrain: splash reflection_pool only === //
-ACTION flexforex::makeitrain(const string& token_symbol, const name& keeper) {
+ACTION flexforex::makeitrain(const string& token_symbol, const name& keeper,
+                            const std::optional<int64_t>& min_hold,
+                            const std::optional<int64_t>& min_pool) {
     require_auth(keeper);
     check(is_account(keeper), "⟁ keeper account does not exist");
     check(!token_symbol.empty(), "⟁ Token symbol is required");
@@ -655,7 +657,14 @@ ACTION flexforex::makeitrain(const string& token_symbol, const name& keeper) {
 
     int64_t one = 1;
     for(uint8_t i = 0; i < sym.precision(); ++i) one *= 10;
-    int64_t min_pool = conf.reflect_min > 0 ? conf.reflect_min : one;
+    int64_t hold_req = min_hold.value_or(0);
+    int64_t hold_floor = hold_req > 0 ? hold_req : one;
+    int64_t pool_req = min_pool.value_or(0);
+    if(pool_req > 0)
+        check(st->reflection_pool.amount >= pool_req,
+              "⟁ " + asset{st->reflection_pool.amount, sym}.to_string() + " / "
+                  + asset{pool_req, sym}.to_string() + " needed in the reflection pool");
+    int64_t pay_floor = conf.reflect_min > 0 ? conf.reflect_min : one;
 
     int64_t standard = st->reflection_pool.amount;
     asset nyra{(standard * launch_it->dev_bps) / 10000, sym};
@@ -665,9 +674,9 @@ ACTION flexforex::makeitrain(const string& token_symbol, const name& keeper) {
     else { nyra.amount = 0; reflc.amount = 0; partner.amount = 0; }
 
     int64_t std_pay = (standard * PAY_NUM) / PAY_DEN;
-    bool do_std = std_pay >= min_pool;
+    bool do_std = std_pay >= pay_floor;
     check(do_std || partner.amount,
-          "⟁ " + asset{std_pay, sym}.to_string() + " / " + asset{min_pool, sym}.to_string()
+          "⟁ " + asset{std_pay, sym}.to_string() + " / " + asset{pay_floor, sym}.to_string()
               + " needed to make it rain");
 
     flexers flex_table(get_self(), code.raw());
@@ -774,7 +783,7 @@ ACTION flexforex::makeitrain(const string& token_symbol, const name& keeper) {
         while(itr != flex_table.end() && processed < conf.limit && remaining > 0) {
             if(itr->owner != get_self() && itr->owner != "alcor"_n && itr->owner != SWAP_ALCOR &&
                !itr->fee_opted_out &&
-               itr->balance.symbol == sym && itr->balance.amount >= one) {
+               itr->balance.symbol == sym && itr->balance.amount >= hold_floor) {
                 int64_t share = (int64_t)((__int128)std_pay * itr->balance.amount / denom);
                 if(share > remaining) share = remaining;
                 send_share(*itr, asset{share, sym}, std_paid);
