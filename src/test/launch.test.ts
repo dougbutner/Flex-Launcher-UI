@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatAsset, formatSupplyCommas, parseSupplyInput, validSymbol, zeroAsset } from "@/services/assets";
 import { compareExtTokens, nameToU64, sortPair, symbolCodeToU64 } from "@/services/eosioName";
-import { planLaunch, rangeImpact } from "@/services/launchMath";
+import { buyScenario, planLaunch, rangeImpact, walkCostToMultiple, walkCostToSupplyPct } from "@/services/launchMath";
 import {
   createTokenAction,
   checklockAction,
@@ -55,16 +55,18 @@ import { findXtoken, xtokensByMarketCap } from "@/config/xtokens";
 import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
 import { protonSymbol, protonSyncGaps, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
+import { alcorLogoFilename, mergeAdminTokenRefs } from "@/services/listingHelper";
+import { localTokenIconSrc, rememberRemoteTokenIcon, tokenIconKey, tokenIconSrc } from "@/services/tokenIcons";
 import { logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
 import { applyRangeWidth, applyStartMarketCap, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { validImageUrl } from "@/services/tokenLogo";
-import { localTokenIconSrc, tokenIconKey } from "@/services/tokenIcons";
 import { XTOKEN_FALLBACK, XTOKEN_TOP_N, findProofPoolId } from "@/services/xtokenCatalog";
 import { draftFromManager, managerFromDraft } from "@/services/managerDraft";
 import {
   LAUNCH_STEP_IDS,
+  emptyManagerToken,
   launchProgressFrom,
   managerHasStarted,
   mergeManagerViews,
@@ -303,6 +305,25 @@ describe("launch plan", () => {
     const slowImpact = rangeImpact(slowPlan, "420000000", easyUsd);
     expect(slowImpact?.quoteToDouble).toBeGreaterThan(impact!.quoteToDouble);
     expect(slowImpact?.quoteToDouble).toBeLessThan(impact!.quoteToDouble * 1.2);
+
+    const twice = walkCostToMultiple(plan, "420000000", easyUsd, 2);
+    expect(twice?.capped).toBe(false);
+    expect(twice?.usd).toBeGreaterThan(3290);
+    expect(twice?.usd).toBeLessThan(3320);
+    expect(Math.abs((twice?.quoteGross ?? 0) - impact!.quoteToDouble)).toBeLessThan(1);
+
+    const tenPct = walkCostToSupplyPct(plan, "420000000", easyUsd, 10);
+    expect(tenPct?.supplyPct).toBeGreaterThan(9.9);
+    expect(tenPct?.supplyPct).toBeLessThan(10.1);
+    expect(tenPct?.usd).toBeGreaterThan(0);
+    expect(tenPct!.usd!).toBeLessThan(impact!.usdToDouble!);
+
+    const scene = buyScenario(plan, "420000000", easyUsd, 100, 0);
+    expect(scene?.firstSupplyPct).toBeGreaterThan(1.2);
+    expect(scene?.firstSupplyPct).toBeLessThan(1.3);
+    expect(scene?.bagUsdAfter).toBeGreaterThan(100);
+    const scene2 = buyScenario(plan, "420000000", easyUsd, 100, 5000);
+    expect(scene2!.bagUsdAfter!).toBeGreaterThan(scene!.bagUsdAfter!);
   });
 });
 
@@ -503,6 +524,9 @@ describe("local token icons", () => {
     expect(localTokenIconSrc("eosio.token", "XPR")).toBe("/tokens/eosio.token/XPR.png");
     expect(localTokenIconSrc("mon3y", "EASY")).toBe("/tokens/easy.png");
     expect(localTokenIconSrc("flexforex", "UUU")).toBeUndefined();
+    rememberRemoteTokenIcon("fl3x", "ZZZ", "https://gateway.pinata.cloud/ipfs/QmZ");
+    expect(tokenIconSrc("fl3x", "ZZZ")).toBe("https://gateway.pinata.cloud/ipfs/QmZ");
+    expect(tokenIconSrc("fl3x", "ZZZ", "https://example.com/z.png")).toBe("https://example.com/z.png");
   });
 });
 
@@ -619,6 +643,23 @@ describe("execute gates and pool id", () => {
     ];
     expect(protonSyncGaps(tokens, rows, "for3x").map((t) => t.symbol)).toEqual(["BAR"]);
     expect(protonSyncGaps(tokens, rows, "3asy")).toEqual(tokens);
+  });
+
+  it("merges sqlite and proton rows into the admin list", () => {
+    expect(alcorLogoFilename("FOO", "fl3x")).toBe("foo_fl3x.png");
+    const stored = emptyManagerToken();
+    stored.issuer = "alice";
+    stored.contract = "fl3x";
+    stored.symbol = "ZZZ";
+    stored.precision = 4;
+    stored.program = "complexflex";
+    const merged = mergeAdminTokenRefs({
+      tcontract: "fl3x",
+      refs: [],
+      stored: [stored],
+      proton: [{ id: 1, tcontract: "fl3x", tname: "Foo", url: "", desc: "", iconurl: "https://x/a.png", symbol: "4,FOO" }],
+    });
+    expect(merged.map((t) => t.symbol).sort()).toEqual(["FOO", "ZZZ"]);
   });
 });
 

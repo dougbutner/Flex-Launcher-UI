@@ -9,6 +9,7 @@ import { readFlexers, readLaunches, readStat } from "@/services/flexTables";
 import { checklockAction, payoutAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { loadProtonTokenTable } from "@/services/tokenProton";
 
 type LaunchRow = Record<string, unknown>;
 
@@ -79,6 +80,7 @@ export default function Leaderboard() {
   const [pots, setPots] = useState<StatPots | null>(null);
   const [poking, setPoking] = useState<PokeKind | null>(null);
   const [pokeMsg, setPokeMsg] = useState<{ tx?: string; err?: string }>({});
+  const [iconsReady, setIconsReady] = useState(0);
 
   useEffect(() => {
     Promise.all(
@@ -98,6 +100,9 @@ export default function Leaderboard() {
         const stamped = groups.flat();
         setLaunches(stamped);
         if (stamped.length) setSelected(stamped[0].id);
+        void loadProtonTokenTable()
+          .then(() => setIconsReady((n) => n + 1))
+          .catch(() => []);
       })
       .catch((e) => {
         const msg = e instanceof Error ? e.message : String(e);
@@ -214,7 +219,7 @@ export default function Leaderboard() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex min-w-0 items-center gap-2">
-                        <TokenIcon contract={l.code} symbol={l.symbol} size={28} rounded="xl" />
+                        <TokenIcon key={iconsReady} contract={l.code} symbol={l.symbol} size={28} rounded="xl" />
                         <span className="font-mono text-base font-bold">${l.symbol}</span>
                       </span>
                       <span className="chip-success">live</span>
@@ -237,7 +242,7 @@ export default function Leaderboard() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="flex items-center gap-2 text-lg font-bold">
                 {selectedLaunch ? (
-                  <TokenIcon contract={selectedLaunch.code} symbol={selectedLaunch.symbol} size={28} rounded="xl" />
+                  <TokenIcon key={iconsReady} contract={selectedLaunch.code} symbol={selectedLaunch.symbol} size={28} rounded="xl" />
                 ) : null}
                 Top flexers · ${selectedLaunch?.symbol}
               </h2>

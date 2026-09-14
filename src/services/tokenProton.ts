@@ -2,7 +2,8 @@ import type { ChainAction } from "@/services/launchActions";
 import { parseAsset } from "@/services/assets";
 import { readLaunches, readStat } from "@/services/flexTables";
 import { symbolCodeOf } from "@/services/preflight";
-import { getActions, getAllTableRows } from "@/services/rpc";
+import { getActions, getTableRows } from "@/services/rpc";
+import { rememberRemoteTokenIcon } from "@/services/tokenIcons";
 
 /** Live token.proton::reg/update require tcontract@active. Flex tcontract is 3asy/fl3x/for3x, so the issuer cannot sign. Do not wire this to the issuer wizard. */
 export const TOKEN_PROTON = "token.proton";
@@ -50,11 +51,52 @@ export function rowMatchesContractSymbol(
   return Boolean(s && s.precision === precision && s.code === code);
 }
 
+function rememberRowIcon(row: ProtonTokenRow) {
+  const parsed = parseProtonSymbol(row.symbol);
+  if (!parsed || !row.tcontract || !row.iconurl) return;
+  rememberRemoteTokenIcon(row.tcontract, parsed.code, row.iconurl);
+}
+
+let protonTableJob: Promise<ProtonTokenRow[]> | null = null;
+
+/** Paginated token.proton tokens table. Partial rows are kept if a later page fails. */
+export async function loadProtonTokenTable(force = false): Promise<ProtonTokenRow[]> {
+  if (!force && protonTableJob) return protonTableJob;
+  protonTableJob = (async () => {
+    const rows: ProtonTokenRow[] = [];
+    let lower: string | number | undefined;
+    try {
+      for (;;) {
+        const page = await getTableRows<ProtonTokenRow>({
+          code: TOKEN_PROTON,
+          table: "tokens",
+          scope: TOKEN_PROTON,
+          limit: 200,
+          lower_bound: lower,
+        });
+        for (const row of page.rows) {
+          rows.push(row);
+          rememberRowIcon(row);
+        }
+        if (!page.more || !page.next_key || rows.length >= 8000) break;
+        lower = page.next_key;
+      }
+    } catch (err) {
+      if (rows.length) return rows;
+      throw err;
+    }
+    return rows;
+  })();
+  try {
+    return await protonTableJob;
+  } catch (err) {
+    protonTableJob = null;
+    throw err;
+  }
+}
+
 export async function listProtonRowsForContract(tcontract: string): Promise<ProtonTokenRow[]> {
-  const rows = await getAllTableRows<ProtonTokenRow>(
-    { code: TOKEN_PROTON, table: "tokens", scope: TOKEN_PROTON, limit: 200 },
-    8000
-  );
+  const rows = await loadProtonTokenTable();
   return rows.filter((row) => row.tcontract === tcontract);
 }
 
@@ -100,11 +142,12 @@ export async function findProtonTokenRow(
   precision: number,
   code: string
 ): Promise<ProtonTokenRow | null> {
-  const rows = await getAllTableRows<ProtonTokenRow>(
-    { code: TOKEN_PROTON, table: "tokens", scope: TOKEN_PROTON, limit: 200 },
-    8000
-  );
-  return rows.find((row) => rowMatchesContractSymbol(row, tcontract, precision, code)) ?? null;
+  try {
+    const rows = await loadProtonTokenTable();
+    return rows.find((row) => rowMatchesContractSymbol(row, tcontract, precision, code)) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function tokenProtonLogoAction(args: {

@@ -10,6 +10,7 @@ import {
   quoteFromDraft,
   rangeStepValid,
 } from "@/components/launch/draftPlan";
+import { RangeMoreInfo } from "@/components/launch/RangeMoreInfo";
 import { Field, StepShell } from "@/components/launch/ui";
 import { maxLockDays, rangeImpact, USD_BUY_PROBE, type RangeImpact } from "@/services/launchMath";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
@@ -65,6 +66,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const sliderMax = Math.min(eosioMaxDays, Math.max(LOCK_SLIDER_MAX_DAYS, draft.lockDaysMax || 0, draft.lockDays));
   const days = Math.min(sliderMax, Math.max(LOCK_MIN_DAYS, draft.lockDays));
   const [moreMcap, setMoreMcap] = useState(false);
+  const [moreInfo, setMoreInfo] = useState(false);
   const [editLock, setEditLock] = useState(false);
   const [lockText, setLockText] = useState("");
   const lockInputRef = useRef<HTMLInputElement>(null);
@@ -271,32 +273,49 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
       </div>
 
       {impact ? (
-        <div className="grid grid-cols-1 gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4 sm:grid-cols-3">
-          <ImpactStat
-            label="Initial market cap"
-            value={fmtUsd(impact.initialMarketCapUsd)}
-            hint={`${fmtPrice(impact.startQuotePerToken)} ${quote.symbol} x supply`}
-          />
-          <ImpactStat
-            label="Cost to 2x"
-            value={impactDoubleLabel(impact)}
-            hint={
-              impact.doubledCapped
-                ? "Max is under 2x. This is the cost to walk the whole range."
-                : `USD to move start to ${fmtPrice(impact.doubledQuotePerToken)} ${quote.symbol}. Includes swap fee.`
-            }
-          />
-          <ImpactStat
-            label={`$${USD_BUY_PROBE} buys`}
-            value={fmtPct(impact.supplyPctForUsd)}
-            hint={
-              impact.tokensForUsd != null
-                ? `${fmtPrice(impact.tokensForUsd)} ${draft.symbol || "TOKEN"} at constant USD`
-                : quoteUsd > 0
-                  ? "Need a USD price from Alcor."
-                  : "Waiting on USD from Alcor."
-            }
-          />
+        <div className="rounded-2xl border border-primary/25 bg-primary/5 p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <ImpactStat
+              label="Initial market cap"
+              value={fmtUsd(impact.initialMarketCapUsd)}
+              hint={`${fmtPrice(impact.startQuotePerToken)} ${quote.symbol} x supply`}
+            />
+            <ImpactStat
+              label="Cost to 2x"
+              value={impactDoubleLabel(impact)}
+              hint={
+                impact.doubledCapped
+                  ? "Max is under 2x. This is the cost to walk the whole range."
+                  : `USD to move start to ${fmtPrice(impact.doubledQuotePerToken)} ${quote.symbol}. Includes swap fee.`
+              }
+            />
+            <ImpactStat
+              label={`$${USD_BUY_PROBE} buys`}
+              value={fmtPct(impact.supplyPctForUsd)}
+              hint={
+                impact.tokensForUsd != null
+                  ? `${fmtPrice(impact.tokensForUsd)} ${draft.symbol || "TOKEN"} at constant USD`
+                  : quoteUsd > 0
+                    ? "Need a USD price from Alcor."
+                    : "Waiting on USD from Alcor."
+              }
+            />
+          </div>
+          <div className="mt-2 flex justify-end">
+            <button type="button" className="link text-xs" onClick={() => setMoreInfo((v) => !v)}>
+              {moreInfo ? "hide" : "more info"}
+            </button>
+          </div>
+          {moreInfo && plan ? (
+            <RangeMoreInfo
+              plan={plan}
+              maxSupply={draft.maxSupply}
+              quoteUsd={quoteUsd}
+              quoteSymbol={quote.symbol}
+              tokenSymbol={draft.symbol || "TOKEN"}
+              initialMarketCapUsd={impact.initialMarketCapUsd}
+            />
+          ) : null}
         </div>
       ) : null}
 

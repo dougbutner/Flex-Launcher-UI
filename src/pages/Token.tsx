@@ -4,11 +4,13 @@ import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
+import { TokenListingCard } from "@/components/token/TokenListingCard";
 import {
   alcorSwapUrl,
   explorerAccount,
   flexMeta,
   hasAngelChannels,
+  isFlexContractActor,
   programFromAccount,
 } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
@@ -26,6 +28,9 @@ import {
   pullangelAction,
   pulljackpotAction,
 } from "@/services/launchActions";
+import { listManagerTokens } from "@/services/managerApi";
+import { rememberRemoteTokenIcon } from "@/services/tokenIcons";
+import { findProtonTokenRow } from "@/services/tokenProton";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]): unknown {
@@ -54,6 +59,7 @@ export default function Token() {
   const [flexer, setFlexer] = useState<Record<string, unknown> | null>(null);
   const [poking, setPoking] = useState<string | null>(null);
   const [pokeMsg, setPokeMsg] = useState<{ tx?: string; err?: string }>({});
+  const [iconSrc, setIconSrc] = useState("");
 
   const load = useCallback(async () => {
     if (!code || !sym || !program) return;
@@ -74,6 +80,17 @@ export default function Token() {
       setSettings(conf);
       setPools(fp);
       setFlexer(actor ? (flexers.find((f) => String(pick(f, "owner")) === actor) ?? null) : null);
+      const prec = parseAsset(String(pick(s, "supply") ?? s?.max_supply ?? ""))?.precision ?? 4;
+      const [proton, stored] = await Promise.all([
+        findProtonTokenRow(code, prec, sym),
+        actor
+          ? listManagerTokens(actor === code ? { contract: code } : { issuer: actor }).catch(() => [])
+          : Promise.resolve([]),
+      ]);
+      const sq = stored.find((row) => row.symbol === sym && row.contract === code);
+      const url = proton?.iconurl || sq?.imageUrl || "";
+      if (url) rememberRemoteTokenIcon(code, sym, url);
+      setIconSrc(url);
     } catch (err) {
       setError(txErrorMessage(err));
     } finally {
@@ -102,6 +119,7 @@ export default function Token() {
   const meta = flexMeta(program);
   const issuer = String(pick(stat, "issuer") ?? "");
   const isIssuer = Boolean(actor && issuer && actor === issuer);
+  const isContractAdmin = Boolean(actor && isFlexContractActor(actor) && actor === code);
   const precision = parseAsset(String(pick(stat, "supply") ?? ""))?.precision ?? 4;
   const quote = pick(launch, "quote") as { quantity?: string; contract?: string } | undefined;
   const quoteSymbol = parseAsset(quote?.quantity ?? "")?.symbol ?? "";
@@ -150,7 +168,7 @@ export default function Token() {
             </Link>
           </p>
           <div className="mt-1 flex items-center gap-3">
-            <TokenIcon contract={code} symbol={sym} size={48} rounded="xl" />
+            <TokenIcon contract={code} symbol={sym} src={iconSrc} size={48} rounded="xl" />
             <h1 className="font-mono text-3xl font-black tracking-tight">${sym}</h1>
             {isLoggedIn && actor ? (
               <button
@@ -192,6 +210,18 @@ export default function Token() {
       </div>
 
       {error ? <p className="mt-6 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">{error}</p> : null}
+
+      {isLoggedIn && actor && (isIssuer || isContractAdmin) ? (
+        <div className="mt-6">
+          <TokenListingCard
+            contract={code}
+            symbol={sym}
+            precision={precision}
+            actor={actor}
+            transact={transact}
+          />
+        </div>
+      ) : null}
 
       {!launch && !busy ? (
         <p className="mt-6 text-sm text-muted-foreground">No launches row for this symbol on {code}.</p>

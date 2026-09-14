@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Field, StatusIcon, TxLink } from "@/components/launch/ui";
 import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
 import { TokenIcon } from "@/components/TokenIcon";
+import { TokenListingCard } from "@/components/token/TokenListingCard";
 import { flexMeta, hasAngelChannels } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { MANAGER_RESUME_KEY, writeLaunchDraft } from "@/hooks/useLaunchDraft";
@@ -388,7 +389,7 @@ export default function Manager() {
                 {meta.imageUrl ? (
                   <img src={meta.imageUrl} alt="" className="h-16 w-16 rounded-2xl object-cover" />
                 ) : (
-                  <TokenIcon contract={view.token.contract} symbol={view.token.symbol} size={64} rounded="xl" />
+                  <TokenIcon contract={view.token.contract} symbol={view.token.symbol} src={meta.imageUrl} size={64} rounded="xl" />
                 )}
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -480,6 +481,14 @@ export default function Manager() {
                 )}
               </div>
               {saveMsg ? <p className="text-xs text-muted-foreground">{saveMsg}</p> : null}
+
+              <TokenListingCard
+                contract={view.token.contract}
+                symbol={view.token.symbol}
+                precision={view.token.precision}
+                actor={actor}
+                transact={transact}
+              />
 
               {tax && settings ? (
                 <div className="space-y-3 border-t border-border pt-5">

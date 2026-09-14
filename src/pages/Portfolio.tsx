@@ -9,6 +9,7 @@ import { readAccounts, readFlexers, readLaunches, readStat, readXprBalance } fro
 import { checklockAction, payoutAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { loadProtonTokenTable } from "@/services/tokenProton";
 
 const DIST_BPS = 0.382;
 
@@ -59,6 +60,7 @@ export default function Portfolio() {
   const [busy, setBusy] = useState(false);
   const [poking, setPoking] = useState<string | null>(null);
   const [pokeMsg, setPokeMsg] = useState<Record<string, { tx?: string; err?: string }>>({});
+  const [iconsReady, setIconsReady] = useState(0);
 
   const load = useCallback(async () => {
     if (!actor) return;
@@ -68,6 +70,9 @@ export default function Portfolio() {
       .then(setXpr)
       .catch(() => setXpr(null));
     try {
+      void loadProtonTokenTable()
+        .then(() => setIconsReady((n) => n + 1))
+        .catch(() => []);
       const rows: Holding[] = [];
       const mine: Issued[] = [];
       await Promise.all(
@@ -250,7 +255,7 @@ export default function Portfolio() {
             {issued.map((t) => (
               <li key={t.key} className="card flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <TokenIcon contract={t.contract} symbol={t.symbol} size={36} rounded="xl" />
+                  <TokenIcon key={iconsReady} contract={t.contract} symbol={t.symbol} size={36} rounded="xl" />
                   <div>
                   <div className="font-mono font-bold">${t.symbol}</div>
                   <div className="text-xs text-muted-foreground">
@@ -287,7 +292,7 @@ export default function Portfolio() {
               <article key={h.key} className="card p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <TokenIcon contract={h.contract} symbol={h.symbol} size={40} rounded="xl" />
+                    <TokenIcon key={iconsReady} contract={h.contract} symbol={h.symbol} size={40} rounded="xl" />
                     <div>
                     <div className="font-mono text-lg font-bold">${h.symbol}</div>
                     <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
