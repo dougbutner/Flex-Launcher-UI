@@ -32,41 +32,49 @@ const BENEFITS = [
     id: "economics",
     title: "Sane economics",
     body: "You go live on a real market with a price range, no unplanned curve snipers love to pump and dump. Tokens start on Alcor with a fee you earn 100% of, and a price range you choose.",
+    image: "/home/set-price-range.jpg",
   },
   {
     id: "mining",
     title: "Pure Liquid Mining",
     body: "Every token is bought out of the pool. Nobody keeps a stash on the side, no \"premine\" or sketchy allocations. Fair launch in the DNA.",
+    image: "/home/pure-liquid-mining.jpg",
   },
   {
     id: "lock",
     title: "Locked Pools",
     body: "The pool stays locked at least 90 days, and we hope you choose longer to show you community the liquidity they put in is here for them.",
+    image: "/home/locked-pools.jpg",
   },
   {
     id: "holders",
     title: "Diamond Hands Get Rained On",
     body: "Making it rain is paying people who hold. This comes from a transfer fee you set. You also choose what % is burnt, goes to the project, or is given as special jackpots and Angel rewards. Anyone can call in the rain to drench your holders.",
+    image: "/home/diamond-hands.jpg",
   },
   {
     id: "flex",
     title: "Rewards Flex",
     body: "Holder payout is flexible. Holders can choose your token, BTC, XRP, or another asset. You set up pools and add options.",
+    image: "/home/old-tokens-new.jpg",
   },
   {
     id: "identity",
     title: "Old tokens with a new face",
     body: "Link your token with BTC, DOGE, or many more. Launch tokens backed by EASY, XRP, SOL, and you can set the default reflection to be the backing-asset if you prefer (default is your token as the interest).",
+    image: "/home/old-tokens-new.jpg",
   },
   {
     id: "skim",
     title: "House Cut",
     body: "We're generous, and you might never have to pay a fee. Tokens backed by EASY, WON, GRAMS or MEME launch at 0%. Others take a small 0.5% of the reflection pool each time it rains, and all take 0.5% when the lock expires (if you don't extend the lock).",
+    image: "/home/three-buckets.jpg",
   },
   {
     id: "rock",
     title: "Choose Your Tech",
     body: "Reflect with easyflex. Project fees and inheritance with complexflex. Jackpots and angel numbers with flexforex. Choose your backing token to serve as your rock.",
+    image: "/home/choose-your-tech.jpg",
   },
 ] as const;
 
@@ -133,8 +141,7 @@ export default function Home() {
 
       <section className="home-hero" aria-label="Flex launcher">
         <div className="home-hero__plate" style={plateStyle(wash)}>
-          <div className="home-hero__tex home-tex home-tex--field" data-parallax="0.18" />
-          <div className="home-hero__mark" />
+          <img className="home-art" src="/home/liftoff.jpg" alt="Prepare for liftoff" />
         </div>
         <h1 className="home-hero__title">
           Pure Liquid
@@ -161,10 +168,7 @@ export default function Home() {
             className={`home-spread home-spread--${side}`}
           >
             <div className="home-spread__plate" style={plateStyle(plates[i])}>
-              <div
-                className={`home-tex ${i % 2 === 0 ? "home-tex--field" : "home-tex--tess"}`}
-                data-parallax="0.16"
-              />
+              <img className="home-art" src={item.image} alt="" />
             </div>
             <h2 className="home-spread__title">{item.title}</h2>
             <p className="home-spread__body">{item.body}</p>

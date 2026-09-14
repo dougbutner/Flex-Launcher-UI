@@ -75,6 +75,8 @@ import {
   parseManagerToken,
   sanitizeManagerMeta,
 } from "@/services/managerStore";
+import { fmtUsd } from "@/services/money";
+import { sortLargeCap, sortLoudest, sortNewcomers, sortPopular, type BoardToken } from "@/services/leaderboardStore";
 
 describe("tick math", () => {
   it("tick 0 is 2^64", () => {
@@ -841,5 +843,38 @@ describe("issuer manager store", () => {
     expect(back.rainMinHold).toBe(1000);
     expect(back.rainMinPool).toBe(50);
     expect(parseManagerToken({ ...row, imageUrl: "not-a-url" })).toBeNull();
+  });
+});
+
+describe("leaderboard tiles", () => {
+  const sample = (p: Partial<BoardToken> & Pick<BoardToken, "symbol">): BoardToken => ({
+    id: `for3x:${p.symbol}`,
+    program: "flexforex",
+    contract: "for3x",
+    quoteSymbol: "EASY",
+    quoteContract: "mon3y",
+    poolId: 1,
+    firstSeenAt: 1,
+    mcapUsd: 0,
+    liqUsd: 0,
+    volumeUsd: 0,
+    holders: 0,
+    ...p,
+  });
+
+  it("formats usd compactly", () => {
+    expect(fmtUsd(0)).toBe("-");
+    expect(fmtUsd(12.34)).toBe("$12.34");
+    expect(fmtUsd(1500)).toBe("$1,500");
+  });
+
+  it("sorts newcomers, volume, mcap, and holders", () => {
+    const a = sample({ symbol: "AAA", firstSeenAt: 10, poolId: 2, volumeUsd: 1, mcapUsd: 9, holders: 2 });
+    const b = sample({ symbol: "BBB", firstSeenAt: 30, poolId: 1, volumeUsd: 8, mcapUsd: 3, holders: 9 });
+    const c = sample({ symbol: "CCC", firstSeenAt: 20, poolId: 9, volumeUsd: 8, mcapUsd: 4, holders: 9 });
+    expect(sortNewcomers([a, b, c]).map((t) => t.symbol)).toEqual(["BBB", "CCC", "AAA"]);
+    expect(sortLoudest([a, b, c]).map((t) => t.symbol)).toEqual(["CCC", "BBB", "AAA"]);
+    expect(sortLargeCap([a, b, c]).map((t) => t.symbol)).toEqual(["AAA", "CCC", "BBB"]);
+    expect(sortPopular([a, b, c]).map((t) => t.symbol)).toEqual(["CCC", "BBB", "AAA"]);
   });
 });

@@ -7,6 +7,7 @@ import { readLaunches, readStat } from "@/services/flexTables";
 import { storedPayoutAction } from "@/services/rainDefaults";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { fmtUsd } from "@/services/money";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
 
 const DIST_BPS = 0.382;
@@ -25,16 +26,6 @@ function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]
   if (!row) return undefined;
   for (const k of keys) if (row[k] != null) return row[k];
   return undefined;
-}
-
-function fmtUsd(n: number): string {
-  if (!(n > 0) || !Number.isFinite(n)) return "-";
-  if (n >= 1e12) return `$${(n / 1e12).toPrecision(3)}T`;
-  if (n >= 1e9) return `$${(n / 1e9).toPrecision(3)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toPrecision(3)}M`;
-  if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (n >= 1) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  return `$${n.toPrecision(3)}`;
 }
 
 function fmtPool(n: number, precision: number): string {
