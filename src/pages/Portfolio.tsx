@@ -6,7 +6,8 @@ import { FLEX_PROGRAMS, alcorSwapUrl, flexAccount, type FlexProgram } from "@/co
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { readAccounts, readFlexers, readLaunches, readStat, readXprBalance } from "@/services/flexTables";
-import { checklockAction, payoutAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
+import { checklockAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
+import { storedPayoutAction } from "@/services/rainDefaults";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { loadProtonTokenTable } from "@/services/tokenProton";
@@ -174,7 +175,7 @@ export default function Portfolio() {
     try {
       const action =
         kind === "rain"
-          ? payoutAction(h.contract, h.symbol, actor, h.payoutSigner)
+          ? await storedPayoutAction(h.contract, h.symbol, actor, h.payoutSigner)
           : kind === "checklock"
             ? checklockAction(h.contract, h.symbol)
             : kind === "pullangel"

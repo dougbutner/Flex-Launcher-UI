@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Field, StatusIcon, TxLink } from "@/components/launch/ui";
+import { RainDefaultsFields } from "@/components/launch/RainDefaultsFields";
 import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
 import { TokenIcon } from "@/components/TokenIcon";
 import { TokenListingCard } from "@/components/token/TokenListingCard";
@@ -25,6 +26,7 @@ import {
 import { formatSupplyCommas, parseAsset } from "@/services/assets";
 import { readSettings } from "@/services/flexTables";
 import { payoutAction, ratiosAction, setfeesAction, type ChainAction } from "@/services/launchActions";
+import { rainFromRow, type RainDefaults } from "@/services/rainDefaults";
 import { hasProjectTax, taxFromSettings, taxRateValid, type TaxDraft } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
@@ -53,6 +55,9 @@ export default function Manager() {
   const [raining, setRaining] = useState(false);
   const [rainMsg, setRainMsg] = useState("");
   const [rainTx, setRainTx] = useState("");
+  const [rain, setRain] = useState<RainDefaults>({ rainMinHold: 0, rainMinPool: 0 });
+  const [rainSaving, setRainSaving] = useState(false);
+  const [rainSaveMsg, setRainSaveMsg] = useState("");
 
   const load = useCallback(async () => {
     if (!actor) return;
@@ -114,6 +119,8 @@ export default function Manager() {
     setTaxTx(null);
     setRainMsg("");
     setRainTx("");
+    setRain(rainFromRow(view.token));
+    setRainSaveMsg("");
     let cancelled = false;
     void readSettings(view.token.contract, view.token.symbol)
       .then((row) => {
@@ -270,6 +277,32 @@ export default function Manager() {
     }
   };
 
+  const saveRainDefaults = async () => {
+    if (!view) return;
+    setRainSaving(true);
+    setRainSaveMsg("");
+    try {
+      const saved = await upsertManagerToken({
+        ...view.token,
+        rainMinHold: rain.rainMinHold,
+        rainMinPool: rain.rainMinPool,
+        updatedAt: Date.now(),
+      });
+      setViews((prev) =>
+        (prev ?? []).map((v) =>
+          managerTokenKey(v.token.contract, v.token.symbol) === managerTokenKey(saved.contract, saved.symbol)
+            ? { ...v, token: { ...v.token, ...saved } }
+            : v
+        )
+      );
+      setRainSaveMsg("Saved. Make it rain pokes in this app use these floors.");
+    } catch (err) {
+      setRainSaveMsg(txErrorMessage(err));
+    } finally {
+      setRainSaving(false);
+    }
+  };
+
   const makeItRain = async () => {
     if (!view || !actor || view.inProgress) return;
     setRaining(true);
@@ -277,7 +310,13 @@ export default function Manager() {
     setRainTx("");
     try {
       const res = await transact([
-        payoutAction(view.token.contract, view.token.symbol, actor, flexMeta(view.token.program).payoutSigner),
+        payoutAction(
+          view.token.contract,
+          view.token.symbol,
+          actor,
+          flexMeta(view.token.program).payoutSigner,
+          rain
+        ),
       ]);
       setRainTx(txIdFromResult(res) || "ok");
     } catch (err) {
@@ -489,6 +528,19 @@ export default function Manager() {
                 actor={actor}
                 transact={transact}
               />
+
+              <div className="space-y-3 border-t border-border pt-5">
+                <RainDefaultsFields value={rain} onChange={setRain} disabled={rainSaving || busy} />
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  disabled={rainSaving || busy || !view.token.createTx}
+                  onClick={() => void saveRainDefaults()}
+                >
+                  {rainSaving ? "Saving…" : "Save rain defaults"}
+                </button>
+                {rainSaveMsg ? <p className="text-xs text-muted-foreground">{rainSaveMsg}</p> : null}
+              </div>
 
               {tax && settings ? (
                 <div className="space-y-3 border-t border-border pt-5">

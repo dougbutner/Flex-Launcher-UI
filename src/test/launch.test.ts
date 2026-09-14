@@ -228,9 +228,11 @@ describe("launch plan", () => {
       name: "makeitrain",
       data: { token_symbol: "BAR", sender: "alice" },
     });
-    expect(payoutAction("flex.mon3y", "BAR", "alice", "keeper").data).toEqual({
+    expect(payoutAction("flex.mon3y", "BAR", "alice", "keeper", { rainMinHold: 10, rainMinPool: 20 }).data).toEqual({
       token_symbol: "BAR",
       keeper: "alice",
+      min_hold: 10,
+      min_pool: 20,
     });
     expect(flexAccount("easyflex")).toBe(EASYFLEX_CONTRACT);
     expect(flexAccount("complexflex")).toBe(COMPLEXFLEX_CONTRACT);
@@ -826,12 +828,18 @@ describe("issuer manager store", () => {
     d.symbol = "FOO";
     d.createTx = "tx1";
     d.imageUrl = "https://gateway.pinata.cloud/ipfs/cid";
+    d.rainMinHold = 1000;
+    d.rainMinPool = 50;
     const row = managerFromDraft("alice", d);
     expect(row.contract).toBe("for3x");
     expect(row.imageUrl).toContain("https://");
+    expect(row.rainMinHold).toBe(1000);
+    expect(row.rainMinPool).toBe(50);
     const back = draftFromManager(row);
     expect(back.symbol).toBe("FOO");
     expect(back.createTx).toBe("tx1");
+    expect(back.rainMinHold).toBe(1000);
+    expect(back.rainMinPool).toBe(50);
     expect(parseManagerToken({ ...row, imageUrl: "not-a-url" })).toBeNull();
   });
 });

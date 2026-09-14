@@ -1,19 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { TxLink } from "@/components/launch/ui";
-import { FLEX_PROGRAMS, explorerTx, flexAccount, flexMeta, type FlexProgram } from "@/config/launch";
+import { FLEX_PROGRAMS, flexAccount, flexMeta, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { parseAsset } from "@/services/assets";
 import { readLaunches, readStat } from "@/services/flexTables";
-import { payoutAction } from "@/services/launchActions";
-import { getActions, type HyperionAction } from "@/services/rpc";
+import { storedPayoutAction } from "@/services/rainDefaults";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
 
-const PAGE = 25;
 const DIST_BPS = 0.382;
-
-type Row = HyperionAction & { contract: string; actionName: string };
 
 type Dryland = {
   key: string;
@@ -29,21 +25,6 @@ function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]
   if (!row) return undefined;
   for (const k of keys) if (row[k] != null) return row[k];
   return undefined;
-}
-
-function ts(a: HyperionAction): string {
-  const raw = a["@timestamp"] ?? a.timestamp;
-  if (!raw) return "-";
-  const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? raw : d.toLocaleString();
-}
-
-function dataSummary(data: Record<string, unknown> | undefined): Array<[string, string]> {
-  if (!data) return [];
-  return Object.entries(data)
-    .filter(([, v]) => typeof v === "string" || typeof v === "number")
-    .slice(0, 6)
-    .map(([k, v]) => [k, String(v)]);
 }
 
 function fmtUsd(n: number): string {
@@ -89,9 +70,7 @@ async function loadDrylands(): Promise<Dryland[]> {
       );
     })
   );
-  const rows = groups
-    .flat()
-    .filter((row): row is Dryland => row != null);
+  const rows = groups.flat().filter((row): row is Dryland => row != null);
   await Promise.all(
     rows.map(async (row) => {
       const usdPrice = await fetchAlcorUsdPrice(row.contract, row.symbol).catch(() => 0);
@@ -103,7 +82,6 @@ async function loadDrylands(): Promise<Dryland[]> {
 
 export default function Reflections() {
   const { actor, isLoggedIn, addWebAuthWallet, transact } = useWallet();
-  const [actions, setActions] = useState<Row[]>([]);
   const [drylands, setDrylands] = useState<Dryland[] | null>(null);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
@@ -111,33 +89,7 @@ export default function Reflections() {
   const [rainMsg, setRainMsg] = useState<Record<string, { tx?: string; err?: string }>>({});
 
   const pull = useCallback(async () => {
-    const [pages, pending] = await Promise.all([
-      Promise.all(
-        FLEX_PROGRAMS.map(async (p) => {
-          const account = flexAccount(p.id);
-          const actionName = "makeitrain";
-          try {
-            const res = await getActions({
-              account,
-              filter: `${account}:${actionName}`,
-              limit: PAGE,
-              skip: 0,
-            });
-            return res.actions.map((a) => ({ ...a, contract: account, actionName }));
-          } catch {
-            return [] as Row[];
-          }
-        })
-      ),
-      loadDrylands().catch(() => [] as Dryland[]),
-    ]);
-    const merged = pages.flat().sort((a, b) => {
-      const ta = Date.parse(String(a["@timestamp"] ?? a.timestamp ?? 0));
-      const tb = Date.parse(String(b["@timestamp"] ?? b.timestamp ?? 0));
-      return tb - ta;
-    });
-    setActions(merged);
-    setDrylands(pending);
+    setDrylands(await loadDrylands());
   }, []);
 
   const load = useCallback(async () => {
@@ -161,7 +113,7 @@ export default function Reflections() {
     setRainMsg((m) => ({ ...m, [d.key]: {} }));
     try {
       const res = await transact([
-        payoutAction(d.contract, d.symbol, actor, flexMeta(d.program).payoutSigner),
+        await storedPayoutAction(d.contract, d.symbol, actor, flexMeta(d.program).payoutSigner),
       ]);
       setRainMsg((m) => ({ ...m, [d.key]: { tx: txIdFromResult(res) || "ok" } }));
       await pull();
@@ -182,13 +134,10 @@ export default function Reflections() {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">Make it Rain</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Pending pools on-contract, then stored <span className="font-mono">makeitrain</span> history.
-          </p>
+          <h1 className="text-3xl font-black tracking-tight">The rain dance that always hits.</h1>
         </div>
         <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>
-          {busy && drylands == null && actions.length === 0 ? "Loading…" : "Refresh"}
+          {busy && drylands == null ? "Loading…" : "Refresh"}
         </button>
       </div>
 
@@ -266,55 +215,6 @@ export default function Reflections() {
             })}
           </div>
         )}
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-bold tracking-tight">Stored reflections</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          <span className="font-mono">makeitrain</span> on all three programs. Skim first, then the 38.2% splash.
-        </p>
-        <div className="mt-4 space-y-2">
-          {actions.length === 0 && !busy ? (
-            <div className="card p-8 text-center text-sm text-muted-foreground">
-              No payouts yet. After liftoff, anyone can poke <span className="font-mono">makeitrain</span>.
-            </div>
-          ) : (
-            actions.map((a, i) => {
-              const id = a.trx_id ?? "";
-              const rows = dataSummary(a.act?.data);
-              return (
-                <article key={`${id}-${i}`} className="card p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold">{ts(a)}</span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {a.contract}::{a.actionName}
-                    </span>
-                    {id ? (
-                      <a
-                        href={explorerTx(id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="link font-mono text-xs"
-                      >
-                        {id.slice(0, 12)}…
-                      </a>
-                    ) : null}
-                  </div>
-                  {rows.length ? (
-                    <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
-                      {rows.map(([k, v]) => (
-                        <div key={k} className="flex items-baseline gap-1.5 text-xs">
-                          <dt className="text-muted-foreground">{k}</dt>
-                          <dd className="font-mono font-medium">{v}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  ) : null}
-                </article>
-              );
-            })
-          )}
-        </div>
       </section>
     </div>
   );

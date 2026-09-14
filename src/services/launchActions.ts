@@ -186,12 +186,20 @@ export function payoutAction(
   tokenContract: string,
   tokenSymbol: string,
   signer: string,
-  role: "sender" | "keeper"
+  role: "sender" | "keeper",
+  rain: { rainMinHold?: number; rainMinPool?: number } = {}
 ): ChainAction {
+  const min_hold = Math.max(0, Math.floor(Number(rain.rainMinHold) || 0));
+  const min_pool = Math.max(0, Math.floor(Number(rain.rainMinPool) || 0));
+  const who = role === "keeper" ? { keeper: signer } : { sender: signer };
   return {
     account: tokenContract,
     name: "makeitrain",
-    data: role === "keeper" ? { token_symbol: tokenSymbol, keeper: signer } : { token_symbol: tokenSymbol, sender: signer },
+    data: {
+      token_symbol: tokenSymbol,
+      ...who,
+      ...(min_hold > 0 || min_pool > 0 ? { min_hold, min_pool } : {}),
+    },
   };
 }
 

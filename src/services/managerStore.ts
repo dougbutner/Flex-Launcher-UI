@@ -1,4 +1,5 @@
 import { validAccount, validSymbol } from "@/services/assets";
+import { rainRaw } from "@/services/rainRaw";
 import { validImageUrl } from "@/services/tokenLogo";
 import type { FeeTier, FlexProgram } from "@/config/launch";
 
@@ -63,6 +64,8 @@ export type ManagerToken = {
   projectAccount: string;
   angelNumbersBps: number;
   jackpotBps: number;
+  rainMinHold: number;
+  rainMinPool: number;
   priceLower: string;
   priceUpper: string;
   lockDays: number;
@@ -130,6 +133,8 @@ export function emptyManagerToken(): ManagerToken {
     projectAccount: "",
     angelNumbersBps: 0,
     jackpotBps: 0,
+    rainMinHold: 0,
+    rainMinPool: 0,
     priceLower: "",
     priceUpper: "",
     lockDays: 90,
@@ -192,6 +197,8 @@ export function parseManagerToken(raw: unknown): ManagerToken | null {
     projectAccount: str(o.projectAccount, 12).toLowerCase(),
     angelNumbersBps: Math.max(0, Math.min(10000, Math.floor(num(o.angelNumbersBps, 0)))),
     jackpotBps: Math.max(0, Math.min(10000, Math.floor(num(o.jackpotBps, 0)))),
+    rainMinHold: rainRaw(o.rainMinHold),
+    rainMinPool: rainRaw(o.rainMinPool),
     priceLower: str(o.priceLower, 64),
     priceUpper: str(o.priceUpper, 64),
     lockDays: Math.max(90, Math.floor(num(o.lockDays, 90))),

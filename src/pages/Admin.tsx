@@ -1,14 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { RainDefaultsFields } from "@/components/launch/RainDefaultsFields";
 import { ListingPacket } from "@/components/token/ListingPacket";
 import { isFlexContractActor, programFromAccount } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { validSymbol } from "@/services/assets";
+import { readStat } from "@/services/flexTables";
 import {
   draftFromSources,
   emptyListingDraft,
   mergeAdminTokenRefs,
   type ListingDraft,
 } from "@/services/listingHelper";
+import { listManagerTokens, upsertManagerToken } from "@/services/managerApi";
+import { emptyManagerToken, type ManagerToken } from "@/services/managerStore";
+import { rainFromRow, type RainDefaults } from "@/services/rainDefaults";
 import {
   listContractTokenRefs,
   listProtonRowsForContract,
@@ -17,7 +22,6 @@ import {
   rowMatchesContractSymbol,
   type ProtonTokenRow,
 } from "@/services/tokenProton";
-import { listManagerTokens } from "@/services/managerApi";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 export default function Admin() {
@@ -27,8 +31,12 @@ export default function Admin() {
   const [error, setError] = useState("");
   const [tokens, setTokens] = useState<Array<{ symbol: string; precision: number }>>([]);
   const [rows, setRows] = useState<ProtonTokenRow[]>([]);
+  const [stored, setStored] = useState<ManagerToken[]>([]);
   const [drafts, setDrafts] = useState<Record<string, ListingDraft>>({});
+  const [rain, setRain] = useState<Record<string, RainDefaults>>({});
   const [signing, setSigning] = useState<string | null>(null);
+  const [rainSaving, setRainSaving] = useState<string | null>(null);
+  const [rainMsg, setRainMsg] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<Record<string, { tx?: string; err?: string }>>({});
   const [manualSym, setManualSym] = useState("");
   const [manualPrec, setManualPrec] = useState("6");
@@ -54,6 +62,14 @@ export default function Admin() {
       });
       setTokens(nextTokens);
       setRows(proton.list);
+      setStored(stored);
+      setRain((prev) => {
+        const next = { ...prev };
+        for (const t of nextTokens) {
+          next[t.symbol] = rainFromRow(stored.find((s) => s.symbol === t.symbol));
+        }
+        return next;
+      });
       setDrafts((prev) => {
         const next = { ...prev };
         for (const t of nextTokens) {
@@ -116,6 +132,44 @@ export default function Admin() {
     }
   };
 
+  const saveRain = async (symbol: string, precision: number) => {
+    if (!actor) return;
+    const program = programFromAccount(actor);
+    if (!program) return;
+    const defaults = rain[symbol] ?? rainFromRow(null);
+    setRainSaving(symbol);
+    setRainMsg((m) => ({ ...m, [symbol]: "" }));
+    try {
+      let row = stored.find((s) => s.symbol === symbol);
+      if (!row) {
+        const stat = await readStat(actor, symbol);
+        const issuer = String(stat?.issuer ?? "");
+        if (!issuer) throw new Error("Need a stat issuer to store rain defaults.");
+        row = {
+          ...emptyManagerToken(),
+          issuer,
+          contract: actor,
+          symbol,
+          precision,
+          program,
+          name: symbol,
+          createTx: "onchain",
+        };
+      }
+      const saved = await upsertManagerToken({ ...row, ...defaults, updatedAt: Date.now() });
+      setStored((prev) => {
+        const rest = prev.filter((s) => s.symbol !== symbol);
+        return [...rest, saved];
+      });
+      setRain((r) => ({ ...r, [symbol]: rainFromRow(saved) }));
+      setRainMsg((m) => ({ ...m, [symbol]: "Saved. Make it rain pokes in this app use these floors." }));
+    } catch (err) {
+      setRainMsg((m) => ({ ...m, [symbol]: txErrorMessage(err) }));
+    } finally {
+      setRainSaving(null);
+    }
+  };
+
   const addManual = () => {
     const symbol = manualSym.trim().toUpperCase();
     const precision = Math.max(0, Math.min(8, Number(manualPrec) || 0));
@@ -124,6 +178,7 @@ export default function Admin() {
       t.some((x) => x.symbol === symbol) ? t : [...t, { symbol, precision }].sort((a, b) => a.symbol.localeCompare(b.symbol))
     );
     setDrafts((d) => ({ ...d, [symbol]: d[symbol] ?? emptyListingDraft(symbol) }));
+    setRain((r) => ({ ...r, [symbol]: r[symbol] ?? rainFromRow(null) }));
     setManualSym("");
   };
 
@@ -133,7 +188,8 @@ export default function Admin() {
         <h1 className="text-3xl font-black tracking-tight">Admin</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Connect as <span className="font-mono">3asy</span>, <span className="font-mono">fl3x</span>, or{" "}
-          <span className="font-mono">for3x</span> to sync token metadata to token.proton.
+          <span className="font-mono">for3x</span> to sync token metadata to token.proton and set frontend makeitrain
+          floors.
         </p>
       </div>
     );
@@ -162,6 +218,22 @@ export default function Admin() {
           onSign={() => void sign(t.symbol, t.precision, row)}
           msg={msg[t.symbol]}
         />
+        <div className="mt-4 space-y-3 border-t border-border pt-4">
+          <RainDefaultsFields
+            value={rain[t.symbol] ?? rainFromRow(null)}
+            disabled={rainSaving != null}
+            onChange={(next) => setRain((r) => ({ ...r, [t.symbol]: next }))}
+          />
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            disabled={rainSaving != null}
+            onClick={() => void saveRain(t.symbol, t.precision)}
+          >
+            {rainSaving === t.symbol ? "Savingù" : "Save rain defaults"}
+          </button>
+          {rainMsg[t.symbol] ? <p className="text-xs text-muted-foreground">{rainMsg[t.symbol]}</p> : null}
+        </div>
       </li>
     );
   };
@@ -194,11 +266,11 @@ export default function Admin() {
         Signed in as <span className="font-mono">{actor}</span>
         {program ? ` (${program})` : ""}. Fill name, URL, description, and icon URL, then sign token.proton::reg or
         update as {actor}@active. Lists merge launches, create history, and Manager sqlite even if token.proton scan
-        fails.
+        fails. Rain min_hold / min_pool here are sqlite only. They prefill every Make it rain poke in this app.
       </p>
       <div className="mt-4 flex items-center gap-2">
         <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>
-          {busy ? "LoadingÖ" : "Refresh"}
+          {busy ? "Loadingù" : "Refresh"}
         </button>
       </div>
       {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}

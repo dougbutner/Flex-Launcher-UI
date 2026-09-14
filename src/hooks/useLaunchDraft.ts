@@ -30,6 +30,9 @@ export type LaunchDraft = {
   /** for3x: share of reflection_rate cut into angel / jackpot pots. */
   angelNumbersBps: number;
   jackpotBps: number;
+  /** Frontend makeitrain min_hold / min_pool. Not on-chain. */
+  rainMinHold: number;
+  rainMinPool: number;
   quoteId: (typeof QUOTE_PRESETS)[number]["id"];
   xtokenSymbol: string;
   xtokenPrecision: number;
@@ -101,6 +104,8 @@ export const emptyDraft = (): LaunchDraft => {
     projectAccount: tax.projectAccount,
     angelNumbersBps: tax.angelNumbersBps,
     jackpotBps: tax.jackpotBps,
+    rainMinHold: 0,
+    rainMinPool: 0,
     quoteId: "easy",
     xtokenSymbol: "XUSDC",
     xtokenPrecision: 6,

@@ -74,6 +74,10 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
           />
         ) : null}
         <Row
+          k="Rain poke (frontend)"
+          v={`min_hold ${draft.rainMinHold} · min_pool ${draft.rainMinPool}`}
+        />
+        <Row
           k="Quote"
           v={`${quote.symbol} @ ${quote.contract}${preset.flexQuote ? "" : ` · proof pool #${draft.proofPoolId}`}`}
         />

@@ -24,11 +24,11 @@ import {
 } from "@/services/flexTables";
 import {
   checklockAction,
-  payoutAction,
   pullangelAction,
   pulljackpotAction,
 } from "@/services/launchActions";
 import { listManagerTokens } from "@/services/managerApi";
+import { storedPayoutAction } from "@/services/rainDefaults";
 import { rememberRemoteTokenIcon } from "@/services/tokenIcons";
 import { findProtonTokenRow } from "@/services/tokenProton";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
@@ -136,7 +136,7 @@ export default function Token() {
     try {
       const action =
         kind === "rain"
-          ? payoutAction(code, sym, actor, meta.payoutSigner)
+          ? await storedPayoutAction(code, sym, actor, meta.payoutSigner)
           : kind === "checklock"
             ? checklockAction(code, sym)
             : kind === "pullangel"

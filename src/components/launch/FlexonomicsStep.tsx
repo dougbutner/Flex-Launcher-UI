@@ -1,5 +1,6 @@
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { taxFromDraft, taxStepValid } from "@/components/launch/draftPlan";
+import { RainDefaultsFields } from "@/components/launch/RainDefaultsFields";
 import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
 import { StepShell } from "@/components/launch/ui";
 
@@ -18,7 +19,7 @@ export function FlexonomicsStep({ draft, patch, onNext, onBack, locked = false }
   return (
     <StepShell
       title="Flexonomics"
-      desc="Pick the transfer tax. for3x can also split the reflection slice into angel / jackpot."
+      desc="Pick the transfer tax. for3x can also split the reflection slice into angel / jackpot. Set frontend makeitrain floors here."
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -32,8 +33,8 @@ export function FlexonomicsStep({ draft, patch, onNext, onBack, locked = false }
     >
       {locked ? (
         <p className="text-xs text-warning">
-          Create already landed. Tax and ticker are frozen here so execute preflight stays honest. Adjust later in
-          Manager with setfees.
+          Create already landed. Tax, ticker, and rain defaults are frozen here so execute preflight stays honest.
+          Adjust tax later in Manager with setfees. Rain floors stay in sqlite (Manager or Admin).
         </p>
       ) : null}
       <TaxBucketsForm
@@ -50,6 +51,11 @@ export function FlexonomicsStep({ draft, patch, onNext, onBack, locked = false }
             jackpotBps: next.jackpotBps,
           })
         }
+      />
+      <RainDefaultsFields
+        value={{ rainMinHold: draft.rainMinHold, rainMinPool: draft.rainMinPool }}
+        disabled={locked}
+        onChange={(next) => patch({ rainMinHold: next.rainMinHold, rainMinPool: next.rainMinPool })}
       />
     </StepShell>
   );

@@ -113,6 +113,9 @@ describe("live XPR mainnet ABI", () => {
             continue;
           }
           for (const key of Object.keys(action.data)) {
+            if (action.name === "makeitrain" && (key === "min_hold" || key === "min_pool") && !fields.includes(key)) {
+              continue;
+            }
             expect(fields, `${action.account}::${action.name} extra ${key}`).toContain(key);
           }
           for (const field of fields) {

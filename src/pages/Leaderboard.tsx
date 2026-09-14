@@ -6,7 +6,8 @@ import { FLEX_PROGRAMS, alcorSwapUrl, explorerAccount, flexAccount, flexMeta, ty
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { readFlexers, readLaunches, readStat } from "@/services/flexTables";
-import { checklockAction, payoutAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
+import { checklockAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
+import { storedPayoutAction } from "@/services/rainDefaults";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { loadProtonTokenTable } from "@/services/tokenProton";
@@ -161,7 +162,7 @@ export default function Leaderboard() {
     try {
       const action =
         kind === "rain"
-          ? payoutAction(
+          ? await storedPayoutAction(
               selectedLaunch.code,
               selectedLaunch.symbol,
               actor,
