@@ -161,6 +161,27 @@ export function activepoolTransfer(from: string, quantity: string, contract: str
   };
 }
 
+/** Quote → swap.alcor after liftoff in the same tx so the issuer fills first. Min out is 0. */
+export function firstBuySwapAction(
+  from: string,
+  quoteQuantity: string,
+  quoteContract: string,
+  poolId: number,
+  minOutAsset: string,
+  tokenContract: string
+): ChainAction {
+  return {
+    account: quoteContract || EOSIO_TOKEN,
+    name: "transfer",
+    data: {
+      from,
+      to: SWAP_ALCOR,
+      quantity: quoteQuantity,
+      memo: `swapexactin#${poolId}#${from}#${minOutAsset}@${tokenContract}#0`,
+    },
+  };
+}
+
 export function payoutAction(
   tokenContract: string,
   tokenSymbol: string,

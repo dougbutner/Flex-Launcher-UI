@@ -16,6 +16,7 @@ import {
   addLaunchQuotePoolAction,
   addpoolAction,
   chooserewardAction,
+  firstBuySwapAction,
   feeoptoutAction,
   inheritanceAction,
   inheritmemoAction,
@@ -509,6 +510,18 @@ describe("holder and issuer manage actions", () => {
       account: "3asy",
       name: "setmin",
       data: { token_symbol: "FOO", reflect_min: 0 },
+    });
+    expect(
+      firstBuySwapAction("alice", "10.000000 EASY", "mon3y", 2142, "0.0000 FOO", "for3x")
+    ).toEqual({
+      account: "mon3y",
+      name: "transfer",
+      data: {
+        from: "alice",
+        to: SWAP_ALCOR,
+        quantity: "10.000000 EASY",
+        memo: "swapexactin#2142#alice#0.0000 FOO@for3x#0",
+      },
     });
   });
 });

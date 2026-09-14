@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EASY_SYMBOL,
   EOSIO_TOKEN,
@@ -23,6 +23,7 @@ import {
   createTokenAction,
   createpoolAction,
   depositAction,
+  firstBuySwapAction,
   liftoffAction,
   lockposAction,
   ratiosAction,
@@ -33,7 +34,8 @@ import {
 } from "@/services/launchActions";
 import { unlockTimeUnix, type LaunchPlan } from "@/services/launchMath";
 import { readAlcorSystem, readPool, resolvePoolIdAfterCreatepool } from "@/services/flexTables";
-import { assetAmountNumber } from "@/services/assets";
+import { assetAmountNumber, formatAsset, parseAsset, zeroAsset } from "@/services/assets";
+import { getCurrencyBalance } from "@/services/rpc";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { hasProjectTax } from "@/services/taxRates";
 import { persistLaunchDraft } from "@/services/managerApi";
@@ -47,6 +49,28 @@ type Props = {
 };
 
 const EASY_SWAP = alcorSwapUrl(XPR_SYMBOL, EOSIO_TOKEN, EASY_SYMBOL, MON3Y);
+
+function unitsFromAsset(amount: string, precision: number): number {
+  const [iRaw, fRaw = ""] = amount.replace("-", "").split(".");
+  const i = (iRaw.replace(/^0+(?=\d)/, "") || "0").replace(/[^\d]/g, "") || "0";
+  const frac = (fRaw + "0".repeat(precision)).slice(0, precision);
+  const n = Number(precision <= 0 ? i : `${i}${frac}`);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatUnits(units: number, precision: number, symbol: string): string {
+  const n = Math.max(0, Math.trunc(units));
+  const s = String(n).padStart(precision + 1, "0");
+  const amount = precision <= 0 ? s : `${s.slice(0, -precision)}.${s.slice(-precision)}`;
+  return formatAsset(amount, precision, symbol);
+}
+
+function parseBuyUnits(raw: string, precision: number, maxUnits: number): number {
+  const t = raw.trim().replace(/,/g, "").replace(/[^\d.]/g, "");
+  if (!t) return 0;
+  const [i = "0", f = ""] = t.split(".");
+  return Math.min(maxUnits, Math.max(0, unitsFromAsset(`${i || "0"}.${f}`, precision)));
+}
 
 function GateDetail({ text }: { text: string }) {
   if (!text.includes("EASY before liftoff")) return <>{text}</>;
@@ -224,7 +248,16 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
   const [manualPoolId, setManualPoolId] = useState("");
   const [gates, setGates] = useState<PreflightItem[] | null>(null);
   const [gatesBusy, setGatesBusy] = useState(false);
+  const [buyFirst, setBuyFirst] = useState(false);
+  const [quoteMaxUnits, setQuoteMaxUnits] = useState(0);
+  const [buyUnits, setBuyUnits] = useState(0);
+  const [buyBusy, setBuyBusy] = useState(false);
+  const [editBuy, setEditBuy] = useState(false);
+  const [buyText, setBuyText] = useState("");
+  const buyInputRef = useRef<HTMLInputElement>(null);
   const code = flexAccount(draft.program);
+  const quotePrecision = plan?.quote.precision ?? 0;
+  const quoteSymbol = plan?.quote.symbol ?? "";
 
   const checkGates = useCallback(async () => {
     if (!actor || draft.createTx) return;
@@ -292,12 +325,65 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
     if (locked && !draft.liftoffTx) void checkPreflight();
   }, [locked, draft.liftoffTx, checkPreflight]);
 
+  useEffect(() => {
+    if (!editBuy) return;
+    buyInputRef.current?.focus();
+    buyInputRef.current?.select();
+  }, [editBuy]);
+
+  useEffect(() => {
+    if (!buyFirst || !actor || !plan || !locked || draft.liftoffTx) return;
+    let live = true;
+    setBuyBusy(true);
+    void getCurrencyBalance(plan.quote.contract, actor, plan.quote.symbol)
+      .then((rows) => {
+        if (!live) return;
+        const parsed = parseAsset(rows[0] ?? "");
+        const max = parsed && parsed.symbol === plan.quote.symbol ? unitsFromAsset(parsed.amount, plan.quote.precision) : 0;
+        setQuoteMaxUnits(max);
+        setBuyUnits(max);
+      })
+      .catch(() => {
+        if (!live) return;
+        setQuoteMaxUnits(0);
+        setBuyUnits(0);
+      })
+      .finally(() => {
+        if (live) setBuyBusy(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [buyFirst, actor, plan, locked, draft.liftoffTx]);
+
+  const commitBuy = (raw: string) => {
+    setBuyUnits(parseBuyUnits(raw, quotePrecision, quoteMaxUnits));
+    setEditBuy(false);
+  };
+
   const liftoff = async () => {
     if (!actor || !plan || draft.poolId == null) return;
+    if (buyFirst && buyUnits <= 0) {
+      setLiftoffError("Pick an amount of quote to spend, or uncheck purchase first.");
+      return;
+    }
     setBusyId("liftoff");
     setLiftoffError("");
     try {
-      const result = await transact([liftoffAction(code, plan, draft.poolId)]);
+      const actions: ChainAction[] = [liftoffAction(code, plan, draft.poolId)];
+      if (buyFirst && buyUnits > 0) {
+        actions.push(
+          firstBuySwapAction(
+            actor,
+            formatUnits(buyUnits, plan.quote.precision, plan.quote.symbol),
+            plan.quote.contract,
+            draft.poolId,
+            zeroAsset(plan.launched.precision, plan.launched.symbol),
+            plan.launched.contract
+          )
+        );
+      }
+      const result = await transact(actions);
       const next = { ...draft, liftoffTx: txIdFromResult(result) || "ok" };
       patch({ liftoffTx: next.liftoffTx });
       void persistLaunchDraft(actor, next);
@@ -480,14 +566,93 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
             <p className="text-xs text-muted-foreground">Reading chain state…</p>
           )}
           {liftoffError ? <p className="text-xs font-medium text-destructive">{liftoffError}</p> : null}
-          <p className="font-mono text-[11px] text-muted-foreground">Wallet will ask for {code}::liftoff</p>
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background/40 p-3">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={buyFirst}
+              onChange={(e) => {
+                setBuyFirst(e.target.checked);
+                if (!e.target.checked) setEditBuy(false);
+              }}
+            />
+            <span>
+              <span className="block text-sm font-semibold">Purchase my token first</span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Same wallet prompt as liftoff. Spends {quoteSymbol || "quote"} into the new pool before anyone else can.
+              </span>
+            </span>
+          </label>
+          {buyFirst ? (
+            <div className="space-y-2">
+              {buyBusy ? (
+                <p className="text-xs text-muted-foreground">Reading {quoteSymbol} balance…</p>
+              ) : quoteMaxUnits <= 0 ? (
+                <p className="text-xs text-warning">No {quoteSymbol} in this wallet. Uncheck, or transfer some in first.</p>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min={0}
+                    max={quoteMaxUnits}
+                    step={1}
+                    value={Math.min(quoteMaxUnits, buyUnits)}
+                    onChange={(e) => setBuyUnits(Number(e.target.value))}
+                    className="flex-1 accent-[hsl(var(--primary))]"
+                  />
+                  {editBuy ? (
+                    <input
+                      ref={buyInputRef}
+                      className="input w-36 py-1 text-right font-mono text-sm font-bold"
+                      inputMode="decimal"
+                      value={buyText}
+                      onChange={(e) => setBuyText(e.target.value)}
+                      onBlur={() => commitBuy(buyText)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          commitBuy(buyText);
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setEditBuy(false);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span
+                      role="button"
+                      aria-label={`${formatUnits(buyUnits, quotePrecision, quoteSymbol)}. Click to type`}
+                      className="w-36 cursor-text select-none text-right font-mono text-sm font-bold"
+                      title="Click to type amount"
+                      onClick={() => {
+                        const qty = formatUnits(buyUnits, quotePrecision, quoteSymbol);
+                        setBuyText(qty.replace(/\s+[A-Z]{1,7}$/, ""));
+                        setEditBuy(true);
+                      }}
+                    >
+                      {formatUnits(buyUnits, quotePrecision, quoteSymbol)}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : null}
+          <p className="font-mono text-[11px] text-muted-foreground">
+            Wallet will ask for {code}::liftoff
+            {buyFirst ? ` + ${plan.quote.contract}::transfer` : ""}
+          </p>
           <button
             type="button"
             className="btn btn-accent btn-lg w-full"
-            disabled={!preflightOk || busyId != null}
+            disabled={!preflightOk || busyId != null || (buyFirst && (buyBusy || buyUnits <= 0))}
             onClick={() => void liftoff()}
           >
-            {busyId === "liftoff" ? "Signing…" : "Liftoff - make it transferable"}
+            {busyId === "liftoff"
+              ? "Signing…"
+              : buyFirst
+                ? "Liftoff and buy first"
+                : "Liftoff - make it transferable"}
           </button>
         </div>
       ) : null}
