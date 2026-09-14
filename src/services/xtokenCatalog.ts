@@ -171,7 +171,7 @@ async function alcorUsdRows(): Promise<Map<string, number>> {
   if (usdCache && now - usdCache.at <= USD_TTL_MS) return usdCache.rows;
   if (!usdInflight) {
     usdInflight = (async () => {
-      const res = await fetch(ALCOR_TOKENS);
+      const res = await fetch(ALCOR_TOKENS, { signal: AbortSignal.timeout(8000) });
       if (!res.ok) throw new Error(`tokens HTTP ${res.status}`);
       const tokens = (await res.json()) as AlcorToken[];
       const rows = new Map<string, number>();

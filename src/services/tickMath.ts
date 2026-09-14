@@ -39,6 +39,22 @@ export function getSqrtPriceX64AtTick(tick: number): bigint {
   return getSqrtRatioX96AtTick(tick) >> 32n;
 }
 
+/** Greatest tick whose Alcor sqrtPriceX64 is <= `sqrtPriceX64` (Uniswap v3 / Alcor). */
+export function getTickAtSqrtRatio(sqrtPriceX64: bigint): number {
+  const minSqrt = getSqrtPriceX64AtTick(ALCOR_MIN_TICK);
+  const maxSqrt = getSqrtPriceX64AtTick(ALCOR_MAX_TICK);
+  if (sqrtPriceX64 <= minSqrt) return ALCOR_MIN_TICK;
+  if (sqrtPriceX64 >= maxSqrt) return ALCOR_MAX_TICK;
+  let lo = ALCOR_MIN_TICK;
+  let hi = ALCOR_MAX_TICK;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi + 1) / 2);
+    if (getSqrtPriceX64AtTick(mid) <= sqrtPriceX64) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
 export function nearestUsableTick(tick: number, spacing: number): number {
   const clamped = Math.max(ALCOR_MIN_TICK, Math.min(ALCOR_MAX_TICK, Math.trunc(tick)));
   const rounded = Math.round(clamped / spacing) * spacing;

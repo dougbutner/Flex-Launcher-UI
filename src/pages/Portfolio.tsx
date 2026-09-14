@@ -195,12 +195,12 @@ export default function Portfolio() {
   if (!isLoggedIn || !actor) {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center sm:px-6">
-        <h1 className="text-3xl font-black tracking-tight">Portfolio</h1>
+        <h1 className="text-3xl font-black tracking-tight">My Bags</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Connect a wallet to track your flex balances, reflection pools, and splash estimates.
         </p>
         <button type="button" className="btn btn-primary btn-lg mt-6" onClick={() => void addWebAuthWallet()}>
-          Connect WebAuth
+          Connect Wallet
         </button>
       </div>
     );
@@ -212,7 +212,7 @@ export default function Portfolio() {
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">Portfolio</h1>
+          <h1 className="text-3xl font-black tracking-tight">My Bags</h1>
           <p className="mt-1 font-mono text-sm text-muted-foreground">{actor}</p>
         </div>
         <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>

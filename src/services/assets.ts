@@ -1,14 +1,23 @@
+/** Classic EOSIO / XPR asset precision. Not Leap's 18. */
+export const EOSIO_MAX_PRECISION = 8;
+
 export type ParsedAsset = {
   amount: string;
   precision: number;
   symbol: string;
 };
 
+export function validPrecision(n: number): boolean {
+  return Number.isInteger(n) && n >= 0 && n <= EOSIO_MAX_PRECISION;
+}
+
 export function parseAsset(value: unknown): ParsedAsset | null {
   if (typeof value !== "string") return null;
   const m = value.trim().match(/^(-?\d+)(?:\.(\d+))?\s+([A-Z]{1,7})$/);
   if (!m) return null;
-  return { amount: m[2] != null ? `${m[1]}.${m[2]}` : m[1], precision: m[2]?.length ?? 0, symbol: m[3] };
+  const precision = m[2]?.length ?? 0;
+  if (!validPrecision(precision)) return null;
+  return { amount: m[2] != null ? `${m[1]}.${m[2]}` : m[1], precision, symbol: m[3] };
 }
 
 export function assetAmountNumber(value: string): number {

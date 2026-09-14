@@ -1,4 +1,4 @@
-import { validSymbol } from "@/services/assets";
+import { validPrecision, validSymbol } from "@/services/assets";
 import { validImageUrl } from "@/services/tokenLogo";
 import type { ManagerToken } from "@/services/managerStore";
 import { parseProtonSymbol, type ProtonTokenRow } from "@/services/tokenProton";
@@ -57,7 +57,7 @@ export function mergeAdminTokenRefs(args: {
   const bySym = new Map<string, { symbol: string; precision: number }>();
   const add = (symbol: string, precision: number) => {
     const code = symbol.trim().toUpperCase();
-    if (!validSymbol(code) || !Number.isFinite(precision) || precision < 0 || precision > 18) return;
+    if (!validSymbol(code) || !validPrecision(precision)) return;
     if (!bySym.has(code)) bySym.set(code, { symbol: code, precision });
   };
   for (const t of args.refs) add(t.symbol, t.precision);

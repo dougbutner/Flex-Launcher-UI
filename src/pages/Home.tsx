@@ -31,42 +31,42 @@ const BENEFITS = [
   {
     id: "economics",
     title: "Sane economics",
-    body: "You go live on a real market with a price range, not a fake curve people snipe. Tokens start on Alcor with a fee, ticks, and a starting price.",
+    body: "You go live on a real market with a price range, no unplanned curve snipers love to pump and dump. Tokens start on Alcor with a fee you earn 100% of, and a price range you choose.",
   },
   {
     id: "mining",
     title: "Pure Liquid Mining",
-    body: "Every token goes in the pool. Nobody keeps a stash on the side. Liftoff waits until the full supply is on swap.alcor.",
+    body: "Every token is bought out of the pool. Nobody keeps a stash on the side, no \"premine\" or sketchy allocations. Fair launch in the DNA.",
   },
   {
     id: "lock",
     title: "Locked Pools",
-    body: "The pool stays locked at least 90 days, often longer. You cannot go live today and pull the money this afternoon.",
+    body: "The pool stays locked at least 90 days, and we hope you choose longer to show you community the liquidity they put in is here for them.",
   },
   {
     id: "holders",
-    title: "Holders Get Paid",
-    body: "Trades can pay people who hold. Some of that can burn, or go to the project. Anyone can press makeitrain.",
+    title: "Diamond Hands Get Rained On",
+    body: "Making it rain is paying people who hold. This comes from a transfer fee you set. You also choose what % is burnt, goes to the project, or is given as special jackpots and Angel rewards. Anyone can call in the rain to drench your holders.",
   },
   {
     id: "flex",
     title: "Rewards Flex",
-    body: "Your payout does not have to stay in this ticker. Take it as native, BTC, XRP, or another listed asset.",
+    body: "Holder payout is flexible. Holders can choose your token, BTC, XRP, or another asset. You set up pools and add options.",
   },
   {
     id: "identity",
-    title: "True Identity",
-    body: "A token is contract plus symbol, not just FOO. Launch against EASY, WON, GRAMS, MEME, or a proven xtoken.",
+    title: "Old tokens with a new face",
+    body: "Link your token with BTC, DOGE, or many more. Launch tokens backed by EASY, XRP, SOL, and you can set the default reflection to be the backing-asset if you prefer (default is your token as the interest).",
   },
   {
     id: "skim",
-    title: "Tiny Skim",
-    body: "The house takes little or nothing. Flex quotes launch at 0%. Other quotes take a small 0.5%.",
+    title: "House Cut",
+    body: "We're generous, and you might never have to pay a fee. Tokens backed by EASY, WON, GRAMS or MEME launch at 0%. Others take a small 0.5% of the reflection pool each time it rains, and all take 0.5% when the lock expires (if you don't extend the lock).",
   },
   {
     id: "rock",
-    title: "Choose Your Rock",
-    body: "Reflect with easyflex. Project fees and inheritance with complexflex. Jackpots and angel numbers with flexforex. Pick a backing token and lock 100%.",
+    title: "Choose Your Tech",
+    body: "Reflect with easyflex. Project fees and inheritance with complexflex. Jackpots and angel numbers with flexforex. Choose your backing token to serve as your rock.",
   },
 ] as const;
 
@@ -139,14 +139,15 @@ export default function Home() {
         <h1 className="home-hero__title">
           Pure Liquid
           <br />
-          Mining
+          Tokenomics
         </h1>
         <p className="home-hero__standfirst">
-          Every token goes in the pool. Liftoff waits until the full supply is on Alcor.
+          Every token is backed in DEX pools by trusted tokens like EASY, XPR, and XBTC. Liftoff waits until the full
+          supply is locked on Alcor.
         </p>
         <p className="home-hero__cta">
           <Link className="home-cta" to="/launch">
-            Launch a token
+            Launch your token
           </Link>
         </p>
       </section>
@@ -173,10 +174,10 @@ export default function Home() {
 
       <section className="home-close">
         <div className="home-close__tex home-tex home-tex--trim" data-parallax="0.1" aria-hidden />
-        <h2 className="home-close__title">Open the launcher</h2>
-        <p className="home-close__body">Create the token, fill the pool, lock it, then liftoff.</p>
+        <h2 className="home-close__title">Prepare for Liftoff</h2>
+        <p className="home-close__body">Create the token, fill the pool, lock it, and liftoff.</p>
         <Link className="home-cta" to="/launch">
-          Launch a token
+          Launch your token
         </Link>
       </section>
     </div>

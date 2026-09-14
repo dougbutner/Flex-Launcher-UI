@@ -18,7 +18,7 @@ export function FlexonomicsStep({ draft, patch, onNext, onBack, locked = false }
   return (
     <StepShell
       title="Flexonomics"
-      desc="Pick the transfer tax. After create, the issuer signs setfees (rates start at 0 on chain). for3x can also split the reflection slice into angel / jackpot."
+      desc="Pick the transfer tax. for3x can also split the reflection slice into angel / jackpot."
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>

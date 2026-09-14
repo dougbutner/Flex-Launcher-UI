@@ -9,10 +9,9 @@ import { walletTypeLabel } from "@/services/walletSessions";
 const NAV = [
   { to: "/", label: "Home" },
   { to: "/launch", label: "Launch" },
-  { to: "/leaderboard", label: "Leaderboard" },
-  { to: "/reflections", label: "Reflections" },
-  { to: "/portfolio", label: "Portfolio" },
-  { to: "/preview", label: "Preview" },
+  { to: "/leaderboard", label: "Winners" },
+  { to: "/reflections", label: "Make it Rain" },
+  { to: "/portfolio", label: "My Bags" },
 ];
 
 export function Header() {
@@ -34,9 +33,14 @@ export function Header() {
   const showManager = useManagerAccess(isLoggedIn ? actor : null);
   const nav = [
     ...NAV.slice(0, 2),
-    ...(showManager ? [{ to: "/manager", label: "Manager" }] : []),
+    ...(showManager ? [{ to: "/manager", label: "Dev's Manager" }] : []),
     ...NAV.slice(2),
-    ...(isFlexContractActor(actor) ? [{ to: "/admin", label: "Admin" }] : []),
+    ...(isFlexContractActor(actor)
+      ? [
+          { to: "/admin", label: "Admin" },
+          { to: "/preview", label: "Preview" },
+        ]
+      : []),
   ];
 
   useEffect(() => {
@@ -68,9 +72,9 @@ export function Header() {
           <Link to="/" className="flex items-center gap-2.5">
             <FlexLogo />
             <div className="leading-tight">
-              <div className="text-sm font-bold tracking-tight">Flex Launcher</div>
+              <div className="text-sm font-bold tracking-tight">Flex Forex: Token Launcher</div>
               <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                XPR Network
+                XPR
               </div>
             </div>
           </Link>
@@ -159,7 +163,7 @@ export function Header() {
           ) : (
             <>
               <button type="button" className="btn btn-primary btn-sm" disabled={loading} onClick={() => void addWebAuthWallet()}>
-                {loading ? "Restoring…" : "Connect WebAuth"}
+                {loading ? "Reconnecting…" : "Connect Wallet"}
               </button>
               <button type="button" className="btn btn-outline btn-sm" disabled={loading} onClick={() => void addAnchorWallet()}>
                 Anchor

@@ -150,7 +150,7 @@ export async function getActions(params: {
   if (params.skip) q.set("skip", String(params.skip));
   for (const base of HYPERION_ENDPOINTS) {
     try {
-      const res = await fetch(`${base}/v2/history/get_actions?${q}`);
+      const res = await fetch(`${base}/v2/history/get_actions?${q}`, { signal: AbortSignal.timeout(12000) });
       if (res.status === 429 || res.status === 503) continue;
       if (!res.ok) {
         last = res.statusText;

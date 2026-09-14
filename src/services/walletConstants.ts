@@ -1,6 +1,6 @@
 import { Chains } from '@wharfkit/common';
 
-export const APP_NAME = 'Flex Launcher';
+export const APP_NAME = 'Flex Forex: Token Launcher';
 /** Valid 1-12 char eosio name. `flex.launcher` is 13 chars and WebAuth rejects it. */
 export const REQUEST_ACCOUNT = 'flexlaunch';
 

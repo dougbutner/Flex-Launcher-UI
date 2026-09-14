@@ -67,7 +67,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
     >
       {programLocked ? (
         <p className="text-xs text-warning">
-          Create already landed. Token fields are frozen so execute preflight cannot drift.
+          Token is already on-chain. Token fields are static so execute preflight cannot drift.
         </p>
       ) : null}
       <div className="grid grid-cols-1 gap-2">
@@ -136,7 +136,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           <Field label="Token name">
             <input
               className="input"
-              placeholder="e.g. Flex Forex"
+              placeholder="e.g. Gudasol's Cat Mercury"
               value={draft.name}
               disabled={programLocked}
               onChange={(e) => patch({ name: e.target.value })}
@@ -145,7 +145,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           <Field label="Ticker" hint="1-7 uppercase letters. Fixed forever.">
             <input
               className="input font-mono uppercase"
-              placeholder="FOO"
+              placeholder="BARS"
               maxLength={7}
               value={draft.symbol}
               disabled={programLocked}
@@ -160,7 +160,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
 
       <div className="rounded-2xl border bg-background/50 p-4 text-xs">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="font-semibold text-foreground">Token art</p>
+          <p className="font-semibold text-foreground">Token Logo</p>
           {!showUrl ? (
             <button type="button" className="link shrink-0 text-xs" disabled={programLocked} onClick={() => setUrlOpen(true)}>
               or paste a URL
@@ -222,7 +222,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             onChange={(e) => patch({ maxSupply: parseSupplyInput(e.target.value) })}
           />
         </Field>
-        <Field label="Precision" hint="Decimal places (0-8). Flex tokens usually use 6.">
+        <Field label="Precision" hint="Decimal places (0-8). Flex tokens default to 6.">
           <input
             className="input font-mono"
             inputMode="numeric"

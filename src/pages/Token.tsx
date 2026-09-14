@@ -110,7 +110,7 @@ export default function Token() {
           Need a flex contract account and symbol code (e.g. /token/for3x/FOO).
         </p>
         <Link to="/leaderboard" className="btn btn-outline btn-sm mt-6">
-          Leaderboard
+          Winners
         </Link>
       </div>
     );
@@ -160,11 +160,11 @@ export default function Token() {
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             <Link to="/portfolio" className="link">
-              Portfolio
+              My Bags
             </Link>
             {" · "}
             <Link to="/leaderboard" className="link">
-              Leaderboard
+              Winners
             </Link>
           </p>
           <div className="mt-1 flex items-center gap-3">

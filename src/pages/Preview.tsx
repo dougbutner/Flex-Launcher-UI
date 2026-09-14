@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { isFlexContractActor } from "@/config/launch";
+import { useWallet } from "@/hooks/useWallet";
 import { TokenIcon } from "@/components/TokenIcon";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
@@ -32,6 +34,19 @@ function SkeletonBlock({ className = "" }: { className?: string }) {
 }
 
 export default function Preview() {
+  const { actor } = useWallet();
+  if (!isFlexContractActor(actor)) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+        <h1 className="text-3xl font-black tracking-tight">Preview</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Connect as <span className="font-mono">3asy</span>, <span className="font-mono">fl3x</span>, or{" "}
+          <span className="font-mono">for3x</span> to open the faux UI shapes page.
+        </p>
+      </div>
+    );
+  }
+
   const h = previewHolding;
   const angel = Number(h.flexer.angel_number);
   const beneficiary = String(h.flexer.beneficiary);

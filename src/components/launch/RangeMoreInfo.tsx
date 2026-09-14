@@ -5,6 +5,7 @@ import {
   buyScenario,
   PRICE_WALK_MULTIPLES,
   rangeMaxMarketCapUsd,
+  tickBucketCosts,
   USD_BUY_PROBE,
   walkCostToMultiple,
   walkCostToSupplyPct,
@@ -25,6 +26,8 @@ function fmtUsd(n: number | null | undefined): string {
 
 function fmtPct(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n) || n < 0) return "-";
+  if (n >= 100) return "100%";
+  if (n >= 99.5) return `${(Math.floor(n * 100) / 100).toFixed(2)}%`;
   if (n >= 10) return `${n.toFixed(1)}%`;
   if (n >= 1) return `${n.toFixed(2)}%`;
   if (n >= 0.01) return `${n.toFixed(3)}%`;
@@ -46,6 +49,11 @@ type Props = {
   quoteSymbol: string;
   tokenSymbol: string;
   initialMarketCapUsd: number | null;
+  bucketCount?: number;
+  usdLastBucket?: number | null;
+  usdCheapHalf?: number | null;
+  usdExpensiveHalf?: number | null;
+  usdToClearRange?: number | null;
 };
 
 function TabLink({ id, label, tab, setTab }: { id: Tab; label: string; tab: Tab; setTab: (t: Tab) => void }) {
@@ -60,7 +68,19 @@ function TabLink({ id, label, tab, setTab }: { id: Tab; label: string; tab: Tab;
   );
 }
 
-export function RangeMoreInfo({ plan, maxSupply, quoteUsd, quoteSymbol, tokenSymbol, initialMarketCapUsd }: Props) {
+export function RangeMoreInfo({
+  plan,
+  maxSupply,
+  quoteUsd,
+  quoteSymbol,
+  tokenSymbol,
+  initialMarketCapUsd,
+  bucketCount,
+  usdLastBucket,
+  usdCheapHalf,
+  usdExpensiveHalf,
+  usdToClearRange,
+}: Props) {
   const [tab, setTab] = useState<Tab>("goto");
   const [pct, setPct] = useState(10);
   const [extraUsd, setExtraUsd] = useState(0);
@@ -92,6 +112,10 @@ export function RangeMoreInfo({ plan, maxSupply, quoteUsd, quoteSymbol, tokenSym
   );
   const rangeMaxUsd = useMemo(
     () => rangeMaxMarketCapUsd(plan, maxSupply, quoteUsd),
+    [plan, maxSupply, quoteUsd]
+  );
+  const buckets = useMemo(
+    () => tickBucketCosts(plan, maxSupply, quoteUsd),
     [plan, maxSupply, quoteUsd]
   );
   const scenario = useMemo(
@@ -157,6 +181,41 @@ export function RangeMoreInfo({ plan, maxSupply, quoteUsd, quoteSymbol, tokenSym
             </span>
             {buyout?.capped ? ". That is the full range." : "."}
           </p>
+          {bucketCount ? (
+            <p className="text-xs text-muted-foreground">
+              {bucketCount} tick buckets (fee spacing, equal token inventory each). Cheap half{" "}
+              {fmtUsd(usdCheapHalf)}. Expensive half {fmtUsd(usdExpensiveHalf)}. Last bucket{" "}
+              {fmtUsd(usdLastBucket)}. All buckets {fmtUsd(usdToClearRange)}.
+            </p>
+          ) : null}
+          {buckets.length ? (
+            <div className="max-h-56 overflow-auto rounded-xl border border-primary/15">
+              <table className="w-full text-left font-mono text-[10px]">
+                <thead className="sticky top-0 bg-background">
+                  <tr className="text-muted-foreground">
+                    <th className="px-2 py-1 font-semibold">#</th>
+                    <th className="px-2 py-1 font-semibold">ticks</th>
+                    <th className="px-2 py-1 font-semibold">{tokenSymbol}</th>
+                    <th className="px-2 py-1 font-semibold">cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {buckets.map((b) => (
+                    <tr key={b.index} className="border-t border-primary/10">
+                      <td className="px-2 py-0.5">{b.index}</td>
+                      <td className="px-2 py-0.5">
+                        {b.tickFrom} → {b.tickTo}
+                      </td>
+                      <td className="px-2 py-0.5">{fmtPrice(b.tokens)}</td>
+                      <td className="px-2 py-0.5">
+                        {quoteUsd > 0 ? fmtUsd(b.usd) : `${fmtPrice(b.quote)} ${quoteSymbol}`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Cost to buy next

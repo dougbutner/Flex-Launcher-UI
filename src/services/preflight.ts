@@ -81,7 +81,7 @@ export function createGateItems(args: {
       pass: args.easyBal + 1e-12 >= args.need,
       detail: args.easyBal + 1e-12 >= args.need
         ? `${args.easyBal.toLocaleString()} / ${args.need.toLocaleString()} EASY · ${args.prior} prior launch${args.prior === 1 ? "" : "es"}`
-        : `Need ${args.need.toLocaleString()} EASY @ mon3y before liftoff`,
+        : `Need ${args.need.toLocaleString()} EASY before liftoff`,
     },
   ];
 }
@@ -221,7 +221,7 @@ export async function runPreflight(
     pass: easyBal + 1e-12 >= need,
     detail: easyBal + 1e-12 >= need
       ? `${easyBal.toLocaleString()} / ${need.toLocaleString()} EASY · ${prior} prior launch${prior === 1 ? "" : "es"}`
-      : `Need ${need.toLocaleString()} EASY @ mon3y`,
+      : `Need ${need.toLocaleString()} EASY before liftoff`,
   });
 
   return items;

@@ -24,7 +24,7 @@ export const FLEX_PROGRAMS: Array<{
   {
     id: "easyflex",
     title: "easyflex",
-    blurb: "Simple reflections + burn. Issue supply. No inheritance or luck.",
+    blurb: "Simple reflections (rains) + burn. No inheritance, jackpot or luck.",
     supply: "issue",
     payoutSigner: "sender",
     launchEasyMin: 5_000,
@@ -34,7 +34,7 @@ export const FLEX_PROGRAMS: Array<{
   {
     id: "complexflex",
     title: "complexflex",
-    blurb: "Reflections + project tax + inheritance. Grams-style.",
+    blurb: "Reflections + project tax + inheritance of rain to others.",
     supply: "mint",
     payoutSigner: "sender",
     launchEasyMin: 10_000,
@@ -43,7 +43,7 @@ export const FLEX_PROGRAMS: Array<{
   {
     id: "flexforex",
     title: "flexforex",
-    blurb: "Full stack: inheritance, angel numbers, jackpot, optional keeper.",
+    blurb: "Full stack: inheritance, angel numbers, jackpot, optionally pay whoever sends out reflections.",
     supply: "mint",
     payoutSigner: "keeper",
     launchEasyMin: 50_000,
@@ -105,7 +105,7 @@ export function easyHoldNeed(baseWhole: number, prior = 0, nowMs = Date.now()): 
 export function easyHoldPromoCopy(nowMs = Date.now()): string | null {
   const off = easyHoldOffPercent(nowMs);
   if (off <= 0) return null;
-  return `Hold EASY, don't spend it. ${off}% off this month. -10%/mo until full price.`;
+  return `Gated by EASY, no cost to launch spend it. Launch = lower gate, ${off}% off this month, more expensive as time goes on.`;
 }
 
 export function allFlexAccounts(): string[] {

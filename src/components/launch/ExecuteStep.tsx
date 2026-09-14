@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FLEX_PROGRAMS, LOCK_MIN_DAYS, SWAP_ALCOR, flexAccount, flexMeta, hasAngelChannels } from "@/config/launch";
+import {
+  EASY_SYMBOL,
+  EOSIO_TOKEN,
+  FLEX_PROGRAMS,
+  LOCK_MIN_DAYS,
+  MON3Y,
+  SWAP_ALCOR,
+  XPR_SYMBOL,
+  alcorSwapUrl,
+  flexAccount,
+  flexMeta,
+  hasAngelChannels,
+} from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { planFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
@@ -33,6 +45,22 @@ type Props = {
   onBack: () => void;
   onDone: () => void;
 };
+
+const EASY_SWAP = alcorSwapUrl(XPR_SYMBOL, EOSIO_TOKEN, EASY_SYMBOL, MON3Y);
+
+function GateDetail({ text }: { text: string }) {
+  if (!text.includes("EASY before liftoff")) return <>{text}</>;
+  const parts = text.split("EASY");
+  return (
+    <>
+      {parts[0]}
+      <a href={EASY_SWAP} target="_blank" rel="noopener noreferrer" className="link">
+        EASY
+      </a>
+      {parts.slice(1).join("EASY")}
+    </>
+  );
+}
 
 type ExecDef = {
   id: string;
@@ -344,7 +372,11 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
                 <li key={item.id} className="flex items-center gap-2 text-xs">
                   <StatusIcon state={item.pass ? "done" : "error"} />
                   <span className={item.pass ? "text-foreground" : "text-destructive"}>{item.label}</span>
-                  {item.detail ? <span className="ml-auto text-muted-foreground">{item.detail}</span> : null}
+                  {item.detail ? (
+                    <span className="ml-auto text-muted-foreground">
+                      <GateDetail text={item.detail} />
+                    </span>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -436,7 +468,11 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
                 <li key={item.id} className="flex items-center gap-2 text-xs">
                   <StatusIcon state={item.pass ? "done" : "error"} />
                   <span className={item.pass ? "text-foreground" : "text-destructive"}>{item.label}</span>
-                  {item.detail ? <span className="ml-auto text-muted-foreground">{item.detail}</span> : null}
+                  {item.detail ? (
+                    <span className="ml-auto text-muted-foreground">
+                      <GateDetail text={item.detail} />
+                    </span>
+                  ) : null}
                 </li>
               ))}
             </ul>

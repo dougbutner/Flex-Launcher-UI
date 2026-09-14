@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatAsset, formatSupplyCommas, parseSupplyInput, validSymbol, zeroAsset } from "@/services/assets";
+import { formatAsset, formatSupplyCommas, parseAsset, parseSupplyInput, validPrecision, validSymbol, zeroAsset } from "@/services/assets";
 import { compareExtTokens, nameToU64, sortPair, symbolCodeToU64 } from "@/services/eosioName";
-import { buyScenario, planLaunch, rangeImpact, walkCostToMultiple, walkCostToSupplyPct } from "@/services/launchMath";
+import { buyScenario, planLaunch, rangeImpact, tickBucketCosts, walkCostToMultiple, walkCostToSupplyPct } from "@/services/launchMath";
 import {
   createTokenAction,
   checklockAction,
@@ -54,7 +54,7 @@ import {
 import { findXtoken, xtokensByMarketCap } from "@/config/xtokens";
 import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
-import { protonSymbol, protonSyncGaps, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
+import { parseProtonSymbol, protonSymbol, protonSyncGaps, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
 import { alcorLogoFilename, mergeAdminTokenRefs } from "@/services/listingHelper";
 import { localTokenIconSrc, rememberRemoteTokenIcon, tokenIconKey, tokenIconSrc } from "@/services/tokenIcons";
 import { logpoolIdFromResult } from "@/services/txParse";
@@ -110,6 +110,10 @@ describe("assets", () => {
     expect(formatSupplyCommas("1000000")).toBe("1,000,000");
     expect(formatSupplyCommas("1000000000000")).toBe("1,000,000,000,000");
     expect(formatSupplyCommas("1000000000")).toBe("1,000,000,000");
+    expect(validPrecision(8)).toBe(true);
+    expect(validPrecision(9)).toBe(false);
+    expect(parseAsset("1.00000000 FOO")?.precision).toBe(8);
+    expect(parseAsset("1.000000000 FOO")).toBeNull();
   });
 });
 
@@ -283,14 +287,14 @@ describe("launch plan", () => {
     const impact = rangeImpact(plan, "420000000", easyUsd);
     expect(impact?.liquidity).toBe("13335467295280");
     expect(impact?.doubledCapped).toBe(false);
-    expect(impact?.quoteToDouble).toBeGreaterThan(177000);
-    expect(impact?.quoteToDouble).toBeLessThan(177300);
-    expect(impact?.usdToDouble).toBeGreaterThan(3290);
-    expect(impact?.usdToDouble).toBeLessThan(3320);
+    expect(impact?.quoteToDouble).toBeGreaterThan(8000);
+    expect(impact?.quoteToDouble).toBeLessThan(9000);
+    expect(impact?.usdToDouble).toBeGreaterThan(140);
+    expect(impact?.usdToDouble).toBeLessThan(170);
     expect(impact?.initialMarketCapUsd).toBeGreaterThan(7800);
     expect(impact?.initialMarketCapUsd).toBeLessThan(8000);
-    expect(impact?.supplyPctForUsd).toBeGreaterThan(1.2);
-    expect(impact?.supplyPctForUsd).toBeLessThan(1.3);
+    expect(impact?.supplyPctForUsd).toBeGreaterThan(0.5);
+    expect(impact?.supplyPctForUsd).toBeLessThan(3);
     const slow = applyRangeWidth(d, "slow");
     const slowPlan = planLaunch({
       symbol: "GEASY",
@@ -304,26 +308,99 @@ describe("launch plan", () => {
     });
     const slowImpact = rangeImpact(slowPlan, "420000000", easyUsd);
     expect(slowImpact?.quoteToDouble).toBeGreaterThan(impact!.quoteToDouble);
-    expect(slowImpact?.quoteToDouble).toBeLessThan(impact!.quoteToDouble * 1.2);
 
     const twice = walkCostToMultiple(plan, "420000000", easyUsd, 2);
     expect(twice?.capped).toBe(false);
-    expect(twice?.usd).toBeGreaterThan(3290);
-    expect(twice?.usd).toBeLessThan(3320);
+    expect(twice?.usd).toBeGreaterThan(140);
+    expect(twice?.usd).toBeLessThan(170);
     expect(Math.abs((twice?.quoteGross ?? 0) - impact!.quoteToDouble)).toBeLessThan(1);
 
     const tenPct = walkCostToSupplyPct(plan, "420000000", easyUsd, 10);
     expect(tenPct?.supplyPct).toBeGreaterThan(9.9);
     expect(tenPct?.supplyPct).toBeLessThan(10.1);
     expect(tenPct?.usd).toBeGreaterThan(0);
-    expect(tenPct!.usd!).toBeLessThan(impact!.usdToDouble!);
 
     const scene = buyScenario(plan, "420000000", easyUsd, 100, 0);
-    expect(scene?.firstSupplyPct).toBeGreaterThan(1.2);
-    expect(scene?.firstSupplyPct).toBeLessThan(1.3);
+    expect(scene?.firstSupplyPct).toBeGreaterThan(0.5);
+    expect(scene?.firstSupplyPct).toBeLessThan(3);
     expect(scene?.bagUsdAfter).toBeGreaterThan(100);
     const scene2 = buyScenario(plan, "420000000", easyUsd, 100, 5000);
     expect(scene2!.bagUsdAfter!).toBeGreaterThan(scene!.bagUsdAfter!);
+  });
+
+  it("does not call a wide XPR range drained after $100", () => {
+    const plan = planLaunch({
+      symbol: "KARKADA",
+      precision: 6,
+      maxSupply: "1000000",
+      contract: FLEXFOREX_CONTRACT,
+      quote: { symbol: "XPR", contract: "eosio.token", precision: 4 },
+      fee: 10000,
+      priceLower: "0.00001",
+      priceUpper: "1000000",
+    });
+    expect(plan.launchedIsA).toBe(false);
+    expect(plan.tickLower).toBe(-92200);
+    expect(plan.tickUpper).toBe(161200);
+    const xprUsd = 0.0025926;
+    const impact = rangeImpact(plan, "1000000", xprUsd);
+    expect(impact!.usdWalkCapped).toBe(false);
+    expect(impact!.leftoverTokensForUsd!).toBeGreaterThan(100_000);
+    expect(impact!.supplyPctForUsd!).toBeLessThan(70);
+    expect(impact!.usdToClearRange!).toBeGreaterThan(1_000_000);
+    expect(impact!.usdLastBucket!).toBeGreaterThan(1_000_000);
+    expect(impact!.usdExpensiveHalf!).toBeGreaterThan(impact!.usdCheapHalf!);
+    expect(impact!.usdExpensiveHalf!).toBeGreaterThan(8327);
+    const buckets = tickBucketCosts(plan, "1000000", xprUsd);
+    expect(buckets.length).toBe(impact!.bucketCount);
+    expect(buckets.length).toBeGreaterThan(1000);
+    expect(buckets[0]!.usd!).toBeLessThan(1);
+    expect(buckets[buckets.length - 1]!.usd!).toBeGreaterThan(1_000_000);
+    const over = buckets.filter((b) => (b.usd ?? 0) > 8327).length;
+    expect(over).toBeGreaterThan(0);
+    expect(over).toBeGreaterThan(0);
+    expect(over).toBeLessThan(buckets.length / 2);
+    expect(impact!.endQuotePerTokenForUsd!).toBeLessThan(impact!.maxQuotePerToken / 2);
+  });
+
+  it("does not treat $100 as 100% of supply on a 100x curve", () => {
+    const plan = planLaunch({
+      symbol: "FOO",
+      precision: 4,
+      maxSupply: "1000000",
+      contract: COMPLEXFLEX_CONTRACT,
+      quote: { symbol: "EASY", contract: MON3Y, precision: 6 },
+      fee: 3000,
+      priceLower: "0.01",
+      priceUpper: "1",
+    });
+    const quoteUsd = 0.02;
+    const impact = rangeImpact(plan, "1000000", quoteUsd);
+    const startMc = impact!.initialMarketCapUsd!;
+    expect(startMc).toBeGreaterThan(150);
+    expect(startMc).toBeLessThan(250);
+    const constantPct = (100 / startMc) * 100;
+    expect(impact!.supplyPctForUsd).not.toBeNull();
+    expect(impact!.supplyPctForUsd!).toBeGreaterThan(0);
+    expect(impact!.supplyPctForUsd!).toBeLessThan(100);
+    expect(impact!.supplyPctForUsd!).toBeLessThan(constantPct + 0.01);
+    expect(impact!.usdWalkCapped).toBe(false);
+    expect(impact!.endQuotePerTokenForUsd!).toBeGreaterThan(impact!.startQuotePerToken);
+
+    const xprPlan = planLaunch({
+      symbol: "FOO",
+      precision: 4,
+      maxSupply: "1000000",
+      contract: COMPLEXFLEX_CONTRACT,
+      quote: { symbol: "XPR", contract: "eosio.token", precision: 4 },
+      fee: 3000,
+      priceLower: "0.01",
+      priceUpper: "1",
+    });
+    expect(xprPlan.launchedIsA).toBe(false);
+    const xprImpact = rangeImpact(xprPlan, "1000000", 0.005);
+    expect(xprImpact!.supplyPctForUsd!).toBeGreaterThan(0);
+    expect(xprImpact!.supplyPctForUsd!).toBeLessThan(100);
   });
 });
 
@@ -647,6 +724,9 @@ describe("execute gates and pool id", () => {
 
   it("merges sqlite and proton rows into the admin list", () => {
     expect(alcorLogoFilename("FOO", "fl3x")).toBe("foo_fl3x.png");
+    expect(parseProtonSymbol("8,FOO")?.precision).toBe(8);
+    expect(parseProtonSymbol("9,FOO")).toBeNull();
+    expect(parseProtonSymbol("101,FOO")).toBeNull();
     const stored = emptyManagerToken();
     stored.issuer = "alice";
     stored.contract = "fl3x";

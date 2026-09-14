@@ -303,12 +303,12 @@ export default function Manager() {
   if (!isLoggedIn || !actor) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-        <h1 className="text-3xl font-black tracking-tight">Manager</h1>
+        <h1 className="text-3xl font-black tracking-tight">Dev's Manager</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Connect the issuer account that already signed create. This page follows that account name, not this browser.
         </p>
         <button type="button" className="btn btn-primary mt-6" onClick={() => void addWebAuthWallet()}>
-          Connect WebAuth
+          Connect Wallet
         </button>
       </div>
     );
@@ -320,7 +320,7 @@ export default function Manager() {
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">Manager</h1>
+          <h1 className="text-3xl font-black tracking-tight">Dev's Manager</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Releases for <span className="font-mono">{actor}</span>. Progress is read from chain. Name, URL, and icon stay
             in the sqlite store until admin signs token.proton.

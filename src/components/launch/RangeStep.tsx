@@ -35,6 +35,8 @@ function fmtUsd(n: number | null | undefined): string {
 
 function fmtPct(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n) || n < 0) return "-";
+  if (n >= 100) return "100%";
+  if (n >= 99.5) return `${(Math.floor(n * 100) / 100).toFixed(2)}%`;
   if (n >= 10) return `${n.toFixed(1)}%`;
   if (n >= 1) return `${n.toFixed(2)}%`;
   if (n >= 0.01) return `${n.toFixed(3)}%`;
@@ -119,7 +121,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
 
   return (
     <StepShell
-      title="Range & lock"
+      title="Price Range & lock"
       desc={`One-sided: buyers walk the range paying ${quote.symbol} as your token sells out. The pool starts below (or above) the range so 100% of supply is deposited.`}
       footer={
         <>
@@ -294,7 +296,11 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
               value={fmtPct(impact.supplyPctForUsd)}
               hint={
                 impact.tokensForUsd != null
-                  ? `${fmtPrice(impact.tokensForUsd)} ${draft.symbol || "TOKEN"} at constant USD`
+                  ? impact.usdWalkCapped
+                    ? `${fmtPrice(impact.tokensForUsd)} ${draft.symbol || "TOKEN"}. Walks every tick bucket.`
+                    : `Last bucket ${fmtUsd(impact.usdLastBucket)}. Top half of ticks ${fmtUsd(
+                        impact.usdExpensiveHalf
+                      )}. Full range ${fmtUsd(impact.usdToClearRange)}.`
                   : quoteUsd > 0
                     ? "Need a USD price from Alcor."
                     : "Waiting on USD from Alcor."
@@ -314,6 +320,11 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
               quoteSymbol={quote.symbol}
               tokenSymbol={draft.symbol || "TOKEN"}
               initialMarketCapUsd={impact.initialMarketCapUsd}
+              bucketCount={impact.bucketCount}
+              usdLastBucket={impact.usdLastBucket}
+              usdCheapHalf={impact.usdCheapHalf}
+              usdExpensiveHalf={impact.usdExpensiveHalf}
+              usdToClearRange={impact.usdToClearRange}
             />
           ) : null}
         </div>
@@ -404,8 +415,9 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
             per {draft.symbol} as they walk the range.
           </p>
           <p className="text-[10px] text-muted-foreground/80">
-            USD uses Alcor spot and holds it constant. Curve math is the Alcor tick range (Uniswap v3
-            amounts), including the {FEE_TIERS.find((t) => t.fee === draft.fee)?.label ?? "swap"} fee.
+            USD holds the quote's Alcor spot still. Token price walks initialized Alcor ticks (same
+            step math as swap routing), including the{" "}
+            {FEE_TIERS.find((t) => t.fee === draft.fee)?.label ?? "swap"} fee.
           </p>
           <p className="break-all font-mono text-[10px] text-muted-foreground/70">sqrtPriceX64 {plan.sqrtPriceX64}</p>
         </div>

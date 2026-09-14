@@ -76,7 +76,6 @@ async function loadDrylands(): Promise<Dryland[]> {
           const poolAsset = parseAsset(String(pick(stat, "reflection_pool") ?? ""));
           const pool = poolAsset ? Number(poolAsset.amount) : 0;
           if (!(pool > 0)) return null;
-          const usdPrice = await fetchAlcorUsdPrice(code, symbol).catch(() => 0);
           return {
             key: `${code}:${symbol}`,
             program,
@@ -84,16 +83,22 @@ async function loadDrylands(): Promise<Dryland[]> {
             symbol,
             precision: poolAsset?.precision ?? 4,
             pool,
-            usd: usdPrice > 0 ? pool * usdPrice : 0,
+            usd: 0,
           } satisfies Dryland;
         })
       );
     })
   );
-  return groups
+  const rows = groups
     .flat()
-    .filter((row): row is Dryland => row != null)
-    .sort((a, b) => b.usd - a.usd || b.pool - a.pool || a.symbol.localeCompare(b.symbol));
+    .filter((row): row is Dryland => row != null);
+  await Promise.all(
+    rows.map(async (row) => {
+      const usdPrice = await fetchAlcorUsdPrice(row.contract, row.symbol).catch(() => 0);
+      row.usd = usdPrice > 0 ? row.pool * usdPrice : 0;
+    })
+  );
+  return rows.sort((a, b) => b.usd - a.usd || b.pool - a.pool || a.symbol.localeCompare(b.symbol));
 }
 
 export default function Reflections() {
@@ -111,13 +116,17 @@ export default function Reflections() {
         FLEX_PROGRAMS.map(async (p) => {
           const account = flexAccount(p.id);
           const actionName = "makeitrain";
-          const res = await getActions({
-            account,
-            filter: `${account}:${actionName}`,
-            limit: PAGE,
-            skip: 0,
-          });
-          return res.actions.map((a) => ({ ...a, contract: account, actionName }));
+          try {
+            const res = await getActions({
+              account,
+              filter: `${account}:${actionName}`,
+              limit: PAGE,
+              skip: 0,
+            });
+            return res.actions.map((a) => ({ ...a, contract: account, actionName }));
+          } catch {
+            return [] as Row[];
+          }
         })
       ),
       loadDrylands().catch(() => [] as Dryland[]),
@@ -173,7 +182,7 @@ export default function Reflections() {
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight">Reflections</h1>
+          <h1 className="text-3xl font-black tracking-tight">Make it Rain</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Pending pools on-contract, then stored <span className="font-mono">makeitrain</span> history.
           </p>

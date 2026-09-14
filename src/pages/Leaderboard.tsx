@@ -186,9 +186,9 @@ export default function Leaderboard() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <h1 className="text-3xl font-black tracking-tight">Leaderboard</h1>
+      <h1 className="text-3xl font-black tracking-tight">Winners</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Live launches across 3asy, fl3x, and for3x.
+        Live launches across easyflex, complexflex, and flexforex.
       </p>
 
       {notice ? (

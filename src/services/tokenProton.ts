@@ -1,5 +1,5 @@
 import type { ChainAction } from "@/services/launchActions";
-import { parseAsset } from "@/services/assets";
+import { parseAsset, validPrecision } from "@/services/assets";
 import { readLaunches, readStat } from "@/services/flexTables";
 import { symbolCodeOf } from "@/services/preflight";
 import { getActions, getTableRows } from "@/services/rpc";
@@ -27,13 +27,15 @@ export function parseProtonSymbol(raw: unknown): { precision: number; code: stri
   if (typeof raw === "string") {
     const m = /^(\d+),([A-Z]{1,7})$/.exec(raw.trim());
     if (!m) return null;
-    return { precision: Number(m[1]), code: m[2] };
+    const precision = Number(m[1]);
+    if (!validPrecision(precision)) return null;
+    return { precision, code: m[2] };
   }
   if (raw && typeof raw === "object") {
     const o = raw as { precision?: number; name?: string; symbol?: string; code?: string };
     if (typeof o.symbol === "string") return parseProtonSymbol(o.symbol);
     const code = String(o.name || o.code || "").toUpperCase();
-    if (typeof o.precision === "number" && /^[A-Z]{1,7}$/.test(code)) {
+    if (typeof o.precision === "number" && /^[A-Z]{1,7}$/.test(code) && validPrecision(o.precision)) {
       return { precision: o.precision, code };
     }
   }
@@ -131,7 +133,7 @@ export async function listContractTokenRefs(code: string): Promise<Array<{ symbo
     const stat = await readStat(code, symbol).catch(() => null);
     const supply = parseAsset(String(stat?.max_supply ?? stat?.supply ?? ""));
     const precision = supply?.precision ?? precisionHint.get(symbol);
-    if (precision == null) continue;
+    if (precision == null || !validPrecision(precision)) continue;
     out.push({ symbol, precision });
   }
   return out.sort((a, b) => a.symbol.localeCompare(b.symbol));

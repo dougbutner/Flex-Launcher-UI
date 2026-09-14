@@ -4,7 +4,7 @@ export function NetworkSwitcher() {
   return (
     <p className="text-center font-mono text-[11px] tracking-wide text-muted-foreground">
       <a href={EXPLORER} target="_blank" rel="noopener noreferrer" className="link">
-        XPR Network
+        XPR
       </a>
       {" · "}
       <a href={explorerAccount(SWAP_ALCOR)} target="_blank" rel="noopener noreferrer" className="link">
