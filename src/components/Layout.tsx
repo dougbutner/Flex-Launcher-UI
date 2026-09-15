@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { FlexLogo } from "@/components/FlexLogo";
 import { Header } from "@/components/Header";
 import { TokenIcon } from "@/components/TokenIcon";
+import { DISCLAIMER_PARAS, LEGAL_TERMS_URL } from "@/content/disclaimer";
 import { useTetraChrome } from "@/hooks/useTetraChrome";
 import {
   EOSIO_TOKEN,
@@ -45,10 +46,23 @@ function TelegramMark() {
 export function Layout() {
   const { topOpen, footerOpen, expandTop, toggleFooter, sync } = useTetraChrome();
   const location = useLocation();
+  const [termsOpen, setTermsOpen] = useState(false);
 
   useEffect(() => {
     sync();
   }, [location.pathname, sync]);
+
+  useEffect(() => {
+    if (!termsOpen) return;
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (last - y > 8) setTermsOpen(false);
+      last = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [termsOpen]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -101,6 +115,9 @@ export function Layout() {
           <a href={TELEGRAM} target="_blank" rel="noopener noreferrer" className="link">
             support
           </a>
+          <button type="button" className="link" onClick={() => setTermsOpen(true)}>
+            terms
+          </button>
         </nav>
         <p className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[11px] text-muted-foreground/70">
           <span>Analytics</span>
@@ -118,6 +135,30 @@ export function Layout() {
           ))}
         </p>
       </footer>
+      <div
+        className={`tetra-terms ${termsOpen ? "is-open" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tetra-terms-title"
+        aria-hidden={!termsOpen}
+      >
+        <div className="tetra-terms__body">
+          <h2 id="tetra-terms-title" className="tetra-terms__title">
+            Disclaimer
+          </h2>
+          {DISCLAIMER_PARAS.map((para) => (
+            <p key={para.slice(0, 40)}>{para}</p>
+          ))}
+        </div>
+        <div className="tetra-terms__actions">
+          <a href={LEGAL_TERMS_URL} target="_blank" rel="noopener noreferrer" className="link">
+            full terms and privacy policy
+          </a>
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => setTermsOpen(false)}>
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

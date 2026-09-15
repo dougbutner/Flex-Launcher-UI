@@ -11,14 +11,17 @@ function atBottom() {
 export function useTetraChrome() {
   const [topOpen, setTopOpen] = useState(true);
   const [footerOpen, setFooterOpen] = useState(false);
-  const pinnedTop = useRef(false);
   const pinnedFooter = useRef(false);
+  const lastY = useRef(typeof window === "undefined" ? 0 : window.scrollY);
 
   const sync = useCallback(() => {
+    const y = window.scrollY;
+    const dy = y - lastY.current;
+    lastY.current = y;
+
     if (atTop()) {
-      pinnedTop.current = false;
       setTopOpen(true);
-    } else if (!pinnedTop.current) {
+    } else if (dy > 8) {
       setTopOpen(false);
     }
 
@@ -30,6 +33,7 @@ export function useTetraChrome() {
   }, []);
 
   useEffect(() => {
+    lastY.current = window.scrollY;
     window.addEventListener("scroll", sync, { passive: true });
     window.addEventListener("resize", sync);
     sync();
@@ -40,7 +44,6 @@ export function useTetraChrome() {
   }, [sync]);
 
   const expandTop = () => {
-    pinnedTop.current = true;
     setTopOpen(true);
   };
 

@@ -190,21 +190,18 @@ export function Header({ collapsed, onExpand }: { collapsed: boolean; onExpand: 
         ))}
       </nav>
       </header>
-      <Link
-        to="/"
+      <button
+        type="button"
         className="tetra-top__corner"
         aria-hidden={!collapsed}
         tabIndex={collapsed ? 0 : -1}
-        aria-label="Flex Forex home"
-        onClick={() => {
-          window.scrollTo({ top: 0 });
-          onExpand();
-        }}
+        aria-label="Show navigation"
+        onClick={onExpand}
       >
         <span className="tetra-top__mark">
           <FlexLogo gold />
         </span>
-      </Link>
+      </button>
     </div>
   );
 }

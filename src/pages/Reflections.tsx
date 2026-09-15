@@ -72,6 +72,18 @@ async function drylandFromStat(
   };
 }
 
+function isCoreToken(row: Dryland) {
+  return PROJECT_CORE_TOKENS.some((t) => t.contract === row.contract && t.symbol === row.symbol);
+}
+
+function sortDrylandGroup(rows: Dryland[]) {
+  const head = rows.filter(isCoreToken);
+  const rest = rows
+    .filter((r) => !isCoreToken(r))
+    .sort((a, b) => b.usd - a.usd || b.pool - a.pool || a.symbol.localeCompare(b.symbol));
+  return [...head, ...rest];
+}
+
 async function loadDrylands(): Promise<Dryland[]> {
   const core = await Promise.all(
     PROJECT_CORE_TOKENS.map((t) =>
@@ -104,11 +116,9 @@ async function loadDrylands(): Promise<Dryland[]> {
       row.usd = usdPrice > 0 ? row.pool * usdPrice : 0;
     })
   );
-  const head = rows.filter((r) => PROJECT_CORE_TOKENS.some((t) => t.contract === r.contract && t.symbol === r.symbol));
-  const rest = rows
-    .filter((r) => !head.includes(r))
-    .sort((a, b) => b.usd - a.usd || b.pool - a.pool || a.symbol.localeCompare(b.symbol));
-  return [...head, ...rest];
+  const ready = sortDrylandGroup(rows.filter((r) => r.poolRaw >= r.floorRaw));
+  const below = sortDrylandGroup(rows.filter((r) => r.poolRaw < r.floorRaw));
+  return [...ready, ...below];
 }
 
 export default function Reflections() {
