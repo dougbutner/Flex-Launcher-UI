@@ -162,7 +162,7 @@ export default function Admin() {
         return [...rest, saved];
       });
       setRain((r) => ({ ...r, [symbol]: rainFromRow(saved) }));
-      setRainMsg((m) => ({ ...m, [symbol]: "Saved. Make it rain pokes in this app use these floors." }));
+      setRainMsg((m) => ({ ...m, [symbol]: "Saved. Make it rain in this app uses these floors." }));
     } catch (err) {
       setRainMsg((m) => ({ ...m, [symbol]: txErrorMessage(err) }));
     } finally {
@@ -188,8 +188,7 @@ export default function Admin() {
         <h1 className="text-3xl font-black tracking-tight">Admin</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Connect as <span className="font-mono">3asy</span>, <span className="font-mono">fl3x</span>, or{" "}
-          <span className="font-mono">for3x</span> to sync token metadata to token.proton and set frontend makeitrain
-          floors.
+          <span className="font-mono">for3x</span> to sync token metadata to token.proton and set reflection minimums.
         </p>
       </div>
     );
@@ -221,6 +220,8 @@ export default function Admin() {
         <div className="mt-4 space-y-3 border-t border-border pt-4">
           <RainDefaultsFields
             value={rain[t.symbol] ?? rainFromRow(null)}
+            precision={t.precision}
+            symbol={t.symbol}
             disabled={rainSaving != null}
             onChange={(next) => setRain((r) => ({ ...r, [t.symbol]: next }))}
           />
@@ -230,7 +231,7 @@ export default function Admin() {
             disabled={rainSaving != null}
             onClick={() => void saveRain(t.symbol, t.precision)}
           >
-            {rainSaving === t.symbol ? "Savingù" : "Save rain defaults"}
+            {rainSaving === t.symbol ? "Saving‚Ä¶" : "Save reflection minimums"}
           </button>
           {rainMsg[t.symbol] ? <p className="text-xs text-muted-foreground">{rainMsg[t.symbol]}</p> : null}
         </div>
@@ -266,11 +267,11 @@ export default function Admin() {
         Signed in as <span className="font-mono">{actor}</span>
         {program ? ` (${program})` : ""}. Fill name, URL, description, and icon URL, then sign token.proton::reg or
         update as {actor}@active. Lists merge launches, create history, and Manager sqlite even if token.proton scan
-        fails. Rain min_hold / min_pool here are sqlite only. They prefill every Make it rain poke in this app.
+        fails. Reflection minimums here are saved in this app only. They prefill every Make it rain in this app.
       </p>
       <div className="mt-4 flex items-center gap-2">
         <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>
-          {busy ? "Loadingù" : "Refresh"}
+          {busy ? "Loading‚Ä¶" : "Refresh"}
         </button>
       </div>
       {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}

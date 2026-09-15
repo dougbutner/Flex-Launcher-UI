@@ -455,7 +455,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
         +0.25% each to dev and club.
       </p>
 
-      <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+      <label className="flex cursor-pointer items-start gap-3 rounded-2xl border p-4">
         <input
           type="checkbox"
           className="mt-1"
@@ -464,11 +464,10 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
           onChange={(e) => patch({ swapUnderlyingDefault: e.target.checked })}
         />
         <span>
-          <span className="block text-sm font-semibold">Default quote rain ({quote.symbol})</span>
+          <span className="block text-sm font-semibold">Rain comes as backing token ({quote.symbol})</span>
           <span className="mt-1 block text-xs text-muted-foreground">
-            startlaunch last bool: swap_underlying_default. On: unpaid holders (pid 0) receive {quote.symbol} unless they
-            choosereward another route. Off: pid 0 pays the native ticker. Empty output_contract on choosereward returns
-            to pid 0.
+            Change holders to get your backing token as reflections, not your token (not recommended). Changes default
+            only, holders can flex into different reward token.
           </span>
         </span>
       </label>

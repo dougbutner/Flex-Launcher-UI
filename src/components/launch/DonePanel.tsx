@@ -18,10 +18,10 @@ export function DonePanel({ draft, onReset }: { draft: LaunchDraft; onReset: () 
       </h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
         Liftoff complete. 100% of supply sits in a locked, one-sided Alcor position. Buyers walk the range and anyone
-        can call makeitrain to splash holders
+        can call Make it rain to splash holders
         {draft.swapUnderlyingDefault
-          ? ` (unpaid holders receive ${quote.symbol} via the launch pool unless they choosereward another route)`
-          : " (unpaid holders receive the native token unless they choosereward a flex pool)"}
+          ? ` (rain comes as ${quote.symbol} unless a holder flexes into another reward)`
+          : ""}
         . After the 90-day lock ends, anyone can call checklock to apply the extra protocol skim.
         {draft.program === "flexforex"
           ? " Open Manage to lock setdist / ratios and add flex reward pools."

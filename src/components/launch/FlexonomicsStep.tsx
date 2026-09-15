@@ -19,7 +19,7 @@ export function FlexonomicsStep({ draft, patch, onNext, onBack, locked = false }
   return (
     <StepShell
       title="Flexonomics"
-      desc="Pick the transfer tax. for3x can also split the reflection slice into angel / jackpot. Set frontend makeitrain floors here."
+      desc="Pick the transfer tax. for3x can also split the reflection slice into angel / jackpot. Set reflection minimums here."
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -54,6 +54,8 @@ export function FlexonomicsStep({ draft, patch, onNext, onBack, locked = false }
       />
       <RainDefaultsFields
         value={{ rainMinHold: draft.rainMinHold, rainMinPool: draft.rainMinPool }}
+        precision={draft.precision}
+        symbol={draft.symbol}
         disabled={locked}
         onChange={(next) => patch({ rainMinHold: next.rainMinHold, rainMinPool: next.rainMinPool })}
       />

@@ -295,7 +295,7 @@ export default function Manager() {
             : v
         )
       );
-      setRainSaveMsg("Saved. Make it rain pokes in this app use these floors.");
+      setRainSaveMsg("Saved. Make it rain in this app uses these floors.");
     } catch (err) {
       setRainSaveMsg(txErrorMessage(err));
     } finally {
@@ -530,14 +530,21 @@ export default function Manager() {
               />
 
               <div className="space-y-3 border-t border-border pt-5">
-                <RainDefaultsFields value={rain} onChange={setRain} disabled={rainSaving || busy} />
+                <RainDefaultsFields
+                  key={managerTokenKey(view.token.contract, view.token.symbol)}
+                  value={rain}
+                  precision={view.token.precision}
+                  symbol={view.token.symbol}
+                  onChange={setRain}
+                  disabled={rainSaving || busy}
+                />
                 <button
                   type="button"
                   className="btn btn-outline btn-sm"
                   disabled={rainSaving || busy || !view.token.createTx}
                   onClick={() => void saveRainDefaults()}
                 >
-                  {rainSaving ? "Saving…" : "Save rain defaults"}
+                  {rainSaving ? "Saving…" : "Save reflection minimums"}
                 </button>
                 {rainSaveMsg ? <p className="text-xs text-muted-foreground">{rainSaveMsg}</p> : null}
               </div>

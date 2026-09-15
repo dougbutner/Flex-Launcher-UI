@@ -62,6 +62,7 @@ import { logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
 import { applyRangeWidth, applyStartMarketCap, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
+import { amountToRaw, formatRainAsset } from "@/services/rainDefaults";
 import { validImageUrl } from "@/services/tokenLogo";
 import { XTOKEN_FALLBACK, XTOKEN_TOP_N, findProofPoolId } from "@/services/xtokenCatalog";
 import { draftFromManager, managerFromDraft } from "@/services/managerDraft";
@@ -409,7 +410,7 @@ describe("launch plan", () => {
   });
 });
 
-describe("post-launch poke actions", () => {
+describe("post-launch rain actions", () => {
   it("builds checklock, pullangel, and pulljackpot payloads", () => {
     expect(checklockAction("easyflex", "FOO")).toEqual({
       account: "easyflex",
@@ -637,8 +638,12 @@ describe("XPR mainnet launcher defaults", () => {
     expect(d.quoteId).toBe("easy");
     expect(d.xtokenSymbol).toBe(XUSDC_SYMBOL);
     expect(d.proofPoolId).toBe("0");
-    expect(d.swapUnderlyingDefault).toBe(true);
+    expect(d.swapUnderlyingDefault).toBe(false);
     expect(d.precision).toBe(6);
+    expect(amountToRaw("3", 4)).toBe(30000);
+    expect(formatRainAsset(30000, 4, "XPR")).toBe("3.0000 XPR");
+    expect(amountToRaw("0.665555", 6)).toBe(665555);
+    expect(formatRainAsset(665555, 6, "FOO")).toBe("0.665555 FOO");
     expect(
       alcorSwapUrl("EASY", "mon3y", "FOO", "for3x")
     ).toBe("https://alcor.exchange/v/xpr/swap?input=easy-mon3y&output=foo-for3x");

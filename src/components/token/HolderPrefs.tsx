@@ -109,8 +109,8 @@ export function HolderPrefs({
         label="Flex reward"
         hint={
           swapUnderlyingDefault
-            ? `Empty output_contract = native (pid 0). pid 0 pays ${quoteSymbol || "the launch quote"} because swap_underlying_default was true at startlaunch.`
-            : "Empty output_contract = native (pid 0). pid 0 pays the native ticker unless swap_underlying_default was true at startlaunch."
+            ? `Default rain is ${quoteSymbol || "the backing token"}. You can flex into a different reward.`
+            : `Default rain is ${symbol}. You can flex into a different reward.`
         }
       >
         <div className="flex flex-wrap gap-2">
@@ -120,7 +120,7 @@ export function HolderPrefs({
             disabled={disabled}
             onChange={(e) => setRewardKey(e.target.value)}
           >
-            <option value="native">Native (pid 0)</option>
+            <option value="native">Default rain</option>
             {pools.map((p) => {
               const id = String(pick(p, "id") ?? "");
               return (

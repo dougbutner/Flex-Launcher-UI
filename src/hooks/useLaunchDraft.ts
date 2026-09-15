@@ -37,7 +37,7 @@ export type LaunchDraft = {
   xtokenSymbol: string;
   xtokenPrecision: number;
   proofPoolId: string;
-  /** startlaunch last bool: pid 0 rain pays the launch quote (holders can choosereward another route). */
+  /** When true, unpaid holders receive the launch quote instead of the new token. */
   swapUnderlyingDefault: boolean;
   fee: FeeTier;
   priceLower: string;
@@ -61,7 +61,7 @@ export type LaunchDraft = {
   addpoolTx: string;
 };
 
-const KEY = "flex-launch-draft-v7";
+const KEY = "flex-launch-draft-v8";
 export const DRAFT_STORAGE_KEY = KEY;
 export const MANAGER_RESUME_KEY = "flex-manager-resume";
 
@@ -110,7 +110,7 @@ export const emptyDraft = (): LaunchDraft => {
     xtokenSymbol: "XUSDC",
     xtokenPrecision: 6,
     proofPoolId: "0",
-    swapUnderlyingDefault: true,
+    swapUnderlyingDefault: false,
     fee: 3000,
     priceLower: easy.priceLower,
     priceUpper: easy.priceUpper,
@@ -134,11 +134,17 @@ export const emptyDraft = (): LaunchDraft => {
 
 function load(): LaunchDraft {
   try {
-    const raw = localStorage.getItem(KEY) ?? localStorage.getItem("flex-launch-draft-v6") ?? localStorage.getItem("flex-launch-draft-v5");
+    const v8 = localStorage.getItem(KEY);
+    const legacy =
+      localStorage.getItem("flex-launch-draft-v7") ??
+      localStorage.getItem("flex-launch-draft-v6") ??
+      localStorage.getItem("flex-launch-draft-v5");
+    const raw = v8 ?? legacy;
     if (!raw) return seedIfBlank(emptyDraft());
     const parsed = JSON.parse(raw) as Partial<LaunchDraft>;
     const program = (parsed.program as FlexProgram) || "flexforex";
     const tax = defaultTaxDraft(program);
+    const fromLegacy = !v8 && Boolean(legacy);
     return seedIfBlank({
       ...emptyDraft(),
       ...tax,
@@ -150,6 +156,7 @@ function load(): LaunchDraft {
       projectAccount: parsed.projectAccount ?? tax.projectAccount,
       angelNumbersBps: parsed.angelNumbersBps ?? tax.angelNumbersBps,
       jackpotBps: parsed.jackpotBps ?? tax.jackpotBps,
+      swapUnderlyingDefault: fromLegacy && !parsed.startTx ? false : Boolean(parsed.swapUnderlyingDefault),
     });
   } catch {
     return seedIfBlank(emptyDraft());

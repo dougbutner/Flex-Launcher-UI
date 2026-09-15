@@ -3,6 +3,7 @@ import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, presetFromDraft, quoteFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
 import { StepShell } from "@/components/launch/ui";
 import { formatSupplyCommas } from "@/services/assets";
+import { formatRainAsset } from "@/services/rainDefaults";
 import { unlockTimeUnix } from "@/services/launchMath";
 import { formatBpsPercent, hasProjectTax, taxSum } from "@/services/taxRates";
 
@@ -74,19 +75,19 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
           />
         ) : null}
         <Row
-          k="Rain poke (frontend)"
-          v={`min_hold ${draft.rainMinHold} · min_pool ${draft.rainMinPool}`}
+          k="Reflection minimums"
+          v={`per holder ${formatRainAsset(draft.rainMinHold, draft.precision, draft.symbol)} · pool ${formatRainAsset(draft.rainMinPool, draft.precision, draft.symbol)}`}
         />
         <Row
           k="Quote"
           v={`${quote.symbol} @ ${quote.contract}${preset.flexQuote ? "" : ` · proof pool #${draft.proofPoolId}`}`}
         />
         <Row
-          k="Reflect default"
+          k="Rain as backing"
           v={
             draft.swapUnderlyingDefault
-              ? `swap_underlying_default true (pid 0 → ${quote.symbol})`
-              : "swap_underlying_default false (pid 0 pays native)"
+              ? `Yes. Holders receive ${quote.symbol} unless they flex into another reward.`
+              : "No. Holders receive your token unless they flex into another reward."
           }
           mono={false}
         />

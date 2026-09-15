@@ -167,7 +167,9 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
     {
       id: "startlaunch",
       label: "Start launch",
-      detail: `Quote, fee, ticks, sqrtPriceX64, swap_underlying_default=${draft.swapUnderlyingDefault} on ${code}`,
+      detail: draft.swapUnderlyingDefault
+        ? `Quote, fee, ticks. Rain comes as backing token.`
+        : `Quote, fee, ticks. Rain comes as your token.`,
       sig: `${code}::startlaunch`,
       txOf: (d) => d.startTx,
       build: async ({ plan, draft: d }) => [
