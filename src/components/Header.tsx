@@ -7,14 +7,13 @@ import { useWallet } from "@/hooks/useWallet";
 import { walletTypeLabel } from "@/services/walletSessions";
 
 const NAV = [
-  { to: "/", label: "Home" },
   { to: "/launch", label: "Launch" },
   { to: "/leaderboard", label: "Winners" },
   { to: "/reflections", label: "Make it Rain" },
   { to: "/portfolio", label: "My Bags" },
 ];
 
-export function Header() {
+export function Header({ collapsed, onExpand }: { collapsed: boolean; onExpand: () => void }) {
   const {
     actor,
     isLoggedIn,
@@ -32,9 +31,9 @@ export function Header() {
   const location = useLocation();
   const showManager = useManagerAccess(isLoggedIn ? actor : null);
   const nav = [
-    ...NAV.slice(0, 2),
+    NAV[0],
     ...(showManager ? [{ to: "/manager", label: "Dev's Manager" }] : []),
-    ...NAV.slice(2),
+    ...NAV.slice(1),
     ...(isFlexContractActor(actor)
       ? [
           { to: "/admin", label: "Admin" },
@@ -66,27 +65,28 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    <div className={`tetra-top ${collapsed ? "is-collapsed" : ""}`}>
+      <header className="tetra-top__bar">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <FlexLogo />
+            <FlexLogo gold />
             <div className="leading-tight">
-              <div className="text-sm font-bold tracking-tight">Flex Forex: Token Launcher</div>
+              <div className="text-sm font-bold tracking-tight">Flex Forex</div>
               <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
                 XPR
               </div>
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="tetra-nav hidden items-center gap-1 md:flex">
             {nav.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.to === "/"}
                 className={({ isActive }) =>
-                  `rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  `px-3 py-1.5 text-xs font-medium ${
                     isActive
                       ? "bg-primary/15 text-primary"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -173,14 +173,14 @@ export function Header() {
         </div>
       </div>
 
-      <nav className="flex items-center gap-1 overflow-x-auto border-t px-4 py-1.5 md:hidden">
+      <nav className="tetra-nav flex items-center gap-1 overflow-x-auto border-t border-white/10 px-4 py-1.5 md:hidden">
         {nav.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === "/"}
             className={({ isActive }) =>
-              `whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+              `whitespace-nowrap px-3 py-1 text-[11px] font-medium ${
                 isActive ? "bg-primary/15 text-primary" : "text-muted-foreground"
               }`
             }
@@ -189,6 +189,22 @@ export function Header() {
           </NavLink>
         ))}
       </nav>
-    </header>
+      </header>
+      <Link
+        to="/"
+        className="tetra-top__corner"
+        aria-hidden={!collapsed}
+        tabIndex={collapsed ? 0 : -1}
+        aria-label="Flex Forex home"
+        onClick={() => {
+          window.scrollTo({ top: 0 });
+          onExpand();
+        }}
+      >
+        <span className="tetra-top__mark">
+          <FlexLogo gold />
+        </span>
+      </Link>
+    </div>
   );
 }

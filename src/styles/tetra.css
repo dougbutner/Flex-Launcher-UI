@@ -1,0 +1,274 @@
+/* Tetra chrome + gold button sheen. Spec: Visual-Identity brand/chrome + buttons. */
+
+:root {
+  --tetra-void: #050705;
+  --tetra-ink: #f4f7f4;
+  --tetra-green: #22c55e;
+  --tetra-gold-line: #ffe566;
+  --tetra-glass: rgba(5, 7, 5, 0.52);
+  --tetra-glass-border: rgba(244, 247, 244, 0.14);
+  --tetra-glass-blur: 18px;
+  --tetra-glow-green: 0 0 24px rgba(34, 197, 94, 0.45);
+  --tetra-glow-triad:
+    0 0 28px rgba(34, 197, 94, 0.28),
+    0 0 56px rgba(139, 92, 246, 0.16),
+    0 0 80px rgba(249, 115, 22, 0.1);
+  --tetra-font: "Jost", "Inter", "Segoe UI", sans-serif;
+  --tetra-tracking-ui: 0.08em;
+  --tetra-bar-h: 56px;
+  --tetra-tri: 120px;
+  --tetra-dock: 88px;
+  --tetra-line: 1px;
+  --tetra-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --tetra-ease-shimmer: cubic-bezier(0.7, 0, 0.3, 1);
+  --tetra-dur: 0.55s;
+  --tetra-smoke: 0.72s;
+}
+
+.tetra-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 80;
+  width: 100%;
+  height: 0;
+  pointer-events: none;
+}
+
+.tetra-top__bar {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: var(--tetra-bar-h);
+  overflow: hidden;
+  pointer-events: auto;
+  transform-origin: left center;
+  color: var(--tetra-ink);
+  background: var(--tetra-glass);
+  border-bottom: var(--tetra-line) solid var(--tetra-glass-border);
+  box-shadow: var(--tetra-glow-triad);
+  backdrop-filter: blur(var(--tetra-glass-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--tetra-glass-blur)) saturate(1.35);
+  position: relative;
+  z-index: 2;
+  opacity: 1;
+  filter: blur(0);
+  transition:
+    width var(--tetra-smoke) var(--tetra-ease),
+    opacity 0.48s var(--tetra-ease),
+    filter 0.48s var(--tetra-ease),
+    box-shadow 0.48s var(--tetra-ease);
+}
+
+.tetra-top.is-collapsed .tetra-top__bar {
+  width: 0;
+  opacity: 0;
+  filter: blur(16px);
+  pointer-events: none;
+  box-shadow: none;
+}
+
+.tetra-top__corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  width: var(--tetra-tri);
+  height: var(--tetra-tri);
+  padding: 16px 0 0 16px;
+  cursor: pointer;
+  appearance: none;
+  color: var(--tetra-gold-line);
+  text-decoration: none;
+  background: var(--tetra-glass);
+  border: none;
+  box-shadow: var(--tetra-glow-triad);
+  backdrop-filter: blur(var(--tetra-glass-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--tetra-glass-blur)) saturate(1.35);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.36s var(--tetra-ease),
+    visibility 0s linear 0.36s;
+}
+
+.tetra-top.is-collapsed .tetra-top__corner {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity 0.42s var(--tetra-ease) 0.06s,
+    visibility 0s linear 0s;
+}
+
+.tetra-top__corner::after,
+.tetra-dock::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top left,
+    transparent calc(50% - 0.6px),
+    rgba(244, 247, 244, 0.5) 50%,
+    transparent calc(50% + 0.6px)
+  );
+}
+
+.tetra-dock {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  width: var(--tetra-dock);
+  height: var(--tetra-dock);
+  padding: 0;
+  cursor: pointer;
+  appearance: none;
+  color: var(--tetra-green);
+  background: var(--tetra-glass);
+  border: none;
+  box-shadow: var(--tetra-glow-triad);
+  backdrop-filter: blur(var(--tetra-glass-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--tetra-glass-blur)) saturate(1.35);
+  clip-path: polygon(100% 100%, 0 100%, 100% 0);
+}
+
+.tetra-dock__icon,
+.tetra-top__mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--tetra-gold-line);
+  filter: drop-shadow(0 0 18px rgba(255, 229, 102, 0.55));
+}
+
+.tetra-top__mark .flex-logo,
+.tetra-dock__icon .flex-logo {
+  width: 100%;
+  height: 100%;
+}
+
+.tetra-top__mark {
+  width: 32px;
+  height: 32px;
+}
+
+.tetra-dock__icon {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 22px;
+  height: 22px;
+}
+
+.tetra-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  padding: 28px 32px;
+  padding-right: calc(var(--tetra-dock) + 20px);
+  color: var(--tetra-ink);
+  background: var(--tetra-glass);
+  border-top: var(--tetra-line) solid var(--tetra-glass-border);
+  box-shadow: var(--tetra-glow-triad);
+  backdrop-filter: blur(var(--tetra-glass-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--tetra-glass-blur)) saturate(1.35);
+  transform: translateY(110%);
+  transition: transform var(--tetra-dur) var(--tetra-ease);
+}
+
+.tetra-footer.is-open {
+  transform: translateY(0);
+}
+
+.tetra-footer a {
+  font-family: var(--tetra-font);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: var(--tetra-tracking-ui);
+  text-transform: uppercase;
+}
+
+.tetra-main {
+  position: relative;
+  z-index: 1;
+  padding-top: var(--tetra-bar-h);
+  min-height: 100vh;
+}
+
+.tetra-nav {
+  font-family: var(--tetra-font);
+  letter-spacing: var(--tetra-tracking-ui);
+  text-transform: uppercase;
+}
+
+/* Gold sheen on existing .btn: static gradient, transform + opacity only. */
+.btn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    transparent calc(50% - 5px),
+    rgba(255, 229, 102, 0.22) calc(50% - 1.6px),
+    var(--tetra-gold-line) 50%,
+    rgba(255, 229, 102, 0.22) calc(50% + 1.6px),
+    transparent calc(50% + 5px),
+    transparent 100%
+  );
+  opacity: 0;
+  transform: translate3d(120%, 120%, 0);
+  transition:
+    transform 0.75s var(--tetra-ease-shimmer),
+    opacity 0.1s linear 0.65s;
+}
+
+.btn:hover,
+.btn:focus-visible {
+  filter:
+    drop-shadow(0 0 8px rgba(255, 229, 102, 0.5))
+    drop-shadow(0 0 22px rgba(240, 211, 74, 0.28));
+}
+
+.btn:hover::before,
+.btn:focus-visible::before {
+  opacity: 0.8;
+  transform: translate3d(-120%, -120%, 0);
+  transition:
+    transform 0.75s cubic-bezier(0.15, 0, 0.25, 1),
+    opacity 0s linear;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  filter: none;
+}
+
+.btn:disabled::before,
+.btn[aria-disabled="true"]::before {
+  content: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn::before {
+    transition: none;
+  }
+}

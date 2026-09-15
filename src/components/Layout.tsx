@@ -1,7 +1,9 @@
-import { Outlet } from "react-router-dom";
+import { useEffect } from "react";
+import { Outlet, useLocation } from "react-router-dom";
+import { FlexLogo } from "@/components/FlexLogo";
 import { Header } from "@/components/Header";
-import { NetworkSwitcher } from "@/components/NetworkSwitcher";
 import { TokenIcon } from "@/components/TokenIcon";
+import { useTetraChrome } from "@/hooks/useTetraChrome";
 import {
   EOSIO_TOKEN,
   EASY_SYMBOL,
@@ -41,15 +43,32 @@ function TelegramMark() {
 }
 
 export function Layout() {
+  const { topOpen, footerOpen, expandTop, toggleFooter, sync } = useTetraChrome();
+  const location = useLocation();
+
+  useEffect(() => {
+    sync();
+  }, [location.pathname, sync]);
+
   return (
     <div className="flex min-h-screen flex-col">
-      <Header />
-      <main className="flex-1">
+      <Header collapsed={!topOpen} onExpand={expandTop} />
+      <main className="tetra-main flex-1">
         <Outlet />
       </main>
-      <footer className="relative z-30 overflow-visible border-t px-6 py-4">
-        <NetworkSwitcher />
-        <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
+      <button
+        type="button"
+        className="tetra-dock"
+        aria-expanded={footerOpen}
+        aria-label={footerOpen ? "Close footer" : "Open footer"}
+        onClick={toggleFooter}
+      >
+        <span className="tetra-dock__icon">
+          <FlexLogo gold />
+        </span>
+      </button>
+      <footer className={`tetra-footer ${footerOpen ? "is-open" : ""}`}>
+        <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
           <a href={DOCS} target="_blank" rel="noopener noreferrer" className="link">
             docs
           </a>

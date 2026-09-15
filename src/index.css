@@ -46,6 +46,59 @@
       sans-serif;
   }
 
+  /* Minimal black track, gold thumb. Idle 20%, hover 80%, scrolling 100%. */
+  :root {
+    --scrollbar-size: 6px;
+    --scrollbar-track: hsl(0 0% 0% / 0.2);
+    --scrollbar-thumb: hsl(var(--primary) / 0.2);
+  }
+
+  html.scrollbar-element {
+    --scrollbar-track: hsl(0 0% 0% / 0.8);
+    --scrollbar-thumb: hsl(var(--primary) / 0.8);
+  }
+
+  html.scrolling {
+    --scrollbar-track: hsl(0 0% 0% / 1);
+    --scrollbar-thumb: hsl(var(--primary) / 1);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar {
+    width: var(--scrollbar-size);
+    height: var(--scrollbar-size);
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.8);
+  }
+
+  *::-webkit-scrollbar-track:hover {
+    background: hsl(0 0% 0% / 0.8);
+  }
+
+  html.scrolling *::-webkit-scrollbar-thumb,
+  html.scrolling *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 1);
+  }
+
+  html.scrolling *::-webkit-scrollbar-track,
+  html.scrolling *::-webkit-scrollbar-track:hover {
+    background: hsl(0 0% 0% / 1);
+  }
+
   ::selection {
     background: hsl(var(--primary) / 0.4);
   }
@@ -53,11 +106,11 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-4 py-2 text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap px-4 py-2 text-sm font-semibold disabled:pointer-events-none disabled:opacity-40;
   }
 
   .btn-primary {
-    @apply btn bg-primary text-primary-foreground shadow-[0_0_24px_-8px_hsl(var(--primary)/0.8)] hover:bg-accent hover:text-accent-foreground active:scale-[0.98];
+    @apply btn bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground;
   }
 
   .btn-accent {
@@ -77,11 +130,11 @@
   }
 
   .btn-sm {
-    @apply h-9 rounded-md px-3 text-xs;
+    @apply h-9 px-3 text-xs;
   }
 
   .btn-lg {
-    @apply h-12 rounded-md px-6 text-base;
+    @apply h-12 px-6 text-base;
   }
 
   .input {

@@ -19,3 +19,11 @@
 .flex-logo__img--easy {
   transform: scale(1.28);
 }
+
+.flex-logo--gold {
+  background: #1a1408;
+}
+
+.flex-logo--gold .flex-logo__img {
+  filter: sepia(1) saturate(7) hue-rotate(2deg) brightness(1.08);
+}
