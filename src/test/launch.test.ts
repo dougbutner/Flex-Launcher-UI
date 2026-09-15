@@ -32,6 +32,9 @@ import {
   SWAP_ALCOR,
   XUSDC_SYMBOL,
   alcorSwapUrl,
+  alcorChartWidgetUrl,
+  alcorSwapWidgetUrl,
+  alcorAnalyticsUrl,
   flexAccount,
   flexMeta,
   hasAngelChannels,
@@ -77,6 +80,7 @@ import {
   sanitizeManagerMeta,
 } from "@/services/managerStore";
 import { fmtUsd } from "@/services/money";
+import { downsamplePoints, fmtPctChange, fmtPoolFee, quotePerToken, tradeSide } from "@/services/alcorMarket";
 import { sortLargeCap, sortLoudest, sortNewcomers, sortPopular, type BoardToken } from "@/services/leaderboardStore";
 
 describe("tick math", () => {
@@ -647,6 +651,16 @@ describe("XPR mainnet launcher defaults", () => {
     expect(
       alcorSwapUrl("EASY", "mon3y", "FOO", "for3x")
     ).toBe("https://alcor.exchange/v/xpr/swap?input=easy-mon3y&output=foo-for3x");
+    expect(alcorChartWidgetUrl("EASY", "mon3y", "GEASY", "fl3x")).toBe(
+      "https://alcor.exchange/v/xpr/chart-widget?input=easy-mon3y&output=geasy-fl3x"
+    );
+    expect(alcorChartWidgetUrl("EASY", "mon3y", "GEASY", "fl3x", 11525)).toBe(
+      "https://alcor.exchange/v/xpr/chart-widget?input=easy-mon3y&output=geasy-fl3x&pool=11525"
+    );
+    expect(alcorSwapWidgetUrl("EASY", "mon3y", "GEASY", "fl3x")).toBe(
+      "https://alcor.exchange/v/xpr/swap-widget?input=easy-mon3y&output=geasy-fl3x"
+    );
+    expect(alcorAnalyticsUrl("GEASY", "fl3x")).toBe("https://alcor.exchange/v/xpr/analytics/tokens/geasy-fl3x");
     expect(SWAP_ALCOR).toBe("swap.alcor");
     expect(isFlexContractActor("for3x")).toBe(true);
     expect(isFlexContractActor("alice")).toBe(false);
@@ -881,5 +895,23 @@ describe("leaderboard tiles", () => {
     expect(sortLoudest([a, b, c]).map((t) => t.symbol)).toEqual(["CCC", "BBB", "AAA"]);
     expect(sortLargeCap([a, b, c]).map((t) => t.symbol)).toEqual(["AAA", "CCC", "BBB"]);
     expect(sortPopular([a, b, c]).map((t) => t.symbol)).toEqual(["CCC", "BBB", "AAA"]);
+  });
+});
+
+describe("alcor market chart helpers", () => {
+  it("prices a swap as quote per token and labels buy vs sell", () => {
+    const buy = { tokenA: -231134.988055, tokenB: 625.442781 };
+    expect(quotePerToken(buy, true)?.toFixed(6)).toBe((625.442781 / 231134.988055).toFixed(6));
+    expect(tradeSide(buy.tokenA)).toBe("buy");
+    expect(tradeSide(231134)).toBe("sell");
+    expect(fmtPoolFee(10000)).toBe("1.00%");
+    expect(fmtPctChange(0.43)).toBe("+0.43%");
+    const pts = downsamplePoints(
+      Array.from({ length: 500 }, (_, i) => ({ t: i, price: i + 1 })),
+      5
+    );
+    expect(pts).toHaveLength(5);
+    expect(pts[0].t).toBe(0);
+    expect(pts[4].t).toBe(499);
   });
 });

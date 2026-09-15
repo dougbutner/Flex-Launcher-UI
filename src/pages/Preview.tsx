@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { isFlexContractActor } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { TokenIcon } from "@/components/TokenIcon";
+import { GoldPriceChart } from "@/components/token/GoldPriceChart";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
 import {
@@ -344,6 +345,34 @@ export default function Preview() {
           <span className="chip-muted">pool 12,840.25</span>
           <span className="chip-primary">angel 420</span>
           <span className="chip-primary">jackpot 880.5</span>
+        </div>
+
+        <div className="card mt-6 overflow-hidden">
+          <div className="grid grid-cols-2 gap-3 border-b border-border px-4 py-3 sm:grid-cols-4">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</div>
+              <div className="font-mono text-sm font-semibold text-primary">0.002681 EASY</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">24h</div>
+              <div className="font-mono text-sm font-semibold text-success">+0.43%</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Vol 24h</div>
+              <div className="font-mono text-sm font-semibold">$98</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Mcap</div>
+              <div className="font-mono text-sm font-semibold">$12.3k</div>
+            </div>
+          </div>
+          <GoldPriceChart
+            quoteSymbol="EASY"
+            points={Array.from({ length: 24 }, (_, i) => ({
+              t: Date.now() - (23 - i) * 3600_000,
+              price: 0.0024 + Math.sin(i / 3) * 0.0002 + i * 0.000012,
+            }))}
+          />
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">

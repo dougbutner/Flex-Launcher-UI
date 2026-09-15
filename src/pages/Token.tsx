@@ -5,6 +5,7 @@ import { TokenIcon } from "@/components/TokenIcon";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
 import { TokenListingCard } from "@/components/token/TokenListingCard";
+import { TokenMarket } from "@/components/token/TokenMarket";
 import {
   alcorSwapUrl,
   explorerAccount,
@@ -50,7 +51,7 @@ export default function Token() {
   const program = programFromAccount(code);
   const { actor, isLoggedIn, addWebAuthWallet, transact } = useWallet();
 
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [launch, setLaunch] = useState<Record<string, unknown> | null>(null);
   const [stat, setStat] = useState<Record<string, unknown> | null>(null);
@@ -154,8 +155,11 @@ export default function Token() {
     }
   };
 
+  const supplyAmt = assetAmountNumber(String(pick(stat, "supply") ?? "0"));
+  const launchPoolId = Number(pick(launch, "pure_liquid_alcor_pool_id", "pool_id") ?? 0);
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -249,6 +253,16 @@ export default function Token() {
             {Boolean(pick(settings, "dist_locked")) ? <span className="chip-muted">dist locked</span> : null}
           </div>
 
+          <TokenMarket
+            poolId={launchPoolId}
+            contract={code}
+            symbol={sym}
+            quoteContract={quoteContract}
+            quoteSymbol={quoteSymbol}
+            supply={supplyAmt}
+            launched={launched}
+          />
+
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {isLoggedIn && actor ? (
               <>
@@ -283,7 +297,7 @@ export default function Token() {
               </>
             ) : (
               <button type="button" className="btn btn-primary btn-sm" onClick={() => void addWebAuthWallet()}>
-                Connect to manage
+                Connect to manage your bags
               </button>
             )}
             {quoteSymbol ? (
@@ -301,7 +315,7 @@ export default function Token() {
           </div>
 
           {isLoggedIn && actor ? (
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 max-w-3xl space-y-4">
               <HolderPrefs
                 program={program}
                 contract={code}
@@ -331,11 +345,7 @@ export default function Token() {
                   transact={transact}
                   onDone={() => void load()}
                 />
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Issuer tools appear when you sign as {issuer || "the issuer"}.
-                </p>
-              )}
+              ) : null}
             </div>
           ) : null}
         </>

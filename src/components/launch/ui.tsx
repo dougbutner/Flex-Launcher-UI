@@ -19,11 +19,21 @@ export function SupplyShortcuts(props: { value: string; onPick: (value: string) 
   );
 }
 
-export function Field(props: { label: string; hint?: string; error?: string; aside?: ReactNode; children: ReactNode }) {
+export function Field(props: {
+  label: string;
+  hint?: string;
+  error?: string;
+  aside?: ReactNode;
+  children: ReactNode;
+  /** Sentence-case labels instead of the default uppercase chip style. */
+  sentence?: boolean;
+}) {
   return (
     <div>
       <div className="mb-1.5 flex items-baseline gap-3">
-        <span className="label mb-0">{props.label}</span>
+        <span className={props.sentence ? "mb-0 block text-sm font-semibold text-foreground" : "label mb-0"}>
+          {props.label}
+        </span>
         {props.aside}
       </div>
       {props.children}

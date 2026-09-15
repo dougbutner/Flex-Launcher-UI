@@ -129,6 +129,9 @@ export const LOAN_SYMBOL = "LOAN";
 
 export const EXPLORER = "https://explorer.xprnetwork.org";
 export const ALCOR_SWAP = "https://alcor.exchange/v/xpr/swap";
+export const ALCOR_SWAP_WIDGET = "https://alcor.exchange/v/xpr/swap-widget";
+export const ALCOR_CHART_WIDGET = "https://alcor.exchange/v/xpr/chart-widget";
+export const ALCOR_ANALYTICS = "https://alcor.exchange/v/xpr/analytics/tokens";
 
 export const LOCK_MIN_SECONDS = 7_776_000;
 export const LOCK_MIN_DAYS = 90;
@@ -313,10 +316,38 @@ export function explorerTx(id: string) {
   return `${EXPLORER}/transaction/${id}`;
 }
 
+/** Alcor UI token id: `symbol-contract` (lowercase). */
+export function alcorTokenId(symbol: string, contract: string) {
+  return `${symbol.toLowerCase()}-${contract.toLowerCase()}`;
+}
+
 export function alcorSwapUrl(quoteSymbol: string, quoteContract: string, tokenSymbol: string, tokenContract: string) {
-  const input = `${quoteSymbol.toLowerCase()}-${quoteContract}`;
-  const output = `${tokenSymbol.toLowerCase()}-${tokenContract}`;
+  const input = alcorTokenId(quoteSymbol, quoteContract);
+  const output = alcorTokenId(tokenSymbol, tokenContract);
   return `${ALCOR_SWAP}?input=${encodeURIComponent(input)}&output=${encodeURIComponent(output)}`;
+}
+
+export function alcorSwapWidgetUrl(quoteSymbol: string, quoteContract: string, tokenSymbol: string, tokenContract: string) {
+  const input = alcorTokenId(quoteSymbol, quoteContract);
+  const output = alcorTokenId(tokenSymbol, tokenContract);
+  return `${ALCOR_SWAP_WIDGET}?input=${encodeURIComponent(input)}&output=${encodeURIComponent(output)}`;
+}
+
+export function alcorChartWidgetUrl(
+  quoteSymbol: string,
+  quoteContract: string,
+  tokenSymbol: string,
+  tokenContract: string,
+  poolId = 0
+) {
+  const input = alcorTokenId(quoteSymbol, quoteContract);
+  const output = alcorTokenId(tokenSymbol, tokenContract);
+  const base = `${ALCOR_CHART_WIDGET}?input=${encodeURIComponent(input)}&output=${encodeURIComponent(output)}`;
+  return poolId > 0 ? `${base}&pool=${poolId}` : base;
+}
+
+export function alcorAnalyticsUrl(symbol: string, contract: string) {
+  return `${ALCOR_ANALYTICS}/${encodeURIComponent(alcorTokenId(symbol, contract))}`;
 }
 
 export function tickSpacing(fee: number) {

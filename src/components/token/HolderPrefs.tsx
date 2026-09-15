@@ -21,11 +21,10 @@ function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]
 }
 
 function poolLabel(row: Record<string, unknown>): string {
-  const id = Number(pick(row, "id") ?? 0);
   const out = parseProtonSymbol(pick(row, "output_symbol"));
   const contract = String(pick(row, "output_contract") ?? "");
-  const sym = out ? `${out.precision},${out.code}` : "?";
-  return `#${id} → ${sym} @ ${contract || "?"}`;
+  const code = out?.code || "?";
+  return contract ? `${code} @ ${contract}` : code;
 }
 
 type Props = {
@@ -53,8 +52,6 @@ export function HolderPrefs({
   flexer,
   settings,
   pools,
-  swapUnderlyingDefault = false,
-  quoteSymbol = "",
   busy,
   transact,
   onDone,
@@ -97,21 +94,17 @@ export function HolderPrefs({
   return (
     <section className="space-y-5 rounded-xl border border-border/60 bg-background/40 p-4">
       <div>
-        <h3 className="text-sm font-bold tracking-tight">Holder prefs</h3>
+        <h3 className="text-sm font-bold tracking-tight">Holder Options</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Reward route, fee opt-out
-          {angelEnabled ? ", angel number" : ""}
+          Reward route, fee opt-out{angelEnabled ? ", angel number" : ""}
           {inheritOk ? ", inheritance" : ""}.
         </p>
       </div>
 
       <Field
+        sentence
         label="Flex reward"
-        hint={
-          swapUnderlyingDefault
-            ? `Default rain is ${quoteSymbol || "the backing token"}. You can flex into a different reward.`
-            : `Default rain is ${symbol}. You can flex into a different reward.`
-        }
+        hint="Flex into a different reward token. Ask project owner to add one if you don't see what you want."
       >
         <div className="flex flex-wrap gap-2">
           <select
@@ -155,15 +148,25 @@ export function HolderPrefs({
       </Field>
 
       <Field
+        sentence
         label="Transfer fees"
-        hint={optedOut ? "Already opted out - irreversible for self." : "Self can only opt out (ban_status true)."}
+        hint={
+          optedOut
+            ? "Already opted out. Rewards are forfeited forever."
+            : "Opt out to avoid tax, but forfeit rewards, forever."
+        }
       >
         <button
           type="button"
           className="btn btn-outline btn-sm"
           disabled={disabled || optedOut}
           onClick={() => {
-            if (!window.confirm(`Opt out of transfer fees on $${symbol}? This cannot be undone by you.`)) return;
+            if (
+              !window.confirm(
+                `Opt out of transfer fees on $${symbol}? You avoid tax but forfeit rewards forever.`
+              )
+            )
+              return;
             void run(feeoptoutAction(contract, actor, true, symbol));
           }}
         >
@@ -172,7 +175,7 @@ export function HolderPrefs({
       </Field>
 
       {angelEnabled ? (
-        <Field label="Angel number" hint="0-999. Required for angel pot draws.">
+        <Field label="Angel number" sentence hint="0-999. Required for angel pot draws.">
           <div className="flex flex-wrap gap-2">
             <input
               className="input w-28"
@@ -200,8 +203,9 @@ export function HolderPrefs({
       {inheritOk ? (
         <>
           <Field
+            sentence
             label="Inheritance"
-            hint="Percent of your splash paid to the beneficiary (0-100). Leave account blank for self."
+            hint="Percent of your splash paid to any account (0-100). Leave blank for self."
           >
             <div className="flex flex-wrap gap-2">
               <input
@@ -236,7 +240,11 @@ export function HolderPrefs({
               </button>
             </div>
           </Field>
-          <Field label="Inherit memo" hint="Optional · ≤200 chars · @@ = recipient, $$ = amount, ** = symbol">
+          <Field
+            sentence
+            label="Inherit memo (advanced, not recommended)"
+            hint="Optional · ≤200 chars · @@ = recipient, $$ = amount, ** = symbol"
+          >
             <div className="flex flex-wrap gap-2">
               <input
                 className="input min-w-[12rem] flex-1"
