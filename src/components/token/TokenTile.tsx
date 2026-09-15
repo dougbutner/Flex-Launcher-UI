@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
+import { Amount } from "@/components/Amount";
 import { TokenIcon } from "@/components/TokenIcon";
 import { ProgramDots } from "@/components/token/ProgramDots";
 import type { FlexProgram } from "@/config/launch";
-import { fmtUsd } from "@/services/money";
 
 type Props = {
   program: FlexProgram;
@@ -56,11 +56,15 @@ export function TokenTile({
         <span className="flex items-end justify-between gap-2 font-mono text-[10px] leading-tight text-muted-foreground">
           <span>
             <span className="block text-[9px] uppercase tracking-wide">mcap</span>
-            <span className="font-semibold text-primary">{fmtUsd(mcapUsd ?? 0)}</span>
+            <span className="font-semibold text-primary">
+              <Amount value={mcapUsd ?? 0} kind="usd" />
+            </span>
           </span>
           <span className="text-right">
             <span className="block text-[9px] uppercase tracking-wide">liq</span>
-            <span className="font-semibold text-foreground">{fmtUsd(liqUsd ?? 0)}</span>
+            <span className="font-semibold text-foreground">
+              <Amount value={liqUsd ?? 0} kind="usd" />
+            </span>
           </span>
         </span>
       </span>

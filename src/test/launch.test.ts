@@ -64,7 +64,7 @@ import { alcorLogoFilename, mergeAdminTokenRefs } from "@/services/listingHelper
 import { localTokenIconSrc, rememberRemoteTokenIcon, tokenIconKey, tokenIconSrc } from "@/services/tokenIcons";
 import { logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
-import { applyRangeWidth, applyStartMarketCap, tokenStepValid } from "@/components/launch/draftPlan";
+import { applyRangeWidth, applyStartMarketCap, fmtPrice, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { amountToRaw, formatRainAsset, reflectionPayFloorRaw } from "@/services/rainDefaults";
 import { validImageUrl } from "@/services/tokenLogo";
@@ -80,7 +80,7 @@ import {
   parseManagerToken,
   sanitizeManagerMeta,
 } from "@/services/managerStore";
-import { fmtUsd } from "@/services/money";
+import { formatNiceNumber, formatPlainNumber, fmtUsd } from "@/services/money";
 import { downsamplePoints, fmtPctChange, fmtPoolFee, quotePerToken, tradeSide } from "@/services/alcorMarket";
 import { sortLargeCap, sortLoudest, sortNewcomers, sortPopular, type BoardToken } from "@/services/leaderboardStore";
 
@@ -889,6 +889,16 @@ describe("leaderboard tiles", () => {
     expect(fmtUsd(0)).toBe("-");
     expect(fmtUsd(12.34)).toBe("$12.34");
     expect(fmtUsd(1500)).toBe("$1,500");
+    expect(formatNiceNumber(0.0026398)).toBe("0.0026398");
+    expect(formatNiceNumber(0.00004686269462000001)).toBe("0.00004686");
+    expect(formatNiceNumber(0.000000123456)).toBe("0.0000001235");
+    expect(fmtUsd(0.00004686269462000001)).toBe("$0.00004686");
+    expect(fmtUsd(0.5)).toBe("$0.50");
+    expect(formatPlainNumber(1_000_000_000_000)).toBe("1,000,000,000,000");
+    expect(formatPlainNumber(0.00000001)).toBe("0.00000001");
+    expect(formatPlainNumber(1e-9)).toMatch(/e-9/i);
+    expect(fmtPrice(1_000_000)).toBe("1,000,000");
+    expect(fmtPrice(1e12)).toBe("1,000,000,000,000");
   });
 
   it("sorts newcomers, volume, mcap, and holders", () => {

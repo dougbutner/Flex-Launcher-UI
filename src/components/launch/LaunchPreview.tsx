@@ -1,8 +1,8 @@
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, quoteFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
-import { StatusIcon, SupplyShortcuts } from "@/components/launch/ui";
+import { StatusIcon } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
-import { easyHoldNeed, flexAccount, flexMeta } from "@/config/launch";
+import { easyHoldNeed, flexMeta } from "@/config/launch";
 import { formatSupplyCommas } from "@/services/assets";
 import { formatBpsPercent, taxSum } from "@/services/taxRates";
 
@@ -34,7 +34,7 @@ export function LaunchPreview({
   ];
 
   return (
-    <aside className="card sticky top-20 overflow-hidden">
+    <aside className="card sticky top-20 overflow-x-hidden">
       <div className="relative h-28 bg-gradient-to-br from-primary/40 via-secondary to-background">
         {draft.imageUrl || draft.imageDataUrl ? (
           <img
@@ -49,9 +49,12 @@ export function LaunchPreview({
         )}
       </div>
       <div className="px-5 pb-5 pt-10">
-        <div className="text-lg font-bold tracking-tight">{showName}</div>
-        <div className="mt-1 flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
-          ${showSymbol} · {draft.program} @ {flexAccount(draft.program)} ·
+        <div className="min-w-0 break-words text-lg font-bold tracking-tight">{showName}</div>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-xs text-muted-foreground">
+          ${showSymbol}
+          <span aria-hidden>·</span>
+          {draft.program}
+          <span aria-hidden>·</span>
           <TokenIcon contract={quote.contract} symbol={quote.symbol} size={14} />
           {quote.symbol} pair
         </div>
@@ -61,20 +64,19 @@ export function LaunchPreview({
 
         <div className="mt-4 grid grid-cols-2 gap-2 text-center">
           <div className="stat-box !px-2 !py-2">
-            <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-              Supply
-              {patch ? <SupplyShortcuts value={draft.maxSupply} onPick={(maxSupply) => patch({ maxSupply })} /> : null}
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Supply</div>
+            <div className="break-all font-mono text-sm font-bold leading-snug">
+              {formatSupplyCommas(draft.maxSupply || "0")}
             </div>
-            <div className="font-mono text-sm font-bold">{formatSupplyCommas(draft.maxSupply || "0")}</div>
           </div>
           <div className="stat-box !px-2 !py-2">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Tax</div>
-            <div className="font-mono text-sm font-bold">{overallTax}</div>
+            <div className="break-all font-mono text-sm font-bold">{overallTax}</div>
           </div>
         </div>
 
         {plan ? (
-          <p className="mt-3 text-center text-[11px] text-muted-foreground">
+          <p className="mt-3 break-all text-center text-[11px] leading-snug text-muted-foreground">
             {fmtPrice(plan.quotePerTokenLower)} - {fmtPrice(plan.quotePerTokenUpper)} {quote.symbol} / {showSymbol}
           </p>
         ) : null}

@@ -5,6 +5,7 @@ import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { presetFromDraft, quoteFromDraft, quoteStepValid } from "@/components/launch/draftPlan";
 import { Field, StepShell } from "@/components/launch/ui";
 import { quoteProofOk } from "@/services/flexTables";
+import { fmtUsd } from "@/services/money";
 import { getAccount } from "@/services/rpc";
 import {
   fetchXtokensByPopularity,
@@ -68,13 +69,6 @@ function QuoteCard({
       </div>
     </button>
   );
-}
-
-function fmtUsd(n: number): string {
-  if (!(n > 0)) return "-";
-  if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (n >= 1) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  return `$${n.toPrecision(3)}`;
 }
 
 export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Props) {

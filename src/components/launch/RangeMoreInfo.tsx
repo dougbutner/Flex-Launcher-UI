@@ -12,16 +12,13 @@ import {
   type LaunchPlan,
 } from "@/services/launchMath";
 
+import { fmtUsd as moneyFmt } from "@/services/money";
+
 type Tab = "goto" | "compare" | "scenarios";
 
-function fmtUsd(n: number | null | undefined): string {
-  if (n == null || !(n > 0) || !Number.isFinite(n)) return "-";
-  if (n >= 1e12) return `$${(n / 1e12).toPrecision(3)}T`;
-  if (n >= 1e9) return `$${(n / 1e9).toPrecision(3)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toPrecision(3)}M`;
-  if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (n >= 1) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  return `$${n.toPrecision(3)}`;
+function usd(n: number | null | undefined): string {
+  if (n == null) return "-";
+  return moneyFmt(n);
 }
 
 function fmtPct(n: number | null | undefined): string {
@@ -31,12 +28,12 @@ function fmtPct(n: number | null | undefined): string {
   if (n >= 10) return `${n.toFixed(1)}%`;
   if (n >= 1) return `${n.toFixed(2)}%`;
   if (n >= 0.01) return `${n.toFixed(3)}%`;
-  return `${n.toPrecision(2)}%`;
+  return `${n.toFixed(4)}%`;
 }
 
 function fmtMult(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n) || n <= 0) return "-";
-  if (n >= 1e6) return `${(n / 1e6).toPrecision(3)}M x`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M x`;
   if (n >= 1000) return `${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}x`;
   if (n >= 10) return `${n.toFixed(1)}x`;
   return `${n.toFixed(2)}x`;
@@ -173,7 +170,7 @@ export function RangeMoreInfo({
           <p className="text-xs text-muted-foreground">
             Buying {pct}% of supply costs{" "}
             <span className="font-mono font-semibold text-foreground">
-              {quoteUsd > 0 ? fmtUsd(buyout?.usd) : `${fmtPrice(buyout?.quoteGross ?? 0)} ${quoteSymbol}`}
+              {quoteUsd > 0 ? usd(buyout?.usd) : `${fmtPrice(buyout?.quoteGross ?? 0)} ${quoteSymbol}`}
             </span>
             {" "}and takes{" "}
             <span className="font-mono font-semibold text-foreground">
@@ -184,8 +181,8 @@ export function RangeMoreInfo({
           {bucketCount ? (
             <p className="text-xs text-muted-foreground">
               {bucketCount} tick buckets (fee spacing, equal token inventory each). Cheap half{" "}
-              {fmtUsd(usdCheapHalf)}. Expensive half {fmtUsd(usdExpensiveHalf)}. Last bucket{" "}
-              {fmtUsd(usdLastBucket)}. All buckets {fmtUsd(usdToClearRange)}.
+              {usd(usdCheapHalf)}. Expensive half {usd(usdExpensiveHalf)}. Last bucket{" "}
+              {usd(usdLastBucket)}. All buckets {usd(usdToClearRange)}.
             </p>
           ) : null}
           {buckets.length ? (
@@ -208,7 +205,7 @@ export function RangeMoreInfo({
                       </td>
                       <td className="px-2 py-0.5">{fmtPrice(b.tokens)}</td>
                       <td className="px-2 py-0.5">
-                        {quoteUsd > 0 ? fmtUsd(b.usd) : `${fmtPrice(b.quote)} ${quoteSymbol}`}
+                        {quoteUsd > 0 ? usd(b.usd) : `${fmtPrice(b.quote)} ${quoteSymbol}`}
                       </td>
                     </tr>
                   ))}
@@ -224,7 +221,7 @@ export function RangeMoreInfo({
               {nextCosts.map(({ m, cost }) => (
                 <div key={m} className="rounded-xl border border-primary/15 bg-background/40 px-2 py-2 text-center">
                   <div className="font-mono text-[10px] text-muted-foreground">{m}x</div>
-                  <div className="font-mono text-xs font-bold">{fmtUsd(cost?.usd)}</div>
+                  <div className="font-mono text-xs font-bold">{usd(cost?.usd)}</div>
                   {cost?.capped ? <div className="text-[9px] text-muted-foreground">range max</div> : null}
                 </div>
               ))}
@@ -250,13 +247,13 @@ export function RangeMoreInfo({
                   onChange={(e) => setCompareLog(Number(e.target.value))}
                   className="flex-1 accent-[hsl(var(--primary))]"
                 />
-                <span className="w-24 text-right font-mono text-xs font-bold">{fmtUsd(compareTarget)}</span>
+                <span className="w-24 text-right font-mono text-xs font-bold">{usd(compareTarget)}</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Matching {fmtUsd(compareTarget)} FDV is {fmtMult(compareTarget / startMc)} this launch.
+                Matching {usd(compareTarget)} FDV is {fmtMult(compareTarget / startMc)} this launch.
                 {compareWalk?.capped
-                  ? ` This range maxes at ${fmtUsd(rangeMaxUsd)}.`
-                  : ` Cost to walk there is ${fmtUsd(compareWalk?.usd)}.`}
+                  ? ` This range maxes at ${usd(rangeMaxUsd)}.`
+                  : ` Cost to walk there is ${usd(compareWalk?.usd)}.`}
               </p>
             </>
           ) : (
@@ -281,12 +278,12 @@ export function RangeMoreInfo({
                   }}
                 >
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{row.label}</div>
-                  <div className="font-mono text-sm font-bold">{fmtUsd(row.usd)}</div>
+                  <div className="font-mono text-sm font-bold">{usd(row.usd)}</div>
                   <div className="mt-1 text-[10px] text-muted-foreground">
                     {startMc > 0 ? `${fmtMult(mult)} vs start` : "-"}
                   </div>
                   <div className="font-mono text-[10px] text-muted-foreground">
-                    {walk?.capped ? `beyond range (${fmtUsd(rangeMaxUsd)} max)` : `walk ${fmtUsd(walk?.usd)}`}
+                    {walk?.capped ? `beyond range (${usd(rangeMaxUsd)} max)` : `walk ${usd(walk?.usd)}`}
                   </div>
                 </button>
               );
@@ -340,9 +337,9 @@ export function RangeMoreInfo({
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                After another {extraUsd > 0 ? fmtUsd(extraUsd) : "$0"} walks the pool, the original ${USD_BUY_PROBE} bag
+                After another {extraUsd > 0 ? usd(extraUsd) : "$0"} walks the pool, the original ${USD_BUY_PROBE} bag
                 marks at{" "}
-                <span className="font-mono font-semibold text-foreground">{fmtUsd(scenario.bagUsdAfter)}</span>
+                <span className="font-mono font-semibold text-foreground">{usd(scenario.bagUsdAfter)}</span>
                 {" "}({fmtMult(scenario.bagMultiple)}). Extra takes {fmtPct(scenario.extraSupplyPct)} (
                 {fmtPrice(scenario.extraTokens)} {tokenSymbol}).
                 {scenario.capped ? " The range is fully walked." : ""}

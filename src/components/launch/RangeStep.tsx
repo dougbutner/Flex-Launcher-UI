@@ -13,6 +13,7 @@ import {
 import { RangeMoreInfo } from "@/components/launch/RangeMoreInfo";
 import { Field, StepShell } from "@/components/launch/ui";
 import { maxLockDays, rangeImpact, USD_BUY_PROBE, type RangeImpact } from "@/services/launchMath";
+import { formatPlainNumber, fmtUsd } from "@/services/money";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
 
 type Props = {
@@ -23,14 +24,9 @@ type Props = {
   locked?: boolean;
 };
 
-function fmtUsd(n: number | null | undefined): string {
-  if (n == null || !(n > 0) || !Number.isFinite(n)) return "-";
-  if (n >= 1e12) return `$${(n / 1e12).toPrecision(3)}T`;
-  if (n >= 1e9) return `$${(n / 1e9).toPrecision(3)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toPrecision(3)}M`;
-  if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (n >= 1) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  return `$${n.toPrecision(3)}`;
+function usd(n: number | null | undefined): string {
+  if (n == null) return "-";
+  return fmtUsd(n);
 }
 
 function fmtPct(n: number | null | undefined): string {
@@ -40,21 +36,21 @@ function fmtPct(n: number | null | undefined): string {
   if (n >= 10) return `${n.toFixed(1)}%`;
   if (n >= 1) return `${n.toFixed(2)}%`;
   if (n >= 0.01) return `${n.toFixed(3)}%`;
-  return `${n.toPrecision(2)}%`;
+  return `${formatPlainNumber(n)}%`;
 }
 
 function ImpactStat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div>
       <div className="text-muted-foreground">{label}</div>
-      <div className="font-mono text-sm font-bold text-foreground">{value}</div>
-      {hint ? <div className="mt-0.5 text-[10px] text-muted-foreground">{hint}</div> : null}
+      <div className="break-all font-mono text-sm font-bold leading-snug text-foreground">{value}</div>
+      {hint ? <div className="mt-0.5 break-all text-[10px] text-muted-foreground">{hint}</div> : null}
     </div>
   );
 }
 
 function impactDoubleLabel(impact: RangeImpact): string {
-  if (impact.usdToDouble != null && impact.usdToDouble > 0) return fmtUsd(impact.usdToDouble);
+  if (impact.usdToDouble != null && impact.usdToDouble > 0) return usd(impact.usdToDouble);
   return "-";
 }
 
@@ -190,7 +186,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
                 {wi ? (
                   <div className="mt-1.5 space-y-0.5 text-[10px] leading-tight text-muted-foreground">
                     <div>
-                      2x {wi.usdToDouble != null && wi.usdToDouble > 0 ? fmtUsd(wi.usdToDouble) : "-"}
+                      2x {wi.usdToDouble != null && wi.usdToDouble > 0 ? usd(wi.usdToDouble) : "-"}
                     </div>
                     <div>
                       ${USD_BUY_PROBE} {fmtPct(wi.supplyPctForUsd)}
@@ -279,7 +275,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <ImpactStat
               label="Initial market cap"
-              value={fmtUsd(impact.initialMarketCapUsd)}
+              value={usd(impact.initialMarketCapUsd)}
               hint={`${fmtPrice(impact.startQuotePerToken)} ${quote.symbol} x supply`}
             />
             <ImpactStat
@@ -298,9 +294,9 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
                 impact.tokensForUsd != null
                   ? impact.usdWalkCapped
                     ? `${fmtPrice(impact.tokensForUsd)} ${draft.symbol || "TOKEN"}. Walks every tick bucket.`
-                    : `Last bucket ${fmtUsd(impact.usdLastBucket)}. Top half of ticks ${fmtUsd(
+                    : `Last bucket ${usd(impact.usdLastBucket)}. Top half of ticks ${usd(
                         impact.usdExpensiveHalf
-                      )}. Full range ${fmtUsd(impact.usdToClearRange)}.`
+                      )}. Full range ${usd(impact.usdToClearRange)}.`
                   : quoteUsd > 0
                     ? "Need a USD price from Alcor."
                     : "Waiting on USD from Alcor."
@@ -409,7 +405,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
           </div>
           <p className="text-xs text-muted-foreground">
             Buyers pay between{" "}
-            <span className="font-mono font-semibold text-foreground">
+            <span className="break-all font-mono font-semibold text-foreground">
               {fmtPrice(plan.quotePerTokenLower)} - {fmtPrice(plan.quotePerTokenUpper)} {quote.symbol}
             </span>{" "}
             per {draft.symbol} as they walk the range.

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Amount } from "@/components/Amount";
 import { TokenIcon } from "@/components/TokenIcon";
 import { TxLink } from "@/components/launch/ui";
 import {
@@ -15,7 +16,6 @@ import { readLaunches, readSettings, readStat } from "@/services/flexTables";
 import { amountToRaw, reflectionPayFloorRaw, storedPayoutAction } from "@/services/rainDefaults";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
-import { fmtUsd } from "@/services/money";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
 
 const DIST_BPS = 0.382;
@@ -243,7 +243,9 @@ export default function Reflections() {
                       <span className="break-all font-mono text-[11px] leading-tight text-muted-foreground">
                         {fmtPool(d.pool, d.precision)} {d.symbol}
                       </span>
-                      <span className="font-mono text-sm font-semibold text-primary">{fmtUsd(d.usd)}</span>
+                      <span className="font-mono text-sm font-semibold text-primary">
+                        <Amount value={d.usd} kind="usd" />
+                      </span>
                       {below ? (
                         <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                           below min
@@ -258,7 +260,9 @@ export default function Reflections() {
                         <span className="break-all font-mono text-base font-bold leading-tight text-white">
                           {fmtPool(splash, d.precision)} {d.symbol}
                         </span>
-                        <span className="font-mono text-[10px] text-white/70">{fmtUsd(splashUsd)}</span>
+                        <span className="font-mono text-[10px] text-white/70">
+                          <Amount value={splashUsd} kind="usd" />
+                        </span>
                       </div>
                     )}
                   </div>

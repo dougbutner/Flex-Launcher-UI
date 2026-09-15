@@ -1,6 +1,6 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import type { ChartPoint } from "@/services/alcorMarket";
-import { fmtQuotePrice } from "@/services/alcorMarket";
+import { numberParts } from "@/services/money";
 
 type Props = {
   points: ChartPoint[];
@@ -87,6 +87,7 @@ export function GoldPriceChart({ points, quoteSymbol }: Props) {
         </defs>
         {geom.ticks.map((y, i) => {
           const yy = geom.yOf(y);
+          const parts = numberParts(y);
           return (
             <g key={i}>
               <line
@@ -106,7 +107,8 @@ export function GoldPriceChart({ points, quoteSymbol }: Props) {
                 fontSize="10"
                 fontFamily="ui-monospace, monospace"
               >
-                {fmtQuotePrice(y)}
+                {parts.display}
+                {parts.display !== parts.full ? <title>{parts.full}</title> : null}
               </text>
             </g>
           );
@@ -163,7 +165,7 @@ export function GoldPriceChart({ points, quoteSymbol }: Props) {
       </svg>
       {hi ? (
         <div className="pointer-events-none absolute right-3 top-2 rounded-md border border-primary/30 bg-background/90 px-2.5 py-1 font-mono text-[11px] text-primary shadow-lg">
-          {fmtQuotePrice(hi.price)} {quoteSymbol}
+          {numberParts(hi.price).display} {quoteSymbol}
           <span className="ml-2 text-muted-foreground">
             {new Date(hi.t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
           </span>

@@ -1,3 +1,4 @@
+import { formatNiceNumber } from "@/services/money";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
 
 const ALCOR_POOL = "https://proton.alcor.exchange/api/v2/swap/pools";
@@ -107,10 +108,7 @@ export function filterPoints(points: ChartPoint[], range: ChartRange, now = Date
 
 export function fmtQuotePrice(n: number): string {
   if (!(n > 0) || !Number.isFinite(n)) return "-";
-  if (n >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-  if (n >= 1) return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
-  if (n >= 0.0001) return n.toLocaleString(undefined, { maximumFractionDigits: 6 });
-  return n.toPrecision(3);
+  return formatNiceNumber(n);
 }
 
 export function fmtPctChange(n: number): string {

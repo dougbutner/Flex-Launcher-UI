@@ -4,17 +4,17 @@ import {
   alcorChartWidgetUrl,
   alcorSwapUrl,
 } from "@/config/launch";
+import { Amount } from "@/components/Amount";
 import { GoldPriceChart } from "@/components/token/GoldPriceChart";
 import {
   filterPoints,
   fmtPctChange,
   fmtPoolFee,
-  fmtQuotePrice,
   loadAlcorMarket,
   type AlcorMarketView,
   type ChartRange,
 } from "@/services/alcorMarket";
-import { fmtUsd } from "@/services/money";
+import { usdParts } from "@/services/money";
 
 type Props = {
   poolId: number;
@@ -26,13 +26,25 @@ type Props = {
   launched: boolean;
 };
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "up" | "down" | "gold" }) {
+function Stat({
+  label,
+  value,
+  title,
+  tone,
+}: {
+  label: string;
+  value: string;
+  title?: string;
+  tone?: "up" | "down" | "gold";
+}) {
   const color =
     tone === "up" ? "text-success" : tone === "down" ? "text-destructive" : tone === "gold" ? "text-primary" : "text-foreground";
   return (
     <div className="min-w-0">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`truncate font-mono text-sm font-semibold ${color}`}>{value}</div>
+      <div className={`truncate font-mono text-sm font-semibold ${color}`} title={title && title !== value ? title : undefined}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -104,12 +116,10 @@ export function TokenMarket({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Market</p>
-          <p className="font-mono text-lg font-black tracking-tight">
-            {fmtQuotePrice(data?.priceQuote ?? 0)}{" "}
+          <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-lg font-black tracking-tight">
+            <Amount value={data?.priceQuote ?? 0} />
             <span className="text-sm font-semibold text-muted-foreground">{quoteSymbol}</span>
-            {data?.priceUsd ? (
-              <span className="ml-2 text-sm font-semibold text-primary">{fmtUsd(data.priceUsd)}</span>
-            ) : null}
+            {data?.priceUsd ? <Amount value={data.priceUsd} kind="usd" className="text-sm font-semibold text-primary" /> : null}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -143,10 +153,10 @@ export function TokenMarket({
       <div className="card mt-3 overflow-hidden">
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-b border-border px-4 py-3 sm:grid-cols-4 xl:grid-cols-8">
             <Stat label="24h" value={data ? fmtPctChange(data.change24) : "-"} tone={changeTone} />
-            <Stat label="Vol 24h" value={fmtUsd(data?.volumeUsd24 ?? 0)} />
-            <Stat label="TVL" value={fmtUsd(data?.tvlUsd ?? 0)} tone="gold" />
-            <Stat label="Mcap" value={fmtUsd(data?.mcapUsd ?? 0)} />
-            <Stat label="Vol 7d" value={fmtUsd(data?.volumeUsdWeek ?? 0)} />
+            <Stat label="Vol 24h" value={usdParts(data?.volumeUsd24 ?? 0).display} title={usdParts(data?.volumeUsd24 ?? 0).full} />
+            <Stat label="TVL" value={usdParts(data?.tvlUsd ?? 0).display} title={usdParts(data?.tvlUsd ?? 0).full} tone="gold" />
+            <Stat label="Mcap" value={usdParts(data?.mcapUsd ?? 0).display} title={usdParts(data?.mcapUsd ?? 0).full} />
+            <Stat label="Vol 7d" value={usdParts(data?.volumeUsdWeek ?? 0).display} title={usdParts(data?.volumeUsdWeek ?? 0).full} />
             <Stat label="Fee" value={fmtPoolFee(data?.fee ?? 0)} />
             <Stat
               label={symbol}
@@ -209,8 +219,12 @@ export function TokenMarket({
                   className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-1.5 last:border-0"
                 >
                   <span className={tr.side === "buy" ? "text-success" : "text-destructive"}>{tr.side}</span>
-                  <span className="text-foreground">{fmtQuotePrice(tr.price)}</span>
-                  <span className="text-muted-foreground">{fmtUsd(tr.usd)}</span>
+                  <span className="text-foreground">
+                    <Amount value={tr.price} />
+                  </span>
+                  <span className="text-muted-foreground">
+                    <Amount value={tr.usd} kind="usd" />
+                  </span>
                   <span className="truncate text-muted-foreground">{tr.sender}</span>
                 </li>
               ))}

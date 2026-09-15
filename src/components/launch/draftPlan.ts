@@ -1,6 +1,7 @@
 import { flexAccount, quoteNeedsProof, QUOTE_PRESETS, RANGE_WIDTH_PRESETS, XTOKENS, type RangeWidthId } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { validSymbol } from "@/services/assets";
+import { formatNiceNumber } from "@/services/money";
 import { validImageUrl } from "@/services/tokenLogo";
 import type { ExtToken } from "@/services/eosioName";
 import { planLaunch, type LaunchPlan } from "@/services/launchMath";
@@ -38,13 +39,10 @@ export function presetFromDraft(draft: LaunchDraft) {
 export function formatPriceInput(n: number): string {
   if (!(n > 0) || !Number.isFinite(n)) return "1";
   if (n >= 1) {
-    if (n >= 1e15) return n.toFixed(0);
-    if (Math.abs(n - Math.round(n)) < n * 1e-12) return String(Math.round(n));
-    const s = n.toFixed(8).replace(/\.?0+$/, "");
-    return s || String(Math.round(n));
+    if (Math.abs(n - Math.round(n)) < n * 1e-12)     return formatNiceNumber(Math.round(n), false);
+    return formatNiceNumber(n, false);
   }
-  const s = n.toFixed(12).replace(/\.?0+$/, "");
-  return s || "0.000001";
+  return formatNiceNumber(n, false);
 }
 
 /** Start price from FDV in USD (or quote units when quoteUsd is 0). Does not touch max price. */
@@ -149,7 +147,5 @@ export function planFromDraft(draft: LaunchDraft): LaunchPlan | null {
 
 export function fmtPrice(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return "0";
-  if (n >= 1_000_000) return n.toExponential(2);
-  if (n >= 1) return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
-  return n.toPrecision(3);
+  return formatNiceNumber(n);
 }

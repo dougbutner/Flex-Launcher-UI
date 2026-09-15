@@ -1,4 +1,4 @@
-import { FEE_TIERS, SWAP_ALCOR, easyHoldNeed, flexAccount, flexMeta, hasAngelChannels, holdEasyToLaunch } from "@/config/launch";
+import { FEE_TIERS, SWAP_ALCOR, easyHoldNeed, flexMeta, hasAngelChannels, holdEasyToLaunch } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, presetFromDraft, quoteFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
 import { StepShell } from "@/components/launch/ui";
@@ -16,8 +16,8 @@ type Props = {
 function Row({ k, v, mono = true }: { k: string; v: string; mono?: boolean }) {
   return (
     <div className="flex items-start justify-between gap-4 py-2">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">{k}</span>
-      <span className={`text-right text-sm font-semibold ${mono ? "font-mono" : ""}`}>{v}</span>
+      <span className="shrink-0 text-xs uppercase tracking-wide text-muted-foreground">{k}</span>
+      <span className={`min-w-0 break-all text-right text-sm font-semibold ${mono ? "font-mono" : ""}`}>{v}</span>
     </div>
   );
 }
@@ -55,7 +55,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
       }
     >
       <div className="rounded-2xl border bg-background/50 px-4 py-2">
-        <Row k="Program" v={`${draft.program} @ ${flexAccount(draft.program)}`} />
+          <Row k="Program" v={draft.program} />
         <Row k="Token" v={`${draft.name} (${draft.symbol})`} />
         <Row k="Max supply" v={`${formatSupplyCommas(draft.maxSupply || "0")} ${draft.symbol} · precision ${draft.precision}`} />
         <Row k="Transfer tax" v={`${formatBpsPercent(overall)} overall`} />
