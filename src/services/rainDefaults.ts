@@ -44,6 +44,14 @@ export function formatRainAsset(raw: number, precision: number, symbol: string):
   return formatAsset(rawToAmount(raw, precision), precision, code);
 }
 
+/** On-chain makeitrain floor: `reflect_min` if set, else 1 whole token. */
+export function reflectionPayFloorRaw(reflectMin: unknown, precision: number): number {
+  const min = rainRaw(reflectMin);
+  const p = clampPrecision(precision);
+  const one = 10 ** p;
+  return min > 0 ? min : one;
+}
+
 export function rainFromRow(row: Partial<RainDefaults> | null | undefined): RainDefaults {
   return { rainMinHold: rainRaw(row?.rainMinHold), rainMinPool: rainRaw(row?.rainMinPool) };
 }

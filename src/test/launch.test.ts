@@ -28,6 +28,7 @@ import {
   EASYFLEX_CONTRACT,
   FLEXFOREX_CONTRACT,
   MON3Y,
+  PROJECT_CORE_TOKENS,
   QUOTE_PRESETS,
   SWAP_ALCOR,
   XUSDC_SYMBOL,
@@ -65,7 +66,7 @@ import { logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
 import { applyRangeWidth, applyStartMarketCap, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
-import { amountToRaw, formatRainAsset } from "@/services/rainDefaults";
+import { amountToRaw, formatRainAsset, reflectionPayFloorRaw } from "@/services/rainDefaults";
 import { validImageUrl } from "@/services/tokenLogo";
 import { XTOKEN_FALLBACK, XTOKEN_TOP_N, findProofPoolId } from "@/services/xtokenCatalog";
 import { draftFromManager, managerFromDraft } from "@/services/managerDraft";
@@ -648,6 +649,9 @@ describe("XPR mainnet launcher defaults", () => {
     expect(formatRainAsset(30000, 4, "XPR")).toBe("3.0000 XPR");
     expect(amountToRaw("0.665555", 6)).toBe(665555);
     expect(formatRainAsset(665555, 6, "FOO")).toBe("0.665555 FOO");
+    expect(reflectionPayFloorRaw(0, 6)).toBe(1_000_000);
+    expect(reflectionPayFloorRaw(5000, 4)).toBe(5000);
+    expect(PROJECT_CORE_TOKENS.map((t) => t.symbol)).toEqual(["EASY", "WON", "GRAMS", "MEME"]);
     expect(
       alcorSwapUrl("EASY", "mon3y", "FOO", "for3x")
     ).toBe("https://alcor.exchange/v/xpr/swap?input=easy-mon3y&output=foo-for3x");

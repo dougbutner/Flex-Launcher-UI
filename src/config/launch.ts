@@ -215,6 +215,14 @@ export type QuotePreset = {
   label: string;
 };
 
+/** Core project tokens (not 3asy / fl3x / for3x launches). Rain actions match live ABIs. */
+export const PROJECT_CORE_TOKENS = [
+  { symbol: "EASY", contract: MON3Y, rainAction: "distribute" as const },
+  { symbol: "WON", contract: "w3won", rainAction: "radiate" as const },
+  { symbol: "GRAMS", contract: "gold.mon3y", rainAction: "reflect" as const },
+  { symbol: "MEME", contract: "m3m3", rainAction: "distribute" as const },
+] as const;
+
 /** Flex-quote contracts match C++ (`mon3y` / `w3won` / `m3m3` / `gold.mon3y`), not VITE_EASYFLEX. */
 export const QUOTE_PRESETS: QuotePreset[] = [
   {

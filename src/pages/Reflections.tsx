@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
+import { TokenIcon } from "@/components/TokenIcon";
 import { TxLink } from "@/components/launch/ui";
-import { FLEX_PROGRAMS, flexAccount, flexMeta, type FlexProgram } from "@/config/launch";
+import {
+  FLEX_PROGRAMS,
+  PROJECT_CORE_TOKENS,
+  QUOTE_PRESETS,
+  flexAccount,
+  flexMeta,
+  type FlexProgram,
+} from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { parseAsset } from "@/services/assets";
-import { readLaunches, readStat } from "@/services/flexTables";
-import { storedPayoutAction } from "@/services/rainDefaults";
+import { readLaunches, readSettings, readStat } from "@/services/flexTables";
+import { amountToRaw, reflectionPayFloorRaw, storedPayoutAction } from "@/services/rainDefaults";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { fmtUsd } from "@/services/money";
@@ -14,12 +22,15 @@ const DIST_BPS = 0.382;
 
 type Dryland = {
   key: string;
-  program: FlexProgram;
+  program: FlexProgram | null;
   contract: string;
   symbol: string;
   precision: number;
   pool: number;
+  poolRaw: number;
+  floorRaw: number;
   usd: number;
+  rainAction?: string;
 };
 
 function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]): unknown {
@@ -33,7 +44,40 @@ function fmtPool(n: number, precision: number): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: 0 });
 }
 
+async function drylandFromStat(
+  contract: string,
+  symbol: string,
+  extra: Pick<Dryland, "program" | "rainAction">
+): Promise<Dryland | null> {
+  const [stat, settings] = await Promise.all([
+    readStat(contract, symbol).catch(() => null),
+    readSettings(contract, symbol).catch(() => null),
+  ]);
+  const poolAsset = parseAsset(String(pick(stat, "reflection_pool") ?? ""));
+  const precision = poolAsset?.precision ?? QUOTE_PRESETS.find((q) => q.symbol === symbol)?.precision ?? 4;
+  const pool = poolAsset ? Number(poolAsset.amount) : 0;
+  const poolRaw = poolAsset ? amountToRaw(poolAsset.amount, precision) : 0;
+  const floorRaw = reflectionPayFloorRaw(pick(settings, "reflect_min"), precision);
+  return {
+    key: `${contract}:${symbol}`,
+    program: extra.program,
+    contract,
+    symbol,
+    precision,
+    pool,
+    poolRaw,
+    floorRaw,
+    usd: 0,
+    rainAction: extra.rainAction,
+  };
+}
+
 async function loadDrylands(): Promise<Dryland[]> {
+  const core = await Promise.all(
+    PROJECT_CORE_TOKENS.map((t) =>
+      drylandFromStat(t.contract, t.symbol, { program: null, rainAction: t.rainAction })
+    )
+  );
   const groups = await Promise.all(
     FLEX_PROGRAMS.map(async (p) => {
       const code = flexAccount(p.id);
@@ -44,31 +88,27 @@ async function loadDrylands(): Promise<Dryland[]> {
         .filter((item) => item.symbol);
       return Promise.all(
         items.map(async ({ code, program, symbol }) => {
-          const stat = await readStat(code, symbol).catch(() => null);
-          const poolAsset = parseAsset(String(pick(stat, "reflection_pool") ?? ""));
-          const pool = poolAsset ? Number(poolAsset.amount) : 0;
-          if (!(pool > 0)) return null;
-          return {
-            key: `${code}:${symbol}`,
-            program,
-            contract: code,
-            symbol,
-            precision: poolAsset?.precision ?? 4,
-            pool,
-            usd: 0,
-          } satisfies Dryland;
+          const row = await drylandFromStat(code, symbol, { program });
+          if (!row || !(row.pool > 0)) return null;
+          return row;
         })
       );
     })
   );
-  const rows = groups.flat().filter((row): row is Dryland => row != null);
+  const seen = new Set(core.filter((r): r is Dryland => r != null).map((r) => r.key));
+  const launched = groups.flat().filter((row): row is Dryland => row != null && !seen.has(row.key));
+  const rows = [...core.filter((r): r is Dryland => r != null), ...launched];
   await Promise.all(
     rows.map(async (row) => {
       const usdPrice = await fetchAlcorUsdPrice(row.contract, row.symbol).catch(() => 0);
       row.usd = usdPrice > 0 ? row.pool * usdPrice : 0;
     })
   );
-  return rows.sort((a, b) => b.usd - a.usd || b.pool - a.pool || a.symbol.localeCompare(b.symbol));
+  const head = rows.filter((r) => PROJECT_CORE_TOKENS.some((t) => t.contract === r.contract && t.symbol === r.symbol));
+  const rest = rows
+    .filter((r) => !head.includes(r))
+    .sort((a, b) => b.usd - a.usd || b.pool - a.pool || a.symbol.localeCompare(b.symbol));
+  return [...head, ...rest];
 }
 
 export default function Reflections() {
@@ -96,6 +136,7 @@ export default function Reflections() {
   }, [pull]);
 
   const rain = async (d: Dryland) => {
+    if (d.poolRaw < d.floorRaw) return;
     if (!isLoggedIn || !actor) {
       void addWebAuthWallet();
       return;
@@ -103,9 +144,10 @@ export default function Reflections() {
     setRaining(d.key);
     setRainMsg((m) => ({ ...m, [d.key]: {} }));
     try {
-      const res = await transact([
-        await storedPayoutAction(d.contract, d.symbol, actor, flexMeta(d.program).payoutSigner),
-      ]);
+      const action = d.rainAction
+        ? { account: d.contract, name: d.rainAction, data: {} }
+        : await storedPayoutAction(d.contract, d.symbol, actor, flexMeta(d.program ?? "easyflex").payoutSigner);
+      const res = await transact([action]);
       setRainMsg((m) => ({ ...m, [d.key]: { tx: txIdFromResult(res) || "ok" } }));
       await pull();
     } catch (err) {
@@ -150,6 +192,7 @@ export default function Reflections() {
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {drylands.map((d) => {
+              const below = d.poolRaw < d.floorRaw;
               const splash = d.pool * DIST_BPS;
               const splashUsd = d.usd * DIST_BPS;
               const msg = rainMsg[d.key];
@@ -157,11 +200,19 @@ export default function Reflections() {
                 <article
                   key={d.key}
                   role="button"
-                  tabIndex={0}
-                  aria-label={`Make it rain ${d.symbol}`}
-                  className="group card flex min-h-[13.5rem] cursor-pointer flex-col transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] focus:border-[#1e3a8a] focus:bg-[#1e3a8a] focus:outline-none"
-                  onClick={() => void rain(d)}
+                  tabIndex={below ? -1 : 0}
+                  aria-disabled={below}
+                  aria-label={below ? `${d.symbol} below rain threshold` : `Make it rain ${d.symbol}`}
+                  className={
+                    below
+                      ? "card flex min-h-[13.5rem] cursor-not-allowed flex-col opacity-40 grayscale"
+                      : "group card flex min-h-[13.5rem] cursor-pointer flex-col transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] focus:border-[#1e3a8a] focus:bg-[#1e3a8a] focus:outline-none"
+                  }
+                  onClick={() => {
+                    if (!below) void rain(d);
+                  }}
                   onKeyDown={(e) => {
+                    if (below) return;
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
                       void rain(d);
@@ -169,11 +220,12 @@ export default function Reflections() {
                   }}
                 >
                   <div className="flex flex-1 flex-col items-center justify-center px-2 pt-3">
-                    <span className="font-mono text-xl font-black tracking-tight text-foreground group-hover:text-primary group-focus:text-primary sm:text-2xl">
+                    <TokenIcon contract={d.contract} symbol={d.symbol} size={36} />
+                    <span className="mt-2 font-mono text-xl font-black tracking-tight text-foreground group-hover:text-primary group-focus:text-primary sm:text-2xl">
                       {d.symbol}
                     </span>
                     <span className="mt-1 h-5 text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-                      {raining === d.key ? "Signing…" : "Make it rain"}
+                      {below ? "" : raining === d.key ? "Signing…" : "Make it rain"}
                     </span>
                   </div>
                   <div className="relative min-h-[4.75rem] px-2 pb-3 text-center">
@@ -182,16 +234,23 @@ export default function Reflections() {
                         {fmtPool(d.pool, d.precision)} {d.symbol}
                       </span>
                       <span className="font-mono text-sm font-semibold text-primary">{fmtUsd(d.usd)}</span>
+                      {below ? (
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          below min
+                        </span>
+                      ) : null}
                     </div>
-                    <div className="pointer-events-none absolute inset-x-2 bottom-3 flex flex-col items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-primary">
-                        splash 38.2%
-                      </span>
-                      <span className="break-all font-mono text-base font-bold leading-tight text-white">
-                        {fmtPool(splash, d.precision)} {d.symbol}
-                      </span>
-                      <span className="font-mono text-[10px] text-white/70">{fmtUsd(splashUsd)}</span>
-                    </div>
+                    {below ? null : (
+                      <div className="pointer-events-none absolute inset-x-2 bottom-3 flex flex-col items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-primary">
+                          splash 38.2%
+                        </span>
+                        <span className="break-all font-mono text-base font-bold leading-tight text-white">
+                          {fmtPool(splash, d.precision)} {d.symbol}
+                        </span>
+                        <span className="font-mono text-[10px] text-white/70">{fmtUsd(splashUsd)}</span>
+                      </div>
+                    )}
                   </div>
                   {msg?.tx ? (
                     <p className="px-2 pb-2 text-center">
