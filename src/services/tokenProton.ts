@@ -5,8 +5,14 @@ import { symbolCodeOf } from "@/services/preflight";
 import { getActions, getTableRows } from "@/services/rpc";
 import { rememberRemoteTokenIcon } from "@/services/tokenIcons";
 
-/** Live token.proton::reg/update require tcontract@active. Flex tcontract is 3asy/fl3x/for3x, so the issuer cannot sign. Do not wire this to the issuer wizard. */
+/** token.proton::reg/update typically want tcontract@active (3asy / fl3x / for3x). Manager lets the connected account try first. Do not wire this to the launch wizard. */
 export const TOKEN_PROTON = "token.proton";
+export const TOKEN_PROTON_TNAME_MAX = 16;
+
+export function protonTname(value: string, fallback = "") {
+  const t = value.trim().slice(0, TOKEN_PROTON_TNAME_MAX);
+  return t || fallback.trim().slice(0, TOKEN_PROTON_TNAME_MAX);
+}
 
 export type ProtonTokenRow = {
   id: number | string;
@@ -161,22 +167,24 @@ export function tokenProtonLogoAction(args: {
   iconurl: string;
   precision: number;
   symbol: string;
+  signer?: string;
 }): ChainAction {
   const symbol = protonSymbol(args.precision, args.symbol);
   const data: Record<string, unknown> = {
     tcontract: args.tcontract,
-    tname: args.tname,
+    tname: protonTname(args.tname, args.symbol),
     url: args.url,
     desc: args.desc,
     iconurl: args.iconurl,
     symbol,
   };
   if (args.row) data.id = args.row.id;
+  const actor = args.signer?.trim() || args.tcontract;
   return {
     account: TOKEN_PROTON,
     name: args.row ? "update" : "reg",
     data,
-    authorization: [{ actor: args.tcontract, permission: "active" }],
+    authorization: [{ actor, permission: "active" }],
   };
 }
 

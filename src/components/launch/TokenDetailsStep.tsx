@@ -6,6 +6,7 @@ import { Field, StepShell, SupplyShortcuts } from "@/components/launch/ui";
 import { formatSupplyCommas, parseSupplyInput, validSymbol } from "@/services/assets";
 import { pinLogoFile } from "@/services/ipfsPin";
 import { defaultTaxDraft } from "@/services/taxRates";
+import { TOKEN_PROTON_TNAME_MAX } from "@/services/tokenProton";
 import { validateTokenLogo, validImageUrl } from "@/services/tokenLogo";
 import { txErrorMessage } from "@/services/txParse";
 
@@ -133,13 +134,14 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           />
         </button>
         <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Token name">
+          <Field label="Token name" hint={`Max ${TOKEN_PROTON_TNAME_MAX} characters.`}>
             <input
               className="input"
-              placeholder="e.g. Gudasol's Cat Mercury"
+              placeholder="e.g. Flex Token"
+              maxLength={TOKEN_PROTON_TNAME_MAX}
               value={draft.name}
               disabled={programLocked}
-              onChange={(e) => patch({ name: e.target.value })}
+              onChange={(e) => patch({ name: e.target.value.slice(0, TOKEN_PROTON_TNAME_MAX) })}
             />
           </Field>
           <Field label="Ticker" hint="1-7 uppercase letters. Fixed forever.">

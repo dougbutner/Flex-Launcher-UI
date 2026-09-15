@@ -119,6 +119,7 @@ export default function Admin() {
           iconurl: d.iconurl.trim(),
           precision,
           symbol,
+          signer: actor,
         }),
       ]);
       setMsg((m) => ({ ...m, [symbol]: { tx: txIdFromResult(result) || "ok" } }));
@@ -207,6 +208,7 @@ export default function Admin() {
           contract={actor ?? ""}
           symbol={t.symbol}
           precision={t.precision}
+          program={program}
           draft={d}
           onChange={(p) => patchDraft(t.symbol, p)}
           protonOn={!missing}

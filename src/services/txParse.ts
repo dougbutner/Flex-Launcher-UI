@@ -72,7 +72,8 @@ export function txErrorMessage(err: unknown): string {
 const HINTS: Array<[string, string]> = [
   ["overdrawn", "Not enough balance for this transaction."],
   ["insufficient", "Not enough balance for this transaction."],
-  ["missing authority", "token.proton logos must be signed by the token contract (tcontract@active)."],
+  ["missing authority", "token.proton::reg needs tcontract@active (3asy, fl3x, or for3x). If you signed as the issuer, ask the contract admin to sign on /admin."],
+  ["max length for token name is 16", "token.proton tname is at most 16 characters."],
   ["unable to retrieve account", "The flex contract is not a live account - check VITE_EASYFLEX / VITE_COMPLEXFLEX / VITE_FLEXFOREX_CONTRACT."],
   ["unknown key", "The flex contract is not a live account - check VITE_EASYFLEX / VITE_COMPLEXFLEX / VITE_FLEXFOREX_CONTRACT."],
   ["Fail to retrieve account", "The flex contract is not deployed yet."],

@@ -2,6 +2,7 @@ import { flexAccount, quoteNeedsProof, QUOTE_PRESETS, RANGE_WIDTH_PRESETS, XTOKE
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { validSymbol } from "@/services/assets";
 import { formatNiceNumber } from "@/services/money";
+import { TOKEN_PROTON_TNAME_MAX } from "@/services/tokenProton";
 import { validImageUrl } from "@/services/tokenLogo";
 import type { ExtToken } from "@/services/eosioName";
 import { planLaunch, type LaunchPlan } from "@/services/launchMath";
@@ -92,6 +93,9 @@ export function applyRangeWidth(draft: LaunchDraft, id: RangeWidthId): Pick<Laun
 
 export function tokenStepValid(draft: LaunchDraft): string | null {
   if (!draft.name.trim()) return "Give the token a display name.";
+  if (draft.name.trim().length > TOKEN_PROTON_TNAME_MAX) {
+    return `Display name is at most ${TOKEN_PROTON_TNAME_MAX} characters.`;
+  }
   if (!validSymbol(draft.symbol)) return "Ticker must be 1-7 uppercase letters (A-Z).";
   if (!(Number(draft.maxSupply) > 0)) return "Max supply must be greater than zero.";
   if (draft.precision < 0 || draft.precision > 8) return "Precision must be 0-8.";

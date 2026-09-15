@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ListingPacket } from "@/components/token/ListingPacket";
-import { isFlexContractActor } from "@/config/launch";
+import { isFlexContractActor, programFromAccount } from "@/config/launch";
 import { draftFromSources, emptyListingDraft, type ListingDraft } from "@/services/listingHelper";
 import { listManagerTokens } from "@/services/managerApi";
 import type { ChainAction } from "@/services/launchActions";
@@ -20,7 +20,8 @@ type Props = {
 };
 
 export function TokenListingCard({ contract, symbol, precision, actor, transact }: Props) {
-  const canSign = isFlexContractActor(actor) && actor === contract;
+  const asContract = isFlexContractActor(actor) && actor === contract;
+  const program = programFromAccount(contract);
   const [draft, setDraft] = useState<ListingDraft>(() => emptyListingDraft(symbol));
   const [row, setRow] = useState<ProtonTokenRow | null>(null);
   const [signing, setSigning] = useState(false);
@@ -31,7 +32,7 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
     void (async () => {
       const [proton, stored] = await Promise.all([
         findProtonTokenRow(contract, precision, symbol),
-        listManagerTokens(canSign ? { contract } : { issuer: actor }).catch(() => []),
+        listManagerTokens(asContract ? { contract } : { issuer: actor }).catch(() => []),
       ]);
       if (cancelled) return;
       const sq = stored.find((s) => s.symbol === symbol && s.contract === contract) ?? null;
@@ -41,10 +42,10 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
     return () => {
       cancelled = true;
     };
-  }, [actor, canSign, contract, precision, symbol]);
+  }, [actor, asContract, contract, precision, symbol]);
 
   const sign = async () => {
-    if (!canSign) return;
+    if (!asContract) return;
     setSigning(true);
     setMsg({});
     try {
@@ -58,6 +59,7 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
           iconurl: draft.iconurl.trim(),
           precision,
           symbol,
+          signer: actor,
         }),
       ]);
       setMsg({ tx: txIdFromResult(result) || "ok" });
@@ -75,28 +77,25 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
   return (
     <section className="space-y-3 rounded-xl border border-border p-4">
       <div>
-        <h3 className="text-sm font-bold tracking-tight">Wallet listing</h3>
+        <h3 className="text-sm font-bold tracking-tight">Wallet and Alcor listing</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          token.proton::reg is signed by {contract}@active, not the issuer. Alcor logos are a 64x64 PNG pull request.
+          Wallets read token.proton, which {contract}@active has to sign. Ask in Telegram to add the logo. Alcor logos
+          are a pull request from your fork, not a commit to Alcor's GitHub.
         </p>
       </div>
       <ListingPacket
         contract={contract}
         symbol={symbol}
         precision={precision}
+        program={program}
         draft={draft}
         onChange={(p) => setDraft((d) => ({ ...d, ...p }))}
         protonOn={Boolean(row)}
-        canSign={canSign}
+        canSign={asContract}
         missing={!row}
         signing={signing}
-        onSign={canSign ? () => void sign() : undefined}
+        onSign={asContract ? () => void sign() : undefined}
         msg={msg}
-        signHint={
-          canSign
-            ? undefined
-            : `Save name and icon in Manager. Contract admin signs token.proton on /admin or here when logged in as ${contract}.`
-        }
       />
     </section>
   );

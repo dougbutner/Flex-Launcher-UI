@@ -1,3 +1,5 @@
+import { TOKEN_PROTON_TNAME_MAX } from "@/services/tokenProton";
+
 /** Aesthetic placeholder name + 1-7 letter ticker. Lists live in this function. */
 export function randomPlaceholderToken(): { name: string; symbol: string } {
   const adj = [
@@ -38,5 +40,8 @@ export function randomPlaceholderToken(): { name: string; symbol: string } {
   const core = L(b).slice(0, 7);
   const j = L(a).slice(0, 3);
   const symbol = ((Math.random() < 0.5 && core.length < 7 ? j.slice(0, 7 - core.length) : "") + core).slice(0, 7);
-  return { name: `${a[0]!.toUpperCase()}${a.slice(1)} ${b[0]!.toUpperCase()}${b.slice(1)}`, symbol };
+  const name = `${a[0]!.toUpperCase()}${a.slice(1)} ${b[0]!.toUpperCase()}${b.slice(1)}`
+    .slice(0, TOKEN_PROTON_TNAME_MAX)
+    .trim();
+  return { name, symbol };
 }

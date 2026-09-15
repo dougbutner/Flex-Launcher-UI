@@ -1,4 +1,5 @@
 import { validAccount, validSymbol } from "@/services/assets";
+import { TOKEN_PROTON_TNAME_MAX } from "@/services/tokenProton";
 import { rainRaw } from "@/services/rainRaw";
 import { validImageUrl } from "@/services/tokenLogo";
 import type { FeeTier, FlexProgram } from "@/config/launch";
@@ -177,7 +178,7 @@ export function parseManagerToken(raw: unknown): ManagerToken | null {
     symbol,
     precision,
     program,
-    name: str(o.name, 80),
+    name: str(o.name, TOKEN_PROTON_TNAME_MAX),
     description: str(o.description, 500),
     website: str(o.website, 256),
     twitter: str(o.twitter, 80),
@@ -220,7 +221,7 @@ export function parseManagerToken(raw: unknown): ManagerToken | null {
 }
 
 export function sanitizeManagerMeta(patch: Partial<ManagerMetaPatch>): ManagerMetaPatch | string {
-  const name = str(patch.name, 80);
+  const name = str(patch.name, TOKEN_PROTON_TNAME_MAX);
   const description = str(patch.description, 500);
   const website = str(patch.website, 256);
   const twitter = str(patch.twitter, 80);
@@ -295,7 +296,7 @@ export function nextLaunchStep(progress: LaunchProgress): { id: LaunchStepId | "
   return {
     id: "done",
     label: "Launch complete",
-    prompt: "This token is live. Open the token page. Admin can still push name, URL, and icon to token.proton.",
+    prompt: "This token is live. Open the token page. Request the token.proton logo in Telegram, then fork Alcor and paste the listing prompt into Cursor.",
   };
 }
 

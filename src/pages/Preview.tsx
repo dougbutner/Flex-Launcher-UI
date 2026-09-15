@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { isFlexContractActor } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
@@ -5,6 +6,8 @@ import { TokenIcon } from "@/components/TokenIcon";
 import { GoldPriceChart } from "@/components/token/GoldPriceChart";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
+import { ListingPacket } from "@/components/token/ListingPacket";
+import { emptyListingDraft } from "@/services/listingHelper";
 import {
   PREVIEW_ACTOR,
   PREVIEW_CONTRACT,
@@ -30,6 +33,29 @@ async function fauxTransact(_actions: ChainAction[]) {
   return { transaction_id: "preview0faux0tx000000000000000000000000000000000000000000000000" };
 }
 
+function PreviewListing() {
+  const [draft, setDraft] = useState(() => ({
+    ...emptyListingDraft(PREVIEW_SYMBOL),
+    tname: "Demo Flex",
+    url: "https://flex.report",
+    desc: "Faux listing packet for the Alcor fork prompt.",
+    iconurl: "https://gateway.pinata.cloud/ipfs/QmPreviewLogo",
+    twitter: "flextokens",
+    telegram: "flextokens",
+  }));
+  return (
+    <ListingPacket
+      contract={PREVIEW_CONTRACT}
+      symbol={PREVIEW_SYMBOL}
+      precision={PREVIEW_PRECISION}
+      program={PREVIEW_PROGRAM}
+      draft={draft}
+      onChange={(p) => setDraft((d) => ({ ...d, ...p }))}
+      protonOn={false}
+    />
+  );
+}
+
 function SkeletonBlock({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-md bg-secondary/80 ${className}`} aria-hidden />;
 }
@@ -42,8 +68,15 @@ export default function Preview() {
         <h1 className="text-3xl font-black tracking-tight">Preview</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Connect as <span className="font-mono">3asy</span>, <span className="font-mono">fl3x</span>, or{" "}
-          <span className="font-mono">for3x</span> to open the faux UI shapes page.
+          <span className="font-mono">for3x</span> to open the full faux UI shapes page.
         </p>
+        <section className="card mt-8 space-y-3 p-6">
+          <h2 className="text-sm font-bold tracking-tight">Wallet and Alcor listing</h2>
+          <p className="text-xs text-muted-foreground">
+            Faux draft. Request the logo in Telegram and copy the Alcor AI prompt the same way Manager does.
+          </p>
+          <PreviewListing />
+        </section>
       </div>
     );
   }
@@ -323,8 +356,11 @@ export default function Preview() {
       <section className="mt-10 max-w-3xl">
         <h2 className="text-sm font-bold tracking-tight">Token manage (interactive faux)</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Real HolderPrefs + IssuerTools. Signatures resolve locally after a short delay.
+          Real HolderPrefs, IssuerTools, and listing helper. Signatures resolve locally after a short delay.
         </p>
+        <div className="card mt-4 p-4">
+          <PreviewListing />
+        </div>
 
         <div className="mt-4">
           <div className="flex items-center gap-3">

@@ -59,10 +59,18 @@ import {
 import { findXtoken, xtokensByMarketCap } from "@/config/xtokens";
 import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
-import { parseProtonSymbol, protonSymbol, protonSyncGaps, rowMatchesContractSymbol, tokenProtonLogoAction } from "@/services/tokenProton";
-import { alcorLogoFilename, mergeAdminTokenRefs } from "@/services/listingHelper";
+import { parseProtonSymbol, protonSymbol, protonSyncGaps, protonTname, rowMatchesContractSymbol, TOKEN_PROTON_TNAME_MAX, tokenProtonLogoAction } from "@/services/tokenProton";
+import {
+  ALCOR_TOKEN_DOCS,
+  ALCOR_UI_FORK,
+  alcorListingPrompt,
+  alcorLogoFilename,
+  listingPacketJson,
+  logoRequestTooltip,
+  mergeAdminTokenRefs,
+} from "@/services/listingHelper";
 import { localTokenIconSrc, rememberRemoteTokenIcon, tokenIconKey, tokenIconSrc } from "@/services/tokenIcons";
-import { logpoolIdFromResult } from "@/services/txParse";
+import { hintForError, logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
 import { applyRangeWidth, applyStartMarketCap, fmtPrice, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
@@ -171,6 +179,22 @@ describe("token.proton logo", () => {
       precision: 4,
       symbol: "FOO",
     }).authorization).toEqual([{ actor: "for3x", permission: "active" }]);
+    expect(protonTname("A very long token name", "FOO")).toBe("A very long toke");
+    expect(hintForError("assertion failure with message: max length for token name is 16")).toMatch(/16/);
+    expect(protonTname("A very long toke")).toHaveLength(TOKEN_PROTON_TNAME_MAX);
+    const longName = tokenProtonLogoAction({
+      row: null,
+      tcontract: "for3x",
+      tname: "This name is way too long for proton",
+      url: "",
+      desc: "",
+      iconurl: "https://example.com/logo.png",
+      precision: 4,
+      symbol: "FOO",
+      signer: "alice",
+    });
+    expect(longName.data.tname).toBe("This name is way");
+    expect(longName.authorization).toEqual([{ actor: "alice", permission: "active" }]);
   });
 
   it("requires a public image URL after a Pinata failure", () => {
@@ -179,6 +203,7 @@ describe("token.proton logo", () => {
     const draft = { ...emptyDraft(), name: "Foo", symbol: "FOO", pinFailed: true };
     expect(tokenStepValid(draft)).toMatch(/Pinata failed/);
     expect(tokenStepValid({ ...draft, imageUrl: "https://example.com/logo.png" })).toBeNull();
+    expect(tokenStepValid({ ...emptyDraft(), name: "This name is way too long", symbol: "FOO" })).toMatch(/16/);
   });
 });
 
@@ -764,6 +789,43 @@ describe("execute gates and pool id", () => {
 
   it("merges sqlite and proton rows into the admin list", () => {
     expect(alcorLogoFilename("FOO", "fl3x")).toBe("foo_fl3x.png");
+    const prompt = alcorListingPrompt({
+      name: "Foo Coin",
+      url: "https://foo.example",
+      desc: "A flex token",
+      iconurl: "https://gateway.pinata.cloud/ipfs/QmHash",
+      symbol: "FOO",
+      contract: "fl3x",
+      precision: 4,
+      twitter: "foocoin",
+    });
+    expect(prompt).toContain(ALCOR_TOKEN_DOCS);
+    expect(prompt).toContain(ALCOR_UI_FORK);
+    expect(prompt).toContain("foo_fl3x.png");
+    expect(prompt).toContain("Download the logo from this public URL");
+    expect(prompt).toContain("https://gateway.pinata.cloud/ipfs/QmHash");
+    expect(prompt).toContain('"FOO@fl3x"');
+    expect(prompt).toContain("Do not commit to alcorexchange/alcor-ui");
+    expect(prompt).not.toContain("/upload/master/");
+    expect(logoRequestTooltip("FOO", "flexforex")).toContain("FOO");
+    expect(logoRequestTooltip("FOO", "flexforex")).toContain("forex");
+    expect(logoRequestTooltip("BAR", "easyflex")).toContain("easy");
+    expect(logoRequestTooltip("ZZZ", "complexflex")).toContain("complex");
+    expect(listingPacketJson({
+      name: "Foo Coin",
+      url: "",
+      desc: "",
+      iconurl: "https://gateway.pinata.cloud/ipfs/QmHash",
+      symbol: "FOO",
+      contract: "fl3x",
+      precision: 4,
+    })).toMatchObject({
+      name: "Foo Coin",
+      symbol: "FOO",
+      account: "fl3x",
+      chain: "proton",
+      logo: "https://raw.githubusercontent.com/eoscafe/eos-airdrops/master/logos/foo-fl3x.png",
+    });
     expect(parseProtonSymbol("8,FOO")?.precision).toBe(8);
     expect(parseProtonSymbol("9,FOO")).toBeNull();
     expect(parseProtonSymbol("101,FOO")).toBeNull();
@@ -847,6 +909,8 @@ describe("issuer manager store", () => {
 
   it("rejects a non-http icon URL and round-trips a draft", () => {
     expect(sanitizeManagerMeta({ name: "Foo", imageUrl: "ipfs://abc" })).toMatch(/http/i);
+    const clipped = sanitizeManagerMeta({ name: "This name is way too long for proton" });
+    expect(clipped).toMatchObject({ name: "This name is way" });
     const d = emptyDraft();
     d.program = "flexforex";
     d.name = "Foo";

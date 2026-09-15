@@ -29,6 +29,7 @@ import { payoutAction, ratiosAction, setfeesAction, type ChainAction } from "@/s
 import { rainFromRow, type RainDefaults } from "@/services/rainDefaults";
 import { hasProjectTax, taxFromSettings, taxRateValid, type TaxDraft } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { TOKEN_PROTON_TNAME_MAX } from "@/services/tokenProton";
 
 function formatManagerSupply(raw: string): string {
   const parsed = parseAsset(raw);
@@ -269,7 +270,7 @@ export default function Manager() {
             : v
         )
       );
-      setSaveMsg("Saved. Admin can push this to token.proton later.");
+      setSaveMsg("Saved in this app. Use Wallet and Alcor listing below to request the logo and copy the Alcor prompt.");
     } catch (err) {
       setSaveMsg(txErrorMessage(err));
     } finally {
@@ -362,7 +363,7 @@ export default function Manager() {
           <h1 className="text-3xl font-black tracking-tight">Dev's Manager</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Releases for <span className="font-mono">{actor}</span>. Progress is read from chain. Name, URL, and icon stay
-            in the sqlite store until admin signs token.proton.
+            in sqlite. Request the token.proton logo in Telegram, then fork Alcor's repos with the AI prompt.
           </p>
         </div>
         <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>
@@ -459,8 +460,13 @@ export default function Manager() {
                 </div>
               </div>
 
-              <Field label="Display name">
-                <input className="input" value={meta.name} onChange={(e) => setMeta({ ...meta, name: e.target.value })} />
+              <Field label="Display name" hint={`Max ${TOKEN_PROTON_TNAME_MAX} characters (token.proton).`}>
+                <input
+                  className="input"
+                  maxLength={TOKEN_PROTON_TNAME_MAX}
+                  value={meta.name}
+                  onChange={(e) => setMeta({ ...meta, name: e.target.value.slice(0, TOKEN_PROTON_TNAME_MAX) })}
+                />
               </Field>
               <Field label="Description">
                 <textarea
@@ -522,6 +528,7 @@ export default function Manager() {
               {saveMsg ? <p className="text-xs text-muted-foreground">{saveMsg}</p> : null}
 
               <TokenListingCard
+                key={`${managerTokenKey(view.token.contract, view.token.symbol)}:${view.token.updatedAt}`}
                 contract={view.token.contract}
                 symbol={view.token.symbol}
                 precision={view.token.precision}
