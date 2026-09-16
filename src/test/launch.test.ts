@@ -42,9 +42,12 @@ import {
   hasInheritance,
   hasSetmin,
   easyHoldNeed,
+  easyHoldFull,
+  easyHoldFlexAltTip,
   holdEasyToLaunch,
   easyHoldOffPercent,
   easyHoldPromoCopy,
+  isFlexQuoteToken,
   isFlexContractActor,
   programFromAccount,
 } from "@/config/launch";
@@ -56,16 +59,17 @@ import {
   taxCreateValid,
   taxSum,
 } from "@/services/taxRates";
-import { findXtoken, xtokensByMarketCap } from "@/config/xtokens";
+import { airdropsEntryMatch } from "@/services/listingRepos";
 import { REQUEST_ACCOUNT } from "@/services/walletConstants";
 import { getSqrtPriceX64AtTick, nearestUsableTick } from "@/services/tickMath";
-import { parseProtonSymbol, protonSymbol, protonSyncGaps, protonTname, rowMatchesContractSymbol, TOKEN_PROTON_TNAME_MAX, tokenProtonLogoAction } from "@/services/tokenProton";
+import { parseProtonSymbol, pickProtonRow, protonSymbol, protonSyncGaps, protonTname, rowMatchesContractCode, rowMatchesContractSymbol, TOKEN_PROTON_TNAME_MAX, tokenProtonLogoAction, tokenProtonRemoveAction } from "@/services/tokenProton";
 import {
   ALCOR_TOKEN_DOCS,
   ALCOR_UI_FORK,
   alcorListingPrompt,
   alcorLogoFilename,
   listingPacketJson,
+  listingPrBranch,
   logoRequestTooltip,
   mergeAdminTokenRefs,
 } from "@/services/listingHelper";
@@ -80,12 +84,15 @@ import { XTOKEN_FALLBACK, XTOKEN_TOP_N, findProofPoolId } from "@/services/xtoke
 import { draftFromManager, managerFromDraft } from "@/services/managerDraft";
 import {
   LAUNCH_STEP_IDS,
+  applyProtonListing,
+  applyRepoListing,
   emptyManagerToken,
   launchProgressFrom,
   managerHasStarted,
   mergeManagerViews,
   nextLaunchStep,
   parseManagerToken,
+  protonListingStatus,
   sanitizeManagerMeta,
 } from "@/services/managerStore";
 import { formatNiceNumber, formatPlainNumber, fmtUsd } from "@/services/money";
@@ -144,6 +151,15 @@ describe("token.proton logo", () => {
     expect(rowMatchesContractSymbol({ ...base, symbol: "4,FOO" }, "flex.mon3y", 4, "FOO")).toBe(true);
     expect(rowMatchesContractSymbol({ ...base, symbol: { precision: 4, name: "FOO" } }, "flex.mon3y", 4, "FOO")).toBe(true);
     expect(rowMatchesContractSymbol({ ...base, symbol: "4,FOO" }, "alice", 4, "FOO")).toBe(false);
+    expect(rowMatchesContractCode({ ...base, symbol: "6,FOO" }, "flex.mon3y", "FOO")).toBe(true);
+    expect(rowMatchesContractSymbol({ ...base, symbol: "6,FOO" }, "flex.mon3y", 4, "FOO")).toBe(false);
+    expect(pickProtonRow([{ ...base, symbol: "6,FOO" }], "flex.mon3y", "FOO", 4)?.id).toBe(1);
+    expect(tokenProtonRemoveAction({ id: 9, signer: "for3x" })).toMatchObject({
+      account: "token.proton",
+      name: "remove",
+      data: { id: 9 },
+      authorization: [{ actor: "for3x", permission: "active" }],
+    });
     expect(tokenProtonLogoAction({
       row: null,
       tcontract: "flex.mon3y",
@@ -285,11 +301,37 @@ describe("launch plan", () => {
     expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 8, 10))).toBe(1_000);
     expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 9, 9))).toBe(2_000);
     expect(easyHoldNeed(50_000, 0, Date.UTC(2026, 8, 10))).toBe(5_000);
+    expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 8, 10), false)).toBe(10_000);
+    expect(easyHoldNeed(50_000, 0, Date.UTC(2026, 8, 10), false)).toBe(50_000);
+    expect(easyHoldFull(10_000, 2)).toBe(30_000);
     expect(easyHoldOffPercent(Date.UTC(2026, 8, 9) + 6 * 30 * 86400 * 1000)).toBe(30);
     expect(easyHoldOffPercent(Date.UTC(2026, 8, 9) + 9 * 30 * 86400 * 1000)).toBe(0);
     expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9))).toMatch(/90%/);
+    expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9))).toMatch(/Flex pairs/);
     expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9) + 9 * 30 * 86400 * 1000)).toBeNull();
-  });
+    expect(
+      easyHoldFlexAltTip({
+        easyBal: 5_000,
+        fullNeed: 50_000,
+        flexNeed: 5_000,
+      })
+    ).toMatch(/enough to launch a Flex-paired token/);
+    expect(
+      easyHoldFlexAltTip({
+        easyBal: 1_000,
+        fullNeed: 50_000,
+        flexNeed: 5_000,
+      })
+    ).toMatch(/You hold 1,000 EASY. Flex-paired tokens .* only need 5,000 EASY/);
+    expect(
+      easyHoldFlexAltTip({
+        easyBal: 50_000,
+        fullNeed: 50_000,
+        flexNeed: 5_000,
+      })
+    ).toBeNull();
+    expect(isFlexQuoteToken("EASY", MON3Y)).toBe(true);
+    expect(isFlexQuoteToken("XPR", "eosio.token")).toBe(false);  });
 
   it("matches GEASY@fl3x mainnet issuer liquidity and 2x walk", () => {
     const d = {
@@ -705,6 +747,23 @@ describe("execute gates and pool id", () => {
     expect(ok.every((i) => i.pass)).toBe(true);
   });
 
+  it("tips Flex-pair promo when short on a non-flex hold", () => {
+    const short = createGateItems({
+      stat: null,
+      easyBal: 5_000,
+      need: 50_000,
+      symbol: "FOO",
+      prior: 0,
+      flexQuote: false,
+      flexNeed: 5_000,
+    });
+    const easy = short.find((i) => i.id === "easy");
+    expect(easy?.pass).toBe(false);
+    expect(easy?.detail ?? "").toMatch(/Need 50,000 EASY before liftoff/);
+    expect(easy?.hint ?? "").toMatch(/enough to launch a Flex-paired token/);
+    expect(easy?.hint ?? "").toMatch(/You hold 5,000 EASY/);
+  });
+
   it("marks GEASY inventory rows pass on complexflex", () => {
     const items = alcorInventoryItems({
       program: "complexflex",
@@ -785,6 +844,7 @@ describe("execute gates and pool id", () => {
     ];
     expect(protonSyncGaps(tokens, rows, "for3x").map((t) => t.symbol)).toEqual(["BAR"]);
     expect(protonSyncGaps(tokens, rows, "3asy")).toEqual(tokens);
+    expect(protonSyncGaps([{ symbol: "FOO", precision: 6 }], rows, "for3x")).toEqual([]);
   });
 
   it("merges sqlite and proton rows into the admin list", () => {
@@ -841,6 +901,9 @@ describe("execute gates and pool id", () => {
       stored: [stored],
       proton: [{ id: 1, tcontract: "fl3x", tname: "Foo", url: "", desc: "", iconurl: "https://x/a.png", symbol: "4,FOO" }],
     });
+    expect(listingPrBranch("FOO", "flex.mon3y")).toBe("flex-listing-foo-flex-mon3y");
+    expect(airdropsEntryMatch({ chain: "proton", symbol: "FOO", account: "fl3x" }, "FOO", "fl3x")).toBe(true);
+    expect(airdropsEntryMatch({ chain: "wax", symbol: "FOO", account: "fl3x" }, "FOO", "fl3x")).toBe(false);
     expect(merged.map((t) => t.symbol).sort()).toEqual(["FOO", "ZZZ"]);
   });
 });
@@ -905,6 +968,14 @@ describe("issuer manager store", () => {
     expect(views[0].token.name).toBe("Foo Token");
     expect(views[0].next.id).toBe("startlaunch");
     expect(managerHasStarted(views)).toBe(true);
+    expect(protonListingStatus(stored)).toBe("unknown");
+    const listed = applyProtonListing(stored!, true, 42, 1000);
+    expect(protonListingStatus(listed)).toBe("listed");
+    expect(listed.protonId).toBe("42");
+    expect(protonListingStatus(applyProtonListing(stored!, false, "", 1000))).toBe("missing");
+    const withPr = applyRepoListing(listed, "alcor", { listed: false, prUrl: "https://github.com/x/y/pull/1", prState: "open" }, 2000);
+    expect(withPr.alcorPrUrl).toContain("/pull/1");
+    expect(withPr.alcorPrState).toBe("open");
   });
 
   it("rejects a non-http icon URL and round-trips a draft", () => {

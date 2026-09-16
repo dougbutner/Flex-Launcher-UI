@@ -1,6 +1,14 @@
-import { FEE_TIERS, SWAP_ALCOR, easyHoldNeed, flexMeta, hasAngelChannels, holdEasyToLaunch } from "@/config/launch";
+import {
+  FEE_TIERS,
+  SWAP_ALCOR,
+  easyHoldNeed,
+  flexMeta,
+  hasAngelChannels,
+  holdEasyToLaunch,
+} from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, presetFromDraft, quoteFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
+import { FlexPairHoldTip } from "@/components/launch/FlexPairHoldTip";
 import { StepShell } from "@/components/launch/ui";
 import { formatSupplyCommas } from "@/services/assets";
 import { formatRainAsset } from "@/services/rainDefaults";
@@ -38,6 +46,11 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
   const buckets = hasProjectTax(draft.program)
     ? `reflect ${formatBpsPercent(tax.reflectionRate)} · burn ${formatBpsPercent(tax.burnRate)} · project ${formatBpsPercent(tax.projectRate)}`
     : `reflect ${formatBpsPercent(tax.reflectionRate)} · burn ${formatBpsPercent(tax.burnRate)}`;
+  const base = flexMeta(draft.program).launchEasyMin;
+  const holdNeed = easyHoldNeed(base, 0, Date.now(), preset.flexQuote);
+  const holdLine = preset.flexQuote
+    ? `${holdEasyToLaunch(holdNeed)} (flex pair promo); more after each prior launch`
+    : `${holdEasyToLaunch(holdNeed)} (full); more after each prior launch`;
 
   return (
     <StepShell
@@ -104,10 +117,8 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
         ) : null}
         <Row k="Deposit" v={`100% of supply → ${SWAP_ALCOR}`} />
         <Row k="Lock" v={`${Math.max(90, draft.lockDays)} days · until ~${unlockDate}`} />
-        <Row
-          k="EASY to launch"
-          v={`${holdEasyToLaunch(easyHoldNeed(flexMeta(draft.program).launchEasyMin))}; more after each prior launch`}
-        />
+        <Row k="EASY to launch" v={holdLine} />
+        {preset.flexQuote ? null : <FlexPairHoldTip program={draft.program} />}
       </div>
 
       <div className="space-y-2 rounded-2xl border border-warning/30 bg-warning/5 p-4 text-xs text-warning">

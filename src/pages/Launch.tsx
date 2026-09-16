@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { easyHoldNeed, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
+import { easyHoldFull, easyHoldNeed, flexAccount, flexMeta, FLEX_QUOTE_HOLD_LABEL, holdEasyToLaunch } from "@/config/launch";
 import { MANAGER_RESUME_KEY, useLaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { Stepper, type WizardStep } from "@/components/launch/Stepper";
@@ -109,8 +109,10 @@ export default function Launch() {
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Only on <span className="font-mono">XPR Network</span>. Create on {flexAccount(draft.program)}, then setfees,
           seed one-sided Alcor liquidity, then liftoff. Non-flex backings (XPR / XMD / LOAN / xtoken) need to prove
-          enough liquidity to be used. {holdEasyToLaunch(easyHoldNeed(flexMeta(draft.program).launchEasyMin))} - no fee
-          charged to launch, just gated by holding EASY.
+          enough liquidity to be used. Flex pairs ({FLEX_QUOTE_HOLD_LABEL}):{" "}
+          {holdEasyToLaunch(easyHoldNeed(flexMeta(draft.program).launchEasyMin))}. Other pairs:{" "}
+          {holdEasyToLaunch(easyHoldFull(flexMeta(draft.program).launchEasyMin))}. No fee charged to launch, just gated
+          by holding EASY.
         </p>
       </div>
 

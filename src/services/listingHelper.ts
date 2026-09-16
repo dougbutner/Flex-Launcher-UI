@@ -5,11 +5,36 @@ import type { ManagerToken } from "@/services/managerStore";
 import { parseProtonSymbol, protonTname, type ProtonTokenRow } from "@/services/tokenProton";
 
 export const ALCOR_TOKEN_DOCS = "https://docs.alcor.exchange/adding-token-information/token-logo";
-export const ALCOR_UI_REPO = "https://github.com/alcorexchange/alcor-ui";
-export const ALCOR_UI_FORK = "https://github.com/alcorexchange/alcor-ui/fork";
-export const EOS_AIRDROPS_REPO = "https://github.com/eoscafe/eos-airdrops";
-export const EOS_AIRDROPS_FORK = "https://github.com/eoscafe/eos-airdrops/fork";
+export const ALCOR_UI_OWNER = "alcorexchange";
+export const ALCOR_UI_REPO_NAME = "alcor-ui";
+export const EOS_AIRDROPS_OWNER = "eoscafe";
+export const EOS_AIRDROPS_REPO_NAME = "eos-airdrops";
+export const LISTING_GITHUB_LOGIN = "dougbutner";
+export const ALCOR_UI_REPO = `https://github.com/${ALCOR_UI_OWNER}/${ALCOR_UI_REPO_NAME}`;
+export const ALCOR_UI_FORK = `${ALCOR_UI_REPO}/fork`;
+export const EOS_AIRDROPS_REPO = `https://github.com/${EOS_AIRDROPS_OWNER}/${EOS_AIRDROPS_REPO_NAME}`;
+export const EOS_AIRDROPS_FORK = `${EOS_AIRDROPS_REPO}/fork`;
 export const FLEX_TELEGRAM = "https://t.me/flextokens";
+
+export type ListingGithubTarget = "alcor-ui" | "eos-airdrops";
+
+export function listingPrBranch(symbol: string, contract: string) {
+  const sym = symbol.trim().toLowerCase();
+  const acct = contract.trim().toLowerCase().replace(/\./g, "-");
+  return `flex-listing-${sym}-${acct}`;
+}
+
+export function alcorFundamentalsKey(symbol: string, contract: string) {
+  return `${symbol.trim().toUpperCase()}@${contract.trim()}`;
+}
+
+export function alcorLogoPath(symbol: string, contract: string) {
+  return `assets/tokens/proton/${alcorLogoFilename(symbol, contract)}`;
+}
+
+export function airdropsLogoPath(symbol: string, contract: string) {
+  return `logos/${airdropsLogoFilename(symbol, contract)}`;
+}
 
 export function listingVersionLabel(program: FlexProgram | null | undefined) {
   if (program === "easyflex") return "easy";

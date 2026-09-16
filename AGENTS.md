@@ -23,6 +23,8 @@ Vite + TypeScript, WharfKit / WebAuth (`@proton/web-sdk`). Ticks / `sqrtPriceX64
 ```
 PINATA_JWT=
 PINATA_GATEWAY=gateway.pinata.cloud
+GITHUB_TOKEN=
+GITHUB_LOGIN=dougbutner
 VITE_FLEXFOREX_CONTRACT=for3x
 VITE_EASYFLEX=3asy
 VITE_COMPLEXFLEX=fl3x
@@ -221,7 +223,7 @@ Check strings start with `⟁`. Surface them verbatim.
 5. Range: snap ticks, 90d+ lock.
 6. Execute: create → setfees → mint/issue → startlaunch → createpool → activate → deposit → addliquid → lockpos → liftoff → addpool (launch quote pair). After addpool, celebration modal + reset draft. Manager is ready.
 7. Token home (`/token/:contract/:symbol`): poke + holder prefs + issuer tools (incl. `setfees`); Portfolio / Leaderboard link here.
-8. Admin (`/admin`): nav only when connected as `3asy` / `fl3x` / `for3x`. Syncs missing token metadata to `token.proton` (`reg` / `update`). Prefills from issuer Manager sqlite when present.
+8. Admin (`/admin`): nav only when connected as `3asy` / `fl3x` / `for3x`. Live-check `token.proton` by contract + ticker, then sign `reg` / `update` / `remove`. Check alcor-ui + eos-airdrops on GitHub. With `GITHUB_TOKEN` (dougbutner forks), sync upstream and open listing PRs. Sqlite caches listing + PR URLs.
 9. Manager (`/manager`): nav for logged-in issuers after the first successful `create`. SQLite stores metadata + step txs keyed by account; chain fills progress so a new device can resume. Save metadata is separate from Save tax (`setfees`). No IPFS re-upload (URL paste only). Admin later pushes to `token.proton`.
 
 ---

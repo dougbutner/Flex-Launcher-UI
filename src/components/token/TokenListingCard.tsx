@@ -6,7 +6,9 @@ import { listManagerTokens } from "@/services/managerApi";
 import type { ChainAction } from "@/services/launchActions";
 import {
   findProtonTokenRow,
+  loadProtonTokenTable,
   tokenProtonLogoAction,
+  tokenProtonRemoveAction,
   type ProtonTokenRow,
 } from "@/services/tokenProton";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
@@ -25,6 +27,7 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
   const [draft, setDraft] = useState<ListingDraft>(() => emptyListingDraft(symbol));
   const [row, setRow] = useState<ProtonTokenRow | null>(null);
   const [signing, setSigning] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [msg, setMsg] = useState<{ tx?: string; err?: string }>({});
 
   useEffect(() => {
@@ -49,9 +52,10 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
     setSigning(true);
     setMsg({});
     try {
+      const live = await findProtonTokenRow(contract, precision, symbol, true);
       const result = await transact([
         tokenProtonLogoAction({
-          row,
+          row: live,
           tcontract: contract,
           tname: draft.tname.trim() || symbol,
           url: draft.url.trim(),
@@ -71,6 +75,26 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
       setMsg({ err: hint ? `${text} - ${hint}` : text });
     } finally {
       setSigning(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!asContract) return;
+    setRemoving(true);
+    setMsg({});
+    try {
+      const live = (await findProtonTokenRow(contract, precision, symbol, true)) ?? row;
+      if (!live) throw new Error("This token is not on token.proton.");
+      const result = await transact([tokenProtonRemoveAction({ id: live.id, signer: actor })]);
+      setMsg({ tx: txIdFromResult(result) || "ok" });
+      await loadProtonTokenTable(true);
+      setRow(null);
+    } catch (err) {
+      const text = txErrorMessage(err);
+      const hint = hintForError(text);
+      setMsg({ err: hint ? `${text} - ${hint}` : text });
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -94,7 +118,9 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
         canSign={asContract}
         missing={!row}
         signing={signing}
+        removing={removing}
         onSign={asContract ? () => void sign() : undefined}
+        onRemove={asContract && row ? () => void remove() : undefined}
         msg={msg}
       />
     </section>

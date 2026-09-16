@@ -51,6 +51,7 @@
   -webkit-backdrop-filter: blur(var(--tetra-glass-blur)) saturate(1.35);
   position: relative;
   z-index: 2;
+  overflow: visible;
   opacity: 1;
   filter: blur(0);
   transition:
@@ -62,6 +63,7 @@
 
 .tetra-top.is-collapsed .tetra-top__bar {
   width: 0;
+  overflow: hidden;
   opacity: 0;
   filter: blur(16px);
   pointer-events: none;
@@ -285,7 +287,6 @@
 
 .tetra-main {
   position: relative;
-  z-index: 1;
   padding-top: var(--tetra-bar-h);
   min-height: 100vh;
 }
@@ -294,6 +295,20 @@
   font-family: var(--tetra-font);
   letter-spacing: var(--tetra-tracking-ui);
   text-transform: uppercase;
+}
+
+/* Wallet connect UI is appended on document.body. Keep it above page sections. */
+#xpr-forge-wharf-ui,
+#proton-web-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+#xpr-forge-wharf-ui:not(:empty),
+#proton-web-ui:not(:empty) {
+  pointer-events: auto;
 }
 
 /* Gold sheen on existing .btn: static gradient, transform + opacity only. */
@@ -322,9 +337,7 @@
   );
   opacity: 0;
   transform: translate3d(120%, 120%, 0);
-  transition:
-    transform 0.75s var(--tetra-ease-shimmer),
-    opacity 0.1s linear 0.65s;
+  transition: none;
 }
 
 .btn:hover,

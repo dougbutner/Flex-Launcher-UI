@@ -86,6 +86,9 @@ export function holdEasyToLaunch(amount: number) {
   return `Hold ${amount.toLocaleString()} EASY to launch`;
 }
 
+/** Flex quote pairs that get the early-user EASY hold discount (UI gate). */
+export const FLEX_QUOTE_HOLD_LABEL = "EASY, WON, GRAMS, or MEME";
+
 /** First promo month starts 2026-09-09 00:00 UTC. 90% off, then -10% every 30 days until 0. */
 export const EASY_HOLD_PROMO_START_SEC = 1_788_912_000;
 const PROMO_MONTH_SECS = 30 * 86_400;
@@ -97,15 +100,46 @@ export function easyHoldOffPercent(nowMs = Date.now()): number {
   return Math.max(0, 90 - 10 * months);
 }
 
-export function easyHoldNeed(baseWhole: number, prior = 0, nowMs = Date.now()): number {
-  const full = baseWhole * (prior + 1);
-  return (full * (100 - easyHoldOffPercent(nowMs))) / 100;
+/** Full EASY hold (base × prior+1). Non-flex pairs always use this on the UI. */
+export function easyHoldFull(baseWhole: number, prior = 0): number {
+  return baseWhole * (prior + 1);
+}
+
+/**
+ * UI EASY hold for liftoff gates.
+ * Promo discount applies only when `flexQuote` (pair is EASY/WON/GRAMS/MEME).
+ * Non-flex pairs always need the full amount.
+ */
+export function easyHoldNeed(baseWhole: number, prior = 0, nowMs = Date.now(), flexQuote = true): number {
+  const full = easyHoldFull(baseWhole, prior);
+  if (!flexQuote) return full;
+  // Integer division, same as the liftoff check (`full * (100 - off) / 100`).
+  return Math.floor((full * (100 - easyHoldOffPercent(nowMs))) / 100);
 }
 
 export function easyHoldPromoCopy(nowMs = Date.now()): string | null {
   const off = easyHoldOffPercent(nowMs);
   if (off <= 0) return null;
-  return `Gated by EASY, no cost to launch spend it. Launch = lower gate, ${off}% off this month, more expensive as time goes on.`;
+  return `Flex pairs (${FLEX_QUOTE_HOLD_LABEL}): ${off}% off the EASY hold this month. Other pairs use the full hold. Gated by holding EASY, not spent.`;
+}
+
+/**
+ * When short of the full (non-flex) hold, tip that a Flex-paired launch needs less.
+ * Returns null if promo is over or they already clear the full gate.
+ */
+export function easyHoldFlexAltTip(args: {
+  easyBal: number;
+  fullNeed: number;
+  flexNeed: number;
+}): string | null {
+  if (args.flexNeed >= args.fullNeed - 1e-12) return null;
+  if (args.easyBal + 1e-12 >= args.fullNeed) return null;
+  const held = args.easyBal.toLocaleString();
+  const flex = args.flexNeed.toLocaleString();
+  if (args.easyBal + 1e-12 >= args.flexNeed) {
+    return `You hold ${held} EASY. That is enough to launch a Flex-paired token (${FLEX_QUOTE_HOLD_LABEL}) at ${flex} this month.`;
+  }
+  return `You hold ${held} EASY. Flex-paired tokens (${FLEX_QUOTE_HOLD_LABEL}) only need ${flex} EASY this month.`;
 }
 
 export function allFlexAccounts(): string[] {
@@ -222,6 +256,11 @@ export const PROJECT_CORE_TOKENS = [
   { symbol: "GRAMS", contract: "gold.mon3y", rainAction: "reflect" as const },
   { symbol: "MEME", contract: "m3m3", rainAction: "distribute" as const },
 ] as const;
+
+/** True when quote is one of the four project flex tokens. */
+export function isFlexQuoteToken(symbol: string, contract: string): boolean {
+  return PROJECT_CORE_TOKENS.some((t) => t.symbol === symbol && t.contract === contract);
+}
 
 /** Flex-quote contracts match C++ (`mon3y` / `w3won` / `m3m3` / `gold.mon3y`), not VITE_EASYFLEX. */
 export const QUOTE_PRESETS: QuotePreset[] = [

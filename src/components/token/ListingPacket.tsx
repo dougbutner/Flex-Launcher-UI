@@ -28,6 +28,8 @@ type Props = {
   signing?: boolean;
   disabled?: boolean;
   onSign?: () => void;
+  onRemove?: () => void;
+  removing?: boolean;
   msg?: { tx?: string; err?: string };
   signHint?: string;
 };
@@ -45,6 +47,8 @@ export function ListingPacket({
   signing = false,
   disabled = false,
   onSign,
+  onRemove,
+  removing = false,
   msg,
   signHint,
 }: Props) {
@@ -201,14 +205,26 @@ export function ListingPacket({
       {msg?.tx && msg.tx !== "ok" ? <TxLink tx={msg.tx} prefix="tx " /> : null}
       {msg?.err ? <p className="text-xs font-medium text-destructive">{msg.err}</p> : null}
       {canSign && onSign ? (
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          disabled={disabled || signing || nameTooLong || Boolean(draft.iconurl && !iconOk)}
-          onClick={onSign}
-        >
-          {signing ? "Signing…" : missing ? "Sign token.proton::reg" : "Sign token.proton::update"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={disabled || signing || nameTooLong || Boolean(draft.iconurl && !iconOk)}
+            onClick={onSign}
+          >
+            {signing ? "Signing…" : missing ? "Sign token.proton::reg" : "Sign token.proton::update"}
+          </button>
+          {!missing && onRemove ? (
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              disabled={disabled || signing || removing}
+              onClick={onRemove}
+            >
+              {removing ? "Removing…" : "Sign token.proton::remove"}
+            </button>
+          ) : null}
+        </div>
       ) : (
         <a
           href={FLEX_TELEGRAM}

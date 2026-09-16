@@ -5,6 +5,7 @@ import {
   FLEX_PROGRAMS,
   LOCK_MIN_DAYS,
   MON3Y,
+  QUOTE_PRESETS,
   SWAP_ALCOR,
   XPR_SYMBOL,
   alcorSwapUrl,
@@ -265,13 +266,14 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
     if (!actor || draft.createTx) return;
     setGatesBusy(true);
     try {
-      setGates(await runCreateGates(draft.program, draft.symbol, actor));
+      const flexQuote = Boolean(QUOTE_PRESETS.find((q) => q.id === draft.quoteId)?.flexQuote);
+      setGates(await runCreateGates(draft.program, draft.symbol, actor, flexQuote));
     } catch {
       setGates(null);
     } finally {
       setGatesBusy(false);
     }
-  }, [actor, draft.createTx, draft.program, draft.symbol]);
+  }, [actor, draft.createTx, draft.program, draft.quoteId, draft.symbol]);
 
   useEffect(() => {
     void checkGates();
@@ -457,14 +459,17 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
           {gates ? (
             <ul className="space-y-1.5">
               {gates.map((item) => (
-                <li key={item.id} className="flex items-center gap-2 text-xs">
-                  <StatusIcon state={item.pass ? "done" : "error"} />
-                  <span className={item.pass ? "text-foreground" : "text-destructive"}>{item.label}</span>
-                  {item.detail ? (
-                    <span className="ml-auto text-muted-foreground">
-                      <GateDetail text={item.detail} />
-                    </span>
-                  ) : null}
+                <li key={item.id} className="text-xs">
+                  <div className="flex items-center gap-2">
+                    <StatusIcon state={item.pass ? "done" : "error"} />
+                    <span className={item.pass ? "text-foreground" : "text-destructive"}>{item.label}</span>
+                    {item.detail ? (
+                      <span className="ml-auto text-muted-foreground">
+                        <GateDetail text={item.detail} />
+                      </span>
+                    ) : null}
+                  </div>
+                  {item.hint ? <p className="mt-0.5 pl-6 text-[11px] leading-snug text-muted-foreground">{item.hint}</p> : null}
                 </li>
               ))}
             </ul>
@@ -553,14 +558,17 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
           {preflight ? (
             <ul className="space-y-1.5">
               {preflight.map((item) => (
-                <li key={item.id} className="flex items-center gap-2 text-xs">
-                  <StatusIcon state={item.pass ? "done" : "error"} />
-                  <span className={item.pass ? "text-foreground" : "text-destructive"}>{item.label}</span>
-                  {item.detail ? (
-                    <span className="ml-auto text-muted-foreground">
-                      <GateDetail text={item.detail} />
-                    </span>
-                  ) : null}
+                <li key={item.id} className="text-xs">
+                  <div className="flex items-center gap-2">
+                    <StatusIcon state={item.pass ? "done" : "error"} />
+                    <span className={item.pass ? "text-foreground" : "text-destructive"}>{item.label}</span>
+                    {item.detail ? (
+                      <span className="ml-auto text-muted-foreground">
+                        <GateDetail text={item.detail} />
+                      </span>
+                    ) : null}
+                  </div>
+                  {item.hint ? <p className="mt-0.5 pl-6 text-[11px] leading-snug text-muted-foreground">{item.hint}</p> : null}
                 </li>
               ))}
             </ul>

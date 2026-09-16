@@ -82,6 +82,17 @@ export type ManagerToken = {
   liftoffTx: string;
   addpoolTx: string;
   feesTx: string;
+  protonListed: boolean;
+  protonCheckedAt: number;
+  protonId: string;
+  alcorListed: boolean;
+  alcorCheckedAt: number;
+  alcorPrUrl: string;
+  alcorPrState: string;
+  airdropsListed: boolean;
+  airdropsCheckedAt: number;
+  airdropsPrUrl: string;
+  airdropsPrState: string;
   createdAt: number;
   updatedAt: number;
 };
@@ -151,6 +162,17 @@ export function emptyManagerToken(): ManagerToken {
     liftoffTx: "",
     addpoolTx: "",
     feesTx: "",
+    protonListed: false,
+    protonCheckedAt: 0,
+    protonId: "",
+    alcorListed: false,
+    alcorCheckedAt: 0,
+    alcorPrUrl: "",
+    alcorPrState: "",
+    airdropsListed: false,
+    airdropsCheckedAt: 0,
+    airdropsPrUrl: "",
+    airdropsPrState: "",
     createdAt: 0,
     updatedAt: 0,
   };
@@ -215,6 +237,17 @@ export function parseManagerToken(raw: unknown): ManagerToken | null {
     liftoffTx: str(o.liftoffTx, 128),
     addpoolTx: str(o.addpoolTx, 128),
     feesTx: str(o.feesTx, 128),
+    protonListed: o.protonListed === true || o.protonListed === 1,
+    protonCheckedAt: Math.max(0, Math.floor(num(o.protonCheckedAt))),
+    protonId: str(o.protonId, 24),
+    alcorListed: o.alcorListed === true || o.alcorListed === 1,
+    alcorCheckedAt: Math.max(0, Math.floor(num(o.alcorCheckedAt))),
+    alcorPrUrl: str(o.alcorPrUrl, 256),
+    alcorPrState: str(o.alcorPrState, 16),
+    airdropsListed: o.airdropsListed === true || o.airdropsListed === 1,
+    airdropsCheckedAt: Math.max(0, Math.floor(num(o.airdropsCheckedAt))),
+    airdropsPrUrl: str(o.airdropsPrUrl, 256),
+    airdropsPrState: str(o.airdropsPrState, 16),
     createdAt: Math.max(0, Math.floor(num(o.createdAt))),
     updatedAt: Math.max(0, Math.floor(num(o.updatedAt))),
   };
@@ -235,6 +268,74 @@ export function sanitizeManagerMeta(patch: Partial<ManagerMetaPatch>): ManagerMe
 
 export function applyManagerMeta(row: ManagerToken, meta: ManagerMetaPatch): ManagerToken {
   return { ...row, ...meta, updatedAt: Date.now() };
+}
+
+export type ProtonListingStatus = "listed" | "missing" | "unknown";
+
+export function protonListingStatus(row?: ManagerToken | null): ProtonListingStatus {
+  if (!row || !row.protonCheckedAt) return "unknown";
+  return row.protonListed ? "listed" : "missing";
+}
+
+export function applyProtonListing(
+  row: ManagerToken,
+  listed: boolean,
+  id: string | number = "",
+  at = Date.now()
+): ManagerToken {
+  return {
+    ...row,
+    protonListed: listed,
+    protonCheckedAt: at,
+    protonId: listed ? String(id) : "",
+    updatedAt: at,
+  };
+}
+
+export type RepoListingKind = "alcor" | "airdrops";
+
+export type RepoPrStatus = {
+  listed: boolean;
+  prUrl?: string;
+  prState?: string;
+};
+
+export function repoListingStatus(row: ManagerToken | null | undefined, kind: RepoListingKind) {
+  const checked = kind === "alcor" ? row?.alcorCheckedAt : row?.airdropsCheckedAt;
+  if (!row || !checked) return "unknown" as const;
+  const listed = kind === "alcor" ? row.alcorListed : row.airdropsListed;
+  const prState = kind === "alcor" ? row.alcorPrState : row.airdropsPrState;
+  if (listed) return "listed" as const;
+  if (prState === "open") return "pr" as const;
+  return "missing" as const;
+}
+
+export function applyRepoListing(
+  row: ManagerToken,
+  kind: RepoListingKind,
+  status: RepoPrStatus,
+  at = Date.now()
+): ManagerToken {
+  const prUrl = str(status.prUrl, 256);
+  const prState = str(status.prState, 16);
+  if (kind === "alcor") {
+    return {
+      ...row,
+      alcorListed: status.listed,
+      alcorCheckedAt: at,
+      alcorPrUrl: prUrl,
+      alcorPrState: prState,
+      updatedAt: at,
+    };
+  }
+  return {
+    ...row,
+    airdropsListed: status.listed,
+    airdropsCheckedAt: at,
+    airdropsPrUrl: prUrl,
+    airdropsPrState: prState,
+    updatedAt: at,
+  };
 }
 
 export type LaunchEvidence = {

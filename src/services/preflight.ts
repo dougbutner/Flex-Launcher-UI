@@ -4,10 +4,13 @@ import {
   LOCK_MIN_SECONDS,
   MON3Y,
   SWAP_ALCOR,
+  easyHoldFlexAltTip,
+  easyHoldFull,
+  easyHoldNeed,
   flexAccount,
   flexMeta,
   holdEasyToLaunch,
-  easyHoldNeed,
+  isFlexQuoteToken,
   type FlexProgram,
 } from "@/config/launch";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
@@ -28,6 +31,8 @@ export type PreflightItem = {
   label: string;
   pass: boolean;
   detail?: string;
+  /** Quiet extra line. Non-flex shortfall points at the Flex-pair hold. */
+  hint?: string;
 };
 
 function num(v: unknown): number {
@@ -60,14 +65,41 @@ function extMatches(ext: unknown, symbol: string, contract: string): boolean {
   return e.contract === contract && parseAsset(e.quantity ?? "")?.symbol === symbol;
 }
 
+function easyGateFailDetail(need: number): string {
+  return `Need ${need.toLocaleString()} EASY before liftoff`;
+}
+
+function easyGateHint(args: {
+  need: number;
+  easyBal: number;
+  flexQuote: boolean;
+  flexNeed: number;
+  pass: boolean;
+}): string | undefined {
+  if (args.pass || args.flexQuote) return undefined;
+  return (
+    easyHoldFlexAltTip({
+      easyBal: args.easyBal,
+      fullNeed: args.need,
+      flexNeed: args.flexNeed,
+    }) ?? undefined
+  );
+}
+
 export function createGateItems(args: {
   stat: unknown;
   easyBal: number;
   need: number;
   symbol: string;
   prior: number;
+  flexQuote?: boolean;
+  flexNeed?: number;
 }): PreflightItem[] {
   const taken = Boolean(args.stat);
+  const flexQuote = args.flexQuote ?? true;
+  const flexNeed = args.flexNeed ?? args.need;
+  const pass = args.easyBal + 1e-12 >= args.need;
+  const ratio = `${args.easyBal.toLocaleString()} / ${args.need.toLocaleString()} EASY · ${args.prior} prior launch${args.prior === 1 ? "" : "es"}`;
   return [
     {
       id: "ticker",
@@ -78,10 +110,15 @@ export function createGateItems(args: {
     {
       id: "easy",
       label: holdEasyToLaunch(args.need),
-      pass: args.easyBal + 1e-12 >= args.need,
-      detail: args.easyBal + 1e-12 >= args.need
-        ? `${args.easyBal.toLocaleString()} / ${args.need.toLocaleString()} EASY · ${args.prior} prior launch${args.prior === 1 ? "" : "es"}`
-        : `Need ${args.need.toLocaleString()} EASY before liftoff`,
+      pass,
+      detail: pass ? ratio : easyGateFailDetail(args.need),
+      hint: easyGateHint({
+        need: args.need,
+        easyBal: args.easyBal,
+        flexQuote,
+        flexNeed,
+        pass,
+      }),
     },
   ];
 }
@@ -89,7 +126,8 @@ export function createGateItems(args: {
 export async function runCreateGates(
   program: FlexProgram,
   symbol: string,
-  issuer: string
+  issuer: string,
+  flexQuote = true
 ): Promise<PreflightItem[]> {
   const code = flexAccount(program);
   const meta = flexMeta(program);
@@ -98,9 +136,11 @@ export async function runCreateGates(
     readAccounts(MON3Y, issuer, EASY_SYMBOL).catch(() => ({ rows: [] as Record<string, unknown>[] })),
     countIssuerLaunched(code, issuer),
   ]);
-  const need = easyHoldNeed(meta.launchEasyMin, prior);
+  const full = easyHoldFull(meta.launchEasyMin, prior);
+  const flexNeed = easyHoldNeed(meta.launchEasyMin, prior, Date.now(), true);
+  const need = flexQuote ? flexNeed : full;
   const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
-  return createGateItems({ stat, easyBal, need, symbol, prior });
+  return createGateItems({ stat, easyBal, need, symbol, prior, flexQuote, flexNeed });
 }
 
 export async function countIssuerLaunched(code: string, issuer: string): Promise<number> {
@@ -213,15 +253,23 @@ export async function runPreflight(
     })
   );
 
-  const need = easyHoldNeed(flexMeta(program).launchEasyMin, prior);
+  const launchFlex = pick(launch, "flex_quote");
+  const flexQuote =
+    launchFlex != null ? Boolean(launchFlex) : isFlexQuoteToken(plan.quote.symbol, plan.quote.contract);
+  const base = flexMeta(program).launchEasyMin;
+  const full = easyHoldFull(base, prior);
+  const flexNeed = easyHoldNeed(base, prior, Date.now(), true);
+  const need = flexQuote ? flexNeed : full;
   const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
+  const easyPass = easyBal + 1e-12 >= need;
   items.push({
     id: "easy-stake",
     label: holdEasyToLaunch(need),
-    pass: easyBal + 1e-12 >= need,
-    detail: easyBal + 1e-12 >= need
+    pass: easyPass,
+    detail: easyPass
       ? `${easyBal.toLocaleString()} / ${need.toLocaleString()} EASY · ${prior} prior launch${prior === 1 ? "" : "es"}`
-      : `Need ${need.toLocaleString()} EASY before liftoff`,
+      : easyGateFailDetail(need),
+    hint: easyGateHint({ need, easyBal, flexQuote, flexNeed, pass: easyPass }),
   });
 
   return items;

@@ -1,6 +1,7 @@
 import path from "path";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { githubListingPlugin } from "./vite-plugin-github-listing";
 import { ipfsPinPlugin } from "./vite-plugin-ipfs-pin";
 import { managerDbPlugin } from "./vite-plugin-manager-db";
 
@@ -11,7 +12,7 @@ export default defineConfig(({ mode }) => {
       host: "::",
       port: 8080,
     },
-    plugins: [react(), ipfsPinPlugin(env), managerDbPlugin(env)],
+    plugins: [react(), ipfsPinPlugin(env), managerDbPlugin(env), githubListingPlugin(env)],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

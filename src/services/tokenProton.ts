@@ -48,15 +48,33 @@ export function parseProtonSymbol(raw: unknown): { precision: number; code: stri
   return null;
 }
 
+export function rowMatchesContractCode(row: ProtonTokenRow, tcontract: string, code: string) {
+  if (row.tcontract !== tcontract) return false;
+  const s = parseProtonSymbol(row.symbol);
+  return Boolean(s && s.code === code.trim().toUpperCase());
+}
+
 export function rowMatchesContractSymbol(
   row: ProtonTokenRow,
   tcontract: string,
   precision: number,
   code: string
 ) {
-  if (row.tcontract !== tcontract) return false;
+  if (!rowMatchesContractCode(row, tcontract, code)) return false;
   const s = parseProtonSymbol(row.symbol);
-  return Boolean(s && s.precision === precision && s.code === code);
+  return Boolean(s && s.precision === precision);
+}
+
+export function pickProtonRow(
+  rows: ProtonTokenRow[],
+  tcontract: string,
+  code: string,
+  precision?: number
+): ProtonTokenRow | null {
+  const hits = rows.filter((row) => rowMatchesContractCode(row, tcontract, code));
+  if (!hits.length) return null;
+  if (precision == null) return hits[0];
+  return hits.find((row) => rowMatchesContractSymbol(row, tcontract, precision, code)) ?? hits[0];
 }
 
 function rememberRowIcon(row: ProtonTokenRow) {
@@ -86,7 +104,7 @@ export async function loadProtonTokenTable(force = false): Promise<ProtonTokenRo
           rows.push(row);
           rememberRowIcon(row);
         }
-        if (!page.more || !page.next_key || rows.length >= 8000) break;
+        if (!page.more || !page.next_key || rows.length >= 50_000) break;
         lower = page.next_key;
       }
     } catch (err) {
@@ -113,7 +131,7 @@ export function protonSyncGaps(
   rows: ProtonTokenRow[],
   tcontract: string
 ): Array<{ symbol: string; precision: number }> {
-  return tokens.filter((t) => !rows.some((r) => rowMatchesContractSymbol(r, tcontract, t.precision, t.symbol)));
+  return tokens.filter((t) => !rows.some((r) => rowMatchesContractCode(r, tcontract, t.symbol)));
 }
 
 export async function listContractTokenRefs(code: string): Promise<Array<{ symbol: string; precision: number }>> {
@@ -148,11 +166,12 @@ export async function listContractTokenRefs(code: string): Promise<Array<{ symbo
 export async function findProtonTokenRow(
   tcontract: string,
   precision: number,
-  code: string
+  code: string,
+  force = false
 ): Promise<ProtonTokenRow | null> {
   try {
-    const rows = await loadProtonTokenTable();
-    return rows.find((row) => rowMatchesContractSymbol(row, tcontract, precision, code)) ?? null;
+    const rows = await loadProtonTokenTable(force);
+    return pickProtonRow(rows, tcontract, code, precision);
   } catch {
     return null;
   }
@@ -185,6 +204,18 @@ export function tokenProtonLogoAction(args: {
     name: args.row ? "update" : "reg",
     data,
     authorization: [{ actor, permission: "active" }],
+  };
+}
+
+export function tokenProtonRemoveAction(args: {
+  id: number | string;
+  signer: string;
+}): ChainAction {
+  return {
+    account: TOKEN_PROTON,
+    name: "remove",
+    data: { id: args.id },
+    authorization: [{ actor: args.signer, permission: "active" }],
   };
 }
 

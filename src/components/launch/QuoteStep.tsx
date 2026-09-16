@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { TokenIcon } from "@/components/TokenIcon";
-import { quoteNeedsProof, QUOTE_PRESETS, XTOKENS, type QuotePreset } from "@/config/launch";
+import {
+  easyHoldFull,
+  easyHoldNeed,
+  flexMeta,
+  holdEasyToLaunch,
+  quoteNeedsProof,
+  QUOTE_PRESETS,
+  XTOKENS,
+  type QuotePreset,
+} from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { presetFromDraft, quoteFromDraft, quoteStepValid } from "@/components/launch/draftPlan";
+import { useEasyHoldStanding } from "@/components/launch/FlexPairHoldTip";
 import { Field, StepShell } from "@/components/launch/ui";
 import { quoteProofOk } from "@/services/flexTables";
 import { fmtUsd } from "@/services/money";
@@ -84,6 +94,10 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const [xtokenShowAll, setXtokenShowAll] = useState(false);
   const [proofHint, setProofHint] = useState("");
   const [proofBusy, setProofBusy] = useState(false);
+  const standing = useEasyHoldStanding(draft.program);
+  const launchMin = flexMeta(draft.program).launchEasyMin;
+  const flexHold = standing.flexNeed ?? easyHoldNeed(launchMin);
+  const fullHold = standing.fullNeed ?? easyHoldFull(launchMin);
 
   const invalid = quoteStepValid(draft);
   const preset = presetFromDraft(draft);
@@ -245,6 +259,9 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       ) : null}
       <div>
         <p className="label">Flex quotes</p>
+        <p className="mb-2 text-xs text-muted-foreground">
+          EASY hold promo applies here: {holdEasyToLaunch(flexHold)} this month.
+        </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {flexPresets.map((p) => (
             <QuoteCard
@@ -260,6 +277,10 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
 
       <div>
         <p className="label">Chain quotes</p>
+        <div className="mb-2 text-xs text-muted-foreground">
+          <p>Full hold: {holdEasyToLaunch(fullHold)}.</p>
+          {standing.tip ? <p className="mt-1 text-[11px] leading-snug">{standing.tip}</p> : null}
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {chainPresets.map((p) => (
             <QuoteCard
@@ -275,10 +296,14 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
 
       <div>
         <p className="label">xtokens</p>
-        <p className="mb-2 text-xs text-muted-foreground">
-          Bridged majors on xtokens (XBTC, XXRP, and friends). Top {XTOKEN_TOP_N} by Alcor market activity; expand for the
-          full list. Logos are the on-chain token.proton icons, served from this app.
-        </p>
+        <div className="mb-2 text-xs text-muted-foreground">
+          <p>
+            Bridged majors on xtokens (XBTC, XXRP, and friends). Same full EASY hold as chain quotes. Top {XTOKEN_TOP_N}{" "}
+            by Alcor market activity; expand for the full list. Logos are the on-chain token.proton icons, served from
+            this app.
+          </p>
+          {standing.tip ? <p className="mt-1 text-[11px] leading-snug">{standing.tip}</p> : null}
+        </div>
 
         {/* Collapsed selection or category entry */}
         {!xtokenPickerOpen ? (
