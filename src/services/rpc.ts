@@ -139,6 +139,7 @@ export async function getActions(params: {
   filter?: string;
   limit?: number;
   skip?: number;
+  after?: string;
 }): Promise<{ actions: HyperionAction[]; total: number }> {
   let last = "Hyperion failed";
   const q = new URLSearchParams({
@@ -148,6 +149,7 @@ export async function getActions(params: {
   });
   if (params.filter) q.set("filter", params.filter);
   if (params.skip) q.set("skip", String(params.skip));
+  if (params.after) q.set("after", params.after);
   for (const base of HYPERION_ENDPOINTS) {
     try {
       const res = await fetch(`${base}/v2/history/get_actions?${q}`, { signal: AbortSignal.timeout(12000) });

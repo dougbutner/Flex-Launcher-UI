@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { FlexLogo } from "@/components/FlexLogo";
 import { Header } from "@/components/Header";
@@ -47,10 +47,27 @@ export function Layout() {
   const { topOpen, footerOpen, expandTop, toggleFooter, sync } = useTetraChrome();
   const location = useLocation();
   const [termsOpen, setTermsOpen] = useState(false);
+  const footerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     sync();
   }, [location.pathname, sync]);
+
+  useEffect(() => {
+    const el = footerRef.current;
+    if (!el) return;
+    const apply = () => {
+      document.documentElement.style.setProperty("--tetra-footer-h", `${el.offsetHeight}px`);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    window.addEventListener("resize", apply);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", apply);
+    };
+  }, []);
 
   useEffect(() => {
     if (!termsOpen) return;
@@ -81,7 +98,7 @@ export function Layout() {
           <FlexLogo gold />
         </span>
       </button>
-      <footer className={`tetra-footer ${footerOpen ? "is-open" : ""}`}>
+      <footer ref={footerRef} className={`tetra-footer ${footerOpen ? "is-open" : ""}`}>
         <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
           <a href={DOCS} target="_blank" rel="noopener noreferrer" className="link">
             docs

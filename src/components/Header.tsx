@@ -8,6 +8,8 @@ import { walletTypeLabel } from "@/services/walletSessions";
 
 const NAV = [
   { to: "/launch", label: "Launch" },
+  { to: "/events", label: "Events" },
+  { to: "/insiders", label: "Insiders" },
   { to: "/leaderboard", label: "Winners" },
   { to: "/reflections", label: "Make it Rain" },
   { to: "/portfolio", label: "My Bags" },

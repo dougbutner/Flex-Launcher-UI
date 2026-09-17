@@ -18,6 +18,7 @@
   --tetra-bar-h: 56px;
   --tetra-tri: 120px;
   --tetra-dock: 88px;
+  --tetra-footer-h: 148px;
   --tetra-line: 1px;
   --tetra-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --tetra-ease-shimmer: cubic-bezier(0.7, 0, 0.3, 1);
@@ -288,7 +289,79 @@
 .tetra-main {
   position: relative;
   padding-top: var(--tetra-bar-h);
+  padding-bottom: calc(var(--tetra-footer-h) + 24px);
   min-height: 100vh;
+}
+
+html {
+  scroll-padding-bottom: calc(var(--tetra-footer-h) + 24px);
+}
+
+.tetra-cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--tetra-glass-border);
+  border: var(--tetra-line) solid var(--tetra-glass-border);
+}
+
+.tetra-cal__dow,
+.tetra-cal__cell {
+  background: var(--tetra-void);
+  min-height: 3.2rem;
+  padding: 8px;
+  text-align: left;
+}
+
+.tetra-cal__dow {
+  min-height: 0;
+  padding: 8px;
+  font-family: var(--tetra-font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: var(--tetra-tracking-ui);
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.tetra-cal__cell {
+  appearance: none;
+  width: 100%;
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+}
+
+.tetra-cal__cell.is-muted {
+  color: hsl(var(--muted-foreground) / 0.55);
+}
+
+.tetra-cal__cell.is-today {
+  box-shadow: inset 0 0 0 1px var(--tetra-gold-line);
+}
+
+.tetra-cal__cell.is-on {
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.tetra-cal__cell.is-picked {
+  background: rgba(255, 229, 102, 0.12);
+}
+
+.tetra-cal__dots {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.tetra-cal__dot {
+  width: 6px;
+  height: 6px;
+  background: var(--tetra-green);
+}
+
+.tetra-cal__dot.is-unlock {
+  background: var(--tetra-gold-line);
 }
 
 .tetra-nav {
@@ -297,18 +370,25 @@
   text-transform: uppercase;
 }
 
-/* Wallet connect UI is appended on document.body. Keep it above page sections. */
+/*
+  Wallet UIs (Wharf/Anchor, Proton WebAuth) append hosts on document.body.
+  Wharf uses a closed shadow root + <dialog showModal()>, so :empty never
+  matches and pointer-events: none on the host made the transact/error
+  dialog unclickable. Do not stretch a hit layer over the viewport.
+*/
 #xpr-forge-wharf-ui,
-#proton-web-ui {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  pointer-events: none;
+#proton-web-ui,
+#wharfkit-web-ui {
+  position: relative;
+  z-index: 2147483647;
+  pointer-events: auto;
+  isolation: isolate;
 }
 
-#xpr-forge-wharf-ui:not(:empty),
-#proton-web-ui:not(:empty) {
-  pointer-events: auto;
+body > [class*="anchor-link"],
+body > [id*="anchor-link"] {
+  z-index: 2147483647 !important;
+  pointer-events: auto !important;
 }
 
 /* Gold sheen on existing .btn: static gradient, transform + opacity only. */
@@ -369,5 +449,293 @@
 @media (prefers-reduced-motion: reduce) {
   .btn::before {
     transition: none;
+  }
+}
+
+.insiders {
+  font-family: "Open Sans", sans-serif;
+}
+
+.insiders-title {
+  font-family: "Open Sans", sans-serif;
+  font-size: 2.15rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.insiders-muted {
+  font-family: "Open Sans", sans-serif;
+  font-size: 0.875rem;
+  font-weight: 300;
+  color: hsl(var(--muted-foreground));
+}
+
+.insiders-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  list-style: none;
+}
+
+.insiders-rail a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  padding: 0.45rem 0.6rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.insiders-rail a.is-on {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.08);
+}
+
+.insiders-rail-sym {
+  font-family: "Open Sans", sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.insiders-rail-meta {
+  margin-left: auto;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.insiders-ranges {
+  display: flex;
+  gap: 0;
+  margin-top: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.insiders-ranges button {
+  flex: 1;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 0.65rem 0;
+  font-family: "Open Sans", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+
+.insiders-ranges button.is-on {
+  border-bottom-color: hsl(var(--primary));
+  color: hsl(var(--foreground));
+}
+
+.insiders-verify {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.insiders-composer {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  padding: 0.85rem;
+}
+
+.insiders-composer-input {
+  width: 100%;
+  resize: vertical;
+  background: transparent;
+  font-family: "Open Sans", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 300;
+  line-height: 1.45;
+  outline: none;
+}
+
+.insiders-composer-meta {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.75rem;
+}
+
+.insiders-tag {
+  font-family: "Open Sans", sans-serif;
+  font-weight: 700;
+  color: hsl(var(--primary));
+}
+
+.insiders-post,
+.insiders-reply {
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 1rem 0;
+}
+
+.insiders-reply {
+  margin-left: 0.75rem;
+  border-bottom: 0;
+  border-left: 1px solid hsl(var(--border));
+  padding: 0.75rem 0 0.25rem 0.85rem;
+}
+
+.insiders-body {
+  margin-top: 0.45rem;
+  font-family: "Open Sans", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 300;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.insiders-post-gif {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  margin-top: 0.6rem;
+  object-fit: cover;
+}
+
+.insiders-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.insiders-thread {
+  margin-top: 0.25rem;
+}
+
+.insiders-face {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.insiders-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.insiders-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--secondary));
+  font-family: "Open Sans", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+}
+
+.insiders-name {
+  font-family: "Open Sans", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.insiders-score {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: "Open Sans", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: hsl(var(--primary));
+}
+
+.insiders-gif {
+  margin-top: 0.35rem;
+}
+
+.insiders-gif-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  margin-top: 0.4rem;
+}
+
+.insiders-gif-grid button,
+.insiders-gif-picked img,
+.insiders-gif-grid img {
+  display: block;
+  width: 100%;
+  height: 4.5rem;
+  object-fit: cover;
+}
+
+.insiders-gif-picked {
+  margin-top: 0.4rem;
+}
+
+.insiders-gif-picked img {
+  height: 7rem;
+  width: auto;
+  max-width: 100%;
+}
+
+.insiders-up {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.insiders-up-btn {
+  border: 1px solid hsl(var(--primary));
+  background: transparent;
+  padding: 0.15rem 0.55rem;
+  font-family: "Open Sans", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: hsl(var(--primary));
+  cursor: pointer;
+}
+
+.insiders-up-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.insiders-up-flash {
+  position: absolute;
+  left: 50%;
+  top: -0.85rem;
+  font-family: "Open Sans", sans-serif;
+  font-weight: 700;
+  color: hsl(var(--primary));
+  pointer-events: none;
+  animation: insiders-up-pop 0.7s ease-out forwards;
+}
+
+.insiders-up-hint {
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: hsl(var(--muted-foreground));
+}
+
+@keyframes insiders-up-pop {
+  from {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -10px);
   }
 }

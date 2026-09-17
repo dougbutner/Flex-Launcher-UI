@@ -1,0 +1,122 @@
+import type { FeedRange } from "@/services/insidersRules";
+
+export type InsiderPost = {
+  id: number;
+  author: string;
+  body: string;
+  parentId: number | null;
+  createdAt: number;
+  authorScore: number;
+  giphyUrl: string;
+  replyCount: number;
+  upCount: number;
+  upEasy: number;
+};
+
+export type FeedResponse = {
+  posts: InsiderPost[];
+  activity: Record<string, number>;
+  upsEasy: Record<string, number>;
+  range: FeedRange;
+};
+
+async function readJson(res: Response): Promise<unknown> {
+  const text = await res.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { error: text || res.statusText };
+  }
+}
+
+function asPost(raw: unknown): InsiderPost | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const id = Number(o.id);
+  const author = String(o.author ?? "").toLowerCase();
+  const body = String(o.body ?? "");
+  const createdAt = Number(o.createdAt ?? o.created_at ?? 0);
+  if (!Number.isFinite(id) || !author || !body) return null;
+  const parentRaw = o.parentId ?? o.parent_id;
+  return {
+    id,
+    author,
+    body,
+    parentId: parentRaw == null ? null : Number(parentRaw),
+    createdAt,
+    authorScore: Number(o.authorScore ?? o.author_score ?? 0) || 0,
+    giphyUrl: String(o.giphyUrl ?? o.giphy_url ?? ""),
+    replyCount: Number(o.replyCount ?? o.reply_count ?? 0) || 0,
+    upCount: Number(o.upCount ?? o.up_count ?? 0) || 0,
+    upEasy: Number(o.upEasy ?? o.up_easy ?? 0) || 0,
+  };
+}
+
+export async function fetchCaptcha(): Promise<{ id: string; prompt: string }> {
+  const res = await fetch("/api/insiders/captcha");
+  const body = (await readJson(res)) as { id?: string; prompt?: string; error?: string };
+  if (!res.ok || !body.id || !body.prompt) throw new Error(body.error || "Captcha failed to load.");
+  return { id: body.id, prompt: body.prompt };
+}
+
+export async function fetchFeed(
+  contract: string,
+  symbol: string,
+  opts?: { parentId?: number; range?: FeedRange }
+): Promise<FeedResponse> {
+  const q = new URLSearchParams({ contract, symbol, range: opts?.range ?? "day" });
+  if (opts?.parentId != null) q.set("parent", String(opts.parentId));
+  const res = await fetch(`/api/insiders/feed?${q}`);
+  const body = (await readJson(res)) as {
+    posts?: unknown[];
+    activity?: Record<string, number>;
+    upsEasy?: Record<string, number>;
+    range?: FeedRange;
+    error?: string;
+  };
+  if (!res.ok) throw new Error(body.error || `Feed ${res.status}`);
+  const posts = (Array.isArray(body.posts) ? body.posts : []).map(asPost).filter((p): p is InsiderPost => Boolean(p));
+  return {
+    posts,
+    activity: body.activity && typeof body.activity === "object" ? body.activity : {},
+    upsEasy: body.upsEasy && typeof body.upsEasy === "object" ? body.upsEasy : {},
+    range: body.range === "week" || body.range === "month" || body.range === "year" || body.range === "all" ? body.range : "day",
+  };
+}
+
+export async function createPost(input: {
+  contract: string;
+  symbol: string;
+  actor: string;
+  body: string;
+  captchaId: string;
+  captchaAnswer: string;
+  parentId?: number | null;
+  giphyUrl?: string;
+  authorScore?: number;
+}): Promise<{ id: number }> {
+  const res = await fetch("/api/insiders/post", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const body = (await readJson(res)) as { id?: number; error?: string };
+  if (!res.ok) throw new Error(body.error || `Post ${res.status}`);
+  return { id: Number(body.id) };
+}
+
+export async function recordUp(input: {
+  postId: number;
+  from: string;
+  amountRaw: number;
+  quantity: string;
+  txid: string;
+}): Promise<void> {
+  const res = await fetch("/api/insiders/up", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const body = (await readJson(res)) as { error?: string };
+  if (!res.ok) throw new Error(body.error || `UP ${res.status}`);
+}

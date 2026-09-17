@@ -37,7 +37,7 @@ export function LaunchPreview({
   ];
 
   return (
-    <aside className="card sticky top-20 overflow-x-hidden">
+    <aside className="card sticky top-20 max-h-[calc(100dvh-var(--tetra-bar-h)-var(--tetra-footer-h)-24px)] overflow-x-hidden overflow-y-auto">
       <div className="relative h-28 bg-gradient-to-br from-primary/40 via-secondary to-background">
         {draft.imageUrl || draft.imageDataUrl ? (
           <img

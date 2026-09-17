@@ -132,7 +132,7 @@ export default function Launch() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_minmax(0,1fr)_300px]">
         <div className="order-2 lg:order-1">
-          <div className="lg:sticky lg:top-20">
+          <div className="lg:sticky lg:top-20 lg:max-h-[calc(100dvh-var(--tetra-bar-h)-var(--tetra-footer-h)-24px)] lg:overflow-y-auto">
             <Stepper steps={steps} current={step} onSelect={setStep} />
           </div>
         </div>

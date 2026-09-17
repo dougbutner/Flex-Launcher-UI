@@ -170,6 +170,10 @@ export default function Token() {
             <Link to="/leaderboard" className="link">
               Winners
             </Link>
+            {" · "}
+            <Link to={`/insiders/${code}/${sym}`} className="link">
+              Insiders
+            </Link>
           </p>
           <div className="mt-1 flex items-center gap-3">
             <TokenIcon contract={code} symbol={sym} src={iconSrc} size={48} rounded="xl" />
