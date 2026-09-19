@@ -3,6 +3,7 @@ import { parseAsset } from "@/services/assets";
 import { readFlexers, readLaunches, readStat } from "@/services/flexTables";
 import { symbolCodeOf } from "@/services/preflight";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
+import { loadSiteSandbox } from "@/services/siteSandbox";
 
 const TTL_MS = 30_000;
 const ALCOR_POOL = "https://proton.alcor.exchange/api/v2/swap/pools";
@@ -107,8 +108,11 @@ async function loadFresh(): Promise<BoardToken[]> {
     })
   );
   const launched = groups.flat();
+  const overlay = await loadSiteSandbox();
+  const skip = overlay?.mockKeys() ?? new Set();
+  const chain = launched.filter((item) => !skip.has(`${item.contract}:${item.symbol}`));
   const tokens = await Promise.all(
-    launched.map(async (item) => {
+    chain.map(async (item) => {
       const [stat, pool, usdPrice, quoteUsd] = await Promise.all([
         readStat(item.contract, item.symbol).catch(() => null),
         fetchPool(item.poolId),
@@ -139,7 +143,7 @@ async function loadFresh(): Promise<BoardToken[]> {
       } satisfies BoardToken;
     })
   );
-  return tokens;
+  return overlay ? overlay.mergeBoard(tokens) : tokens;
 }
 
 export async function loadBoardTokens(): Promise<BoardToken[]> {

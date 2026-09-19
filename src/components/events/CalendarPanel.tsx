@@ -1,19 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalTokenCard } from "@/components/events/CalTokenCard";
-import { DropCalendar } from "@/components/events/DropCalendar";
+import { TokenMonthCalendar } from "@/components/cal/TokenMonthCalendar";
 import { TokenGlyph } from "@/components/TokenGlyph";
 import { TokenTile } from "@/components/token/TokenTile";
-import {
-  clubDateEvents,
-  dayKey,
-  loadCalendarEvents,
-  monthEvents,
-  type CalEvent,
-} from "@/services/launchEvents";
+import { clubDateEvents, dayKey, loadCalendarEvents, type CalEvent } from "@/services/launchEvents";
 import { loadBoardTokens, type BoardToken } from "@/services/leaderboardStore";
 import { alcorAnalyticsUrl } from "@/config/launch";
 import type { LaunchRoom } from "@/services/mechanicsLive";
+import {
+  fromCalEvents,
+  mergeTokenEvents,
+  sampleTokenEvents,
+  type TokenCalEvent,
+} from "@/components/cal/tokenCalEvents";
+
+function asCalEvent(ev: TokenCalEvent): CalEvent {
+  return {
+    id: ev.id,
+    kind: ev.kind === "insider" ? "presale" : "launch",
+    at: ev.launchAt.getTime(),
+    contract: ev.contract,
+    symbol: ev.symbol,
+    program: ev.program,
+    quoteSymbol: ev.quoteSymbol,
+    quoteContract: ev.quoteContract,
+    poolId: 0,
+  };
+}
 
 function ymd(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -29,6 +43,7 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
   const [history, setHistory] = useState<BoardToken[] | null>(null);
+  const [board, setBoard] = useState<BoardToken[]>([]);
   const [histPick, setHistPick] = useState<BoardToken | null>(null);
   const [histBusy, setHistBusy] = useState(false);
   const [histErr, setHistErr] = useState("");
@@ -48,13 +63,29 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
       .finally(() => {
         if (live) setBusy(false);
       });
+    void loadBoardTokens()
+      .then((rows) => {
+        if (live) setBoard(rows);
+      })
+      .catch(() => {
+        if (live) setBoard([]);
+      });
     return () => {
       live = false;
     };
   }, []);
 
-  const monthList = useMemo(() => monthEvents(clubDateEvents(events), year, month), [events, year, month]);
-  const calEvents = useMemo(() => clubDateEvents(events), [events]);
+  const tokenEvents = useMemo(
+    () => mergeTokenEvents(fromCalEvents(clubDateEvents(events), board), sampleTokenEvents()),
+    [events, board]
+  );
+  const monthList = useMemo(
+    () =>
+      tokenEvents
+        .filter((ev) => ev.launchAt.getFullYear() === year && ev.launchAt.getMonth() === month)
+        .sort((a, b) => a.launchAt.getTime() - b.launchAt.getTime()),
+    [tokenEvents, year, month]
+  );
   const open = rooms.filter((r) => r.program !== "core" && !r.launched && r.poolId > 0);
   const inFlight = rooms.filter((r) => r.program !== "core" && !r.launched && r.poolId <= 0);
 
@@ -89,10 +120,10 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
       {error ? <p className="mt-6 text-sm text-destructive">{error}</p> : null}
 
       <div className="mt-8">
-        <DropCalendar
+        <TokenMonthCalendar
           year={year}
           month={month}
-          events={calEvents}
+          events={tokenEvents}
           picked={picked}
           onPick={setPicked}
           onShift={shift}
@@ -108,7 +139,7 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {monthList.map((ev) => (
-              <CalTokenCard key={ev.id} ev={ev} picked={dayKey(ev.at) === picked} />
+              <CalTokenCard key={ev.id} ev={asCalEvent(ev)} picked={dayKey(ev.launchAt.getTime()) === picked} />
             ))}
           </div>
         )}

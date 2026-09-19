@@ -35,6 +35,7 @@ import {
   type ProtonTokenRow,
 } from "@/services/tokenProton";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { AdminSandboxToggle } from "@/test/sandbox/AdminSandboxToggle";
 
 type TokenRef = { symbol: string; precision: number };
 
@@ -563,6 +564,9 @@ export default function Admin() {
         contract + ticker, not precision. Alcor and eos-airdrops checks read the public GitHub files. PRs go out from
         the dougbutner forks after a sync with upstream. Set GITHUB_TOKEN on the server (repo scope).
       </p>
+      <div className="mt-4">
+        <AdminSandboxToggle />
+      </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button type="button" className="btn btn-outline btn-sm" disabled={busyAny} onClick={() => void load()}>
           {busy ? "Loading…" : "Refresh list"}

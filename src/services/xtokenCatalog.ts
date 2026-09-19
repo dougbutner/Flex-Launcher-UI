@@ -1,4 +1,5 @@
 import { XTOKENS } from "@/config/launch";
+import { loadSiteSandbox, siteSandboxFlag } from "@/services/siteSandbox";
 
 export type XtokenRow = {
   symbol: string;
@@ -196,5 +197,7 @@ export async function fetchAlcorUsdPrice(contract: string, symbol: string): Prom
   const hit = rows.get(tokenUsdKey(contract, symbol));
   if (hit && hit > 0) return hit;
   if (symbol.toUpperCase() === "XUSDC" && contract === XTOKENS) return 1;
-  return 0;
+  if (!siteSandboxFlag()) return 0;
+  const overlay = await loadSiteSandbox();
+  return overlay?.mergeUsdPrice(contract, symbol, 0) ?? 0;
 }

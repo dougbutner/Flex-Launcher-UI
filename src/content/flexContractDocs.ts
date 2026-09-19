@@ -3,6 +3,7 @@ import type { FlexProgram } from "@/config/launch";
 export type ContractDoc = {
   codeName: string;
   tag: string;
+  intro: string;
   pitch: string;
   traits: { k: string; v: string }[];
   sections: { title: string; lines: { name: string; note: string }[] }[];
@@ -33,12 +34,15 @@ export const CONTRACT_DOCS: Record<FlexProgram, ContractDoc> = {
   easyflex: {
     codeName: "easyflex",
     tag: "most trusted",
+    intro: "Behind the only altcoin averaging over 500K in 30d swap volume on Alcor.",
     pitch: "Rain and burn. No heir, no project cut, no luck pots.",
     traits: [
       { k: "Rain", v: "yes" },
+      { k: "Burn", v: "yes" },
       { k: "Project", v: "no" },
       { k: "Heir", v: "no" },
-      { k: "Luck", v: "no" },
+      { k: "Angel", v: "no" },
+      { k: "Jackpot", v: "no" },
     ],
     sections: [
       SHARED_LAUNCH,
@@ -58,12 +62,15 @@ export const CONTRACT_DOCS: Record<FlexProgram, ContractDoc> = {
   complexflex: {
     codeName: "complexflex",
     tag: "Advanced Functions",
+    intro: "Project tax and an heir on your rain.",
     pitch: "Rain, a project cut, and an heir on your rain.",
     traits: [
       { k: "Rain", v: "yes" },
+      { k: "Burn", v: "yes" },
       { k: "Project", v: "yes" },
       { k: "Heir", v: "yes" },
-      { k: "Luck", v: "no" },
+      { k: "Angel", v: "no" },
+      { k: "Jackpot", v: "no" },
     ],
     sections: [
       SHARED_LAUNCH,
@@ -83,13 +90,16 @@ export const CONTRACT_DOCS: Record<FlexProgram, ContractDoc> = {
   },
   flexforex: {
     codeName: "flexforex",
-    tag: "adds Everything + 😇 💰",
+    tag: "Advanced & Luck",
+    intro: "Angel numbers and a jackpot sit next to rain.",
     pitch: "Full stack. Rain, project, heir, plus angel and jackpot pots. Keeper can take a tip.",
     traits: [
       { k: "Rain", v: "yes" },
+      { k: "Burn", v: "yes" },
       { k: "Project", v: "yes" },
       { k: "Heir", v: "yes" },
-      { k: "Luck", v: "yes" },
+      { k: "Angel", v: "yes" },
+      { k: "Jackpot", v: "yes" },
     ],
     sections: [
       SHARED_LAUNCH,

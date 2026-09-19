@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { FlexLogo } from "@/components/FlexLogo";
 import { Header } from "@/components/Header";
 import { TokenIcon } from "@/components/TokenIcon";
+import { SandboxBanner } from "@/test/sandbox/SandboxBanner";
 import { DISCLAIMER_PARAS, LEGAL_TERMS_URL } from "@/content/disclaimer";
 import { JARGON_ENTRIES, JARGON_TITLE } from "@/content/jargon";
 import { useTetraChrome } from "@/hooks/useTetraChrome";
@@ -89,6 +90,7 @@ export function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header collapsed={!topOpen} onExpand={expandTop} />
+      <SandboxBanner />
       <main className="tetra-main flex-1">
         <Outlet />
       </main>

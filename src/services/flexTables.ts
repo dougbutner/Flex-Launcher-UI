@@ -9,6 +9,7 @@ import { symbolCodeToU64 } from "@/services/eosioName";
 import { getAllTableRows, getCurrencyBalance, getTableRows, getTransaction } from "@/services/rpc";
 import { logpoolIdFromResult, txIdFromResult } from "@/services/txParse";
 import type { LaunchPlan } from "@/services/launchMath";
+import { withSiteSandbox } from "@/services/siteSandbox";
 
 /** Numeric primary key for tables keyed by symbol_code.raw() (launches, settings, accounts, balances). */
 function codeBound(symbol?: string): string | undefined {
@@ -40,7 +41,7 @@ export async function readLaunch(code: string, symbol: string) {
     key_type: "i64",
     limit: 1,
   });
-  return rows[0] ?? null;
+  return withSiteSandbox(rows[0] ?? null, (mod, live) => mod.mergeLaunch(code, symbol, live));
 }
 
 export async function readSettings(code: string, symbol: string) {
@@ -53,7 +54,7 @@ export async function readSettings(code: string, symbol: string) {
     key_type: "i64",
     limit: 1,
   });
-  return rows[0] ?? null;
+  return withSiteSandbox(rows[0] ?? null, (mod, live) => mod.mergeSettings(code, symbol, live));
 }
 
 export async function readStat(code: string, symbol: string) {
@@ -63,29 +64,32 @@ export async function readStat(code: string, symbol: string) {
     table: "stat",
     limit: 1,
   });
-  return rows[0] ?? null;
+  return withSiteSandbox(rows[0] ?? null, (mod, live) => mod.mergeStat(code, symbol, live));
 }
 
 export async function readLaunches(code: string, limit = 200) {
-  return getAllTableRows<Record<string, unknown>>(
+  const rows = await getAllTableRows<Record<string, unknown>>(
     { code, scope: code, table: "launches", limit: 100 },
     limit
   );
+  return withSiteSandbox(rows, (mod, live) => mod.mergeLaunches(code, live));
 }
 
 export async function readFlexers(code: string, symbol: string, limit = 200) {
-  return getAllTableRows<Record<string, unknown>>(
+  const rows = await getAllTableRows<Record<string, unknown>>(
     { code, scope: symbol, table: "flexers", limit: 100 },
     limit
   );
+  return withSiteSandbox(rows, (mod, live) => mod.mergeFlexers(code, symbol, live));
 }
 
 /** Scope = symbol code. PK = Alcor pool id. */
 export async function readFlexpools(code: string, symbol: string, limit = 100) {
-  return getAllTableRows<Record<string, unknown>>(
+  const rows = await getAllTableRows<Record<string, unknown>>(
     { code, scope: symbol, table: "flexpools", limit: 50 },
     limit
   );
+  return withSiteSandbox(rows, (mod, live) => mod.mergeFlexpools(code, symbol, live));
 }
 
 /** Scope = symbol code. Absent row = no gated presale. */
@@ -99,19 +103,20 @@ export async function readPresale(code: string, symbol: string) {
     key_type: "i64",
     limit: 1,
   });
-  return rows[0] ?? null;
+  return withSiteSandbox(rows[0] ?? null, (mod, live) => mod.mergePresale(code, symbol, live));
 }
 
 /** Scope = symbol code. Whitelist + lock proof rows. */
 export async function readInsiders(code: string, symbol: string, limit = 500) {
-  return getAllTableRows<Record<string, unknown>>(
+  const rows = await getAllTableRows<Record<string, unknown>>(
     { code, scope: symbol, table: "insiders", limit: 100 },
     limit
   );
+  return withSiteSandbox(rows, (mod, live) => mod.mergeInsiders(code, symbol, live));
 }
 
 export async function readAccounts(code: string, owner: string, symbol?: string) {
-  return getTableRows<Record<string, unknown>>({
+  const live = await getTableRows<Record<string, unknown>>({
     code,
     scope: owner,
     table: "accounts",
@@ -120,6 +125,7 @@ export async function readAccounts(code: string, owner: string, symbol?: string)
     upper_bound: codeBound(symbol),
     key_type: symbol ? "i64" : undefined,
   });
+  return withSiteSandbox(live, (mod, rows) => mod.mergeAccounts(code, owner, symbol, rows));
 }
 
 async function sleep(ms: number) {
@@ -192,10 +198,11 @@ export async function readPool(poolId: number) {
 }
 
 export async function readPositions(poolId: number) {
-  return getAllTableRows<Record<string, unknown>>(
+  const rows = await getAllTableRows<Record<string, unknown>>(
     { code: SWAP_ALCOR, scope: String(poolId), table: "positions", limit: 100 },
     200
   );
+  return withSiteSandbox(rows, (mod, live) => mod.mergePositions(poolId, live));
 }
 
 export async function readLock(posId: number) {

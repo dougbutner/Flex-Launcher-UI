@@ -7,6 +7,7 @@ import { ProgramDots } from "@/components/token/ProgramDots";
 import { TokenIcon } from "@/components/TokenIcon";
 import { Field, StepShell, SupplyShortcuts } from "@/components/launch/ui";
 import { CONTRACT_DOCS } from "@/content/flexContractDocs";
+import { LAUNCH_GUIDE_PARAS } from "@/content/launchGuide";
 import { formatSupplyCommas, parseSupplyInput, validSymbol } from "@/services/assets";
 import { pinLogoFile } from "@/services/ipfsPin";
 import { defaultTaxDraft } from "@/services/taxRates";
@@ -26,6 +27,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   const [pinning, setPinning] = useState(false);
   const [logoErr, setLogoErr] = useState("");
   const [docsFor, setDocsFor] = useState<FlexProgram | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [urlOpen, setUrlOpen] = useState(Boolean(draft.pinFailed || (draft.imageUrl && !draft.imageCid)));
   const urlReady = validImageUrl(draft.imageUrl);
   const preview = (urlReady ? draft.imageUrl : "") || draft.imageDataUrl;
@@ -60,8 +62,13 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
 
   return (
     <StepShell
-      title="Create a token"
-      desc="Pick where it lives, then name and symbol. Decimal places and symbol are permanent once created."
+      title="Launch your token"
+      desc="Choose from three options, name and symbol."
+      titleAside={
+        <button type="button" className="link text-[11px] font-semibold uppercase tracking-wider" onClick={() => setGuideOpen((v) => !v)}>
+          info
+        </button>
+      }
       footer={
         <>
           <span />
@@ -71,6 +78,13 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         </>
       }
     >
+      {guideOpen ? (
+        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+          {LAUNCH_GUIDE_PARAS.map((para) => (
+            <p key={para.slice(0, 48)}>{para}</p>
+          ))}
+        </div>
+      ) : null}
       {programLocked ? (
         <p className="text-xs text-warning">
           Token is already on-chain. Token fields are static so execute preflight cannot drift.
@@ -143,7 +157,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
                 </span>
                 {selected ? (
                   <span className="flex items-end justify-between gap-2">
-                    <span className="grid grid-cols-2 gap-x-1.5 gap-y-0 font-mono leading-tight">
+                    <span className="grid grid-cols-3 gap-x-1.5 gap-y-0 font-mono leading-tight">
                       {traits.map((t) => (
                         <span key={t.k}>
                           <span className="block text-[7px] uppercase tracking-wide text-muted-foreground">{t.k}</span>

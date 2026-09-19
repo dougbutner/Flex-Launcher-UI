@@ -1,5 +1,6 @@
 import { formatNiceNumber } from "@/services/money";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
+import { loadSiteSandbox, siteSandboxFlag } from "@/services/siteSandbox";
 
 const ALCOR_POOL = "https://proton.alcor.exchange/api/v2/swap/pools";
 
@@ -183,6 +184,11 @@ export async function loadAlcorMarket(args: {
   supply: number;
 }): Promise<AlcorMarketView | null> {
   if (!(args.poolId > 0)) return null;
+  if (siteSandboxFlag()) {
+    const overlay = await loadSiteSandbox();
+    const mock = overlay?.mergeMarket(args, null);
+    if (mock) return mock;
+  }
   const [poolRes, swapsRes, usdPrice, quoteUsd] = await Promise.all([
     fetch(`${ALCOR_POOL}/${args.poolId}`, { signal: AbortSignal.timeout(10_000) }),
     fetch(`${ALCOR_POOL}/${args.poolId}/swaps?limit=500`, { signal: AbortSignal.timeout(12_000) }),

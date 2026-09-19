@@ -13,6 +13,7 @@ import {
   walletActor,
 } from '@/services/walletSessions';
 import { getActiveWalletId, setActiveWalletId } from '@/services/walletManifest';
+import { bindSiteSandboxActor } from '@/services/siteSandbox';
 
 export function useProton() {
   const [wallets, setWallets] = useState<LoadedWallet[]>([]);
@@ -110,6 +111,11 @@ export function useProton() {
   );
 
   const actor = activeWallet ? walletActor(activeWallet) : null;
+
+  useEffect(() => {
+    if (loading) return;
+    bindSiteSandboxActor(actor);
+  }, [loading, actor]);
 
   return {
     wallets,

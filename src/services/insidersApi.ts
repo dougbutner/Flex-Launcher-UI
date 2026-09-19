@@ -1,4 +1,5 @@
 import type { FeedRange } from "@/services/insidersRules";
+import { loadSiteSandbox, siteSandboxFlag } from "@/services/siteSandbox";
 
 export type InsiderPost = {
   id: number;
@@ -75,22 +76,34 @@ export async function fetchFeed(
     q.set("symbol", symbol);
   }
   if (opts?.parentId != null) q.set("parent", String(opts.parentId));
-  const res = await fetch(`/api/insiders/feed?${q}`);
-  const body = (await readJson(res)) as {
-    posts?: unknown[];
-    activity?: Record<string, number>;
-    upsEasy?: Record<string, number>;
-    range?: FeedRange;
-    error?: string;
+  const empty: FeedResponse = {
+    posts: [],
+    activity: {},
+    upsEasy: {},
+    range: opts?.range ?? "day",
   };
-  if (!res.ok) throw new Error(body.error || `Feed ${res.status}`);
-  const posts = (Array.isArray(body.posts) ? body.posts : []).map(asPost).filter((p): p is InsiderPost => Boolean(p));
-  return {
-    posts,
-    activity: body.activity && typeof body.activity === "object" ? body.activity : {},
-    upsEasy: body.upsEasy && typeof body.upsEasy === "object" ? body.upsEasy : {},
-    range: body.range === "week" || body.range === "month" || body.range === "year" || body.range === "all" ? body.range : "day",
-  };
+  try {
+    const res = await fetch(`/api/insiders/feed?${q}`);
+    const body = (await readJson(res)) as {
+      posts?: unknown[];
+      activity?: Record<string, number>;
+      upsEasy?: Record<string, number>;
+      range?: FeedRange;
+      error?: string;
+    };
+    if (!res.ok) throw new Error(body.error || `Feed ${res.status}`);
+    const posts = (Array.isArray(body.posts) ? body.posts : []).map(asPost).filter((p): p is InsiderPost => Boolean(p));
+    empty.posts = posts;
+    empty.activity = body.activity && typeof body.activity === "object" ? body.activity : {};
+    empty.upsEasy = body.upsEasy && typeof body.upsEasy === "object" ? body.upsEasy : {};
+    empty.range =
+      body.range === "week" || body.range === "month" || body.range === "year" || body.range === "all" ? body.range : "day";
+  } catch (err) {
+    if (!siteSandboxFlag()) throw err;
+  }
+  if (!siteSandboxFlag()) return empty;
+  const overlay = await loadSiteSandbox();
+  return overlay ? overlay.mergeFeed(empty, contract, symbol, opts) : empty;
 }
 
 export async function createPost(input: {

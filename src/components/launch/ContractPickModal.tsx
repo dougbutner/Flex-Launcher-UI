@@ -38,6 +38,7 @@ export function ContractPickModal({ program, symbol, onClose }: Props) {
             <h2 id="contract-pick-title" className="mt-1 font-mono text-2xl font-black tracking-tight">
               {code}@{account}
             </h2>
+            <p className="mt-2 text-sm text-foreground">{doc.intro}</p>
             <p className="mt-1 text-sm text-muted-foreground">{doc.pitch}</p>
           </div>
           <ProgramDots program={program} />

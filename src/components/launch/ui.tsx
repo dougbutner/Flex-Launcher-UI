@@ -52,10 +52,14 @@ export function StepShell(props: {
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
+  titleAside?: ReactNode;
 }) {
   return (
     <section className={`card p-6 sm:p-8 ${props.className ?? ""}`}>
-      <h2 className="text-xl font-bold tracking-tight">{props.title}</h2>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="text-xl font-bold tracking-tight">{props.title}</h2>
+        {props.titleAside}
+      </div>
       <p className="mt-1 text-sm text-muted-foreground">{props.desc}</p>
       <div className="mt-6 space-y-5">{props.children}</div>
       {props.footer ? <div className="mt-8 flex items-center justify-between gap-3">{props.footer}</div> : null}
