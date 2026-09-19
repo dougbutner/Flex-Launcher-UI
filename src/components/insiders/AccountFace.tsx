@@ -3,12 +3,16 @@ import { readProtonProfile } from "@/services/protonProfile";
 
 export function AccountFace({
   account,
-  score,
-  holdLabel,
+  total,
+  stored,
+  ups,
+  clubMark = null,
 }: {
   account: string;
-  score: number;
-  holdLabel?: string;
+  total: number;
+  stored: number;
+  ups: number;
+  clubMark?: "insider" | "proven" | null;
 }) {
   const [src, setSrc] = useState("");
   const [label, setLabel] = useState(account);
@@ -26,6 +30,7 @@ export function AccountFace({
   }, [account]);
 
   const letter = (account || "?").slice(0, 1).toUpperCase();
+  const boost = ups > 0 ? ups : 0;
 
   return (
     <div className="insiders-face">
@@ -34,16 +39,25 @@ export function AccountFace({
       ) : (
         <span className="insiders-avatar insiders-avatar-fallback">{letter}</span>
       )}
-      <div className="min-w-0 leading-tight">
-        <div className="insiders-name truncate">{label !== account ? label : account}</div>
-        <div className="truncate font-mono text-[11px] text-muted-foreground">
-          {account}
-          {holdLabel ? ` · ${holdLabel}` : ""}
-        </div>
+      <div className="insiders-name truncate">{label}</div>
+      {clubMark ? (
+        <span
+          className="insiders-club-badge"
+          title={clubMark === "proven" ? "On-chain insider with lock proof" : "On-chain approved insider"}
+        >
+          {clubMark === "proven" ? "proven" : "insider"}
+        </span>
+      ) : null}
+      <div className="insiders-score" title={`Mechanics ${stored}, UP +${boost}`}>
+        <span className="insiders-score-total">{total}</span>
+        {boost > 0 ? (
+          <span className="insiders-score-split">
+            {stored}+{boost}
+          </span>
+        ) : (
+          <span className="insiders-score-split">{stored}</span>
+        )}
       </div>
-      <span className="insiders-score" title="Mechanics score">
-        {score}
-      </span>
     </div>
   );
 }

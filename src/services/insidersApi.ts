@@ -2,6 +2,8 @@ import type { FeedRange } from "@/services/insidersRules";
 
 export type InsiderPost = {
   id: number;
+  contract: string;
+  symbol: string;
   author: string;
   body: string;
   parentId: number | null;
@@ -43,6 +45,8 @@ function asPost(raw: unknown): InsiderPost | null {
     author,
     body,
     parentId: parentRaw == null ? null : Number(parentRaw),
+    contract: String(o.contract ?? "").toLowerCase(),
+    symbol: String(o.symbol ?? "").toUpperCase(),
     createdAt,
     authorScore: Number(o.authorScore ?? o.author_score ?? 0) || 0,
     giphyUrl: String(o.giphyUrl ?? o.giphy_url ?? ""),
@@ -62,9 +66,14 @@ export async function fetchCaptcha(): Promise<{ id: string; prompt: string }> {
 export async function fetchFeed(
   contract: string,
   symbol: string,
-  opts?: { parentId?: number; range?: FeedRange }
+  opts?: { parentId?: number; range?: FeedRange; global?: boolean }
 ): Promise<FeedResponse> {
-  const q = new URLSearchParams({ contract, symbol, range: opts?.range ?? "day" });
+  const q = new URLSearchParams({ range: opts?.range ?? "day" });
+  if (opts?.global) q.set("global", "1");
+  else {
+    q.set("contract", contract);
+    q.set("symbol", symbol);
+  }
   if (opts?.parentId != null) q.set("parent", String(opts.parentId));
   const res = await fetch(`/api/insiders/feed?${q}`);
   const body = (await readJson(res)) as {

@@ -61,7 +61,7 @@ const CAPTCHA_TTL_MS = 10 * 60_000;
 const RPC = "https://proton.greymass.com";
 const QUOTE_CONTRACTS = new Set(["mon3y", "w3won", "gold.mon3y", "m3m3"]);
 
-const POST_SELECT = `SELECT p.id, p.author, p.body, p.parent_id AS parentId, p.created_at AS createdAt,
+const POST_SELECT = `SELECT p.id, p.contract, p.symbol, p.author, p.body, p.parent_id AS parentId, p.created_at AS createdAt,
   p.author_score AS authorScore, p.giphy_url AS giphyUrl,
   (SELECT COUNT(*) FROM posts r WHERE r.parent_id = p.id) AS replyCount,
   (SELECT COUNT(*) FROM ups u WHERE u.post_id = p.id) AS upCount,
@@ -199,13 +199,17 @@ function consumeCaptcha(db: DatabaseSync, id: string, answer: string): boolean {
   return Boolean(row && String(row.answer) === String(answer).trim());
 }
 
-function activityMap(db: DatabaseSync, contract: string, symbol: string): Record<string, number> {
+function activityMap(db: DatabaseSync, contract?: string, symbol?: string): Record<string, number> {
   const since = Date.now() - 24 * 60 * 60 * 1000;
-  const rows = db
-    .prepare(
-      "SELECT author, COUNT(*) AS n FROM posts WHERE contract = ? AND symbol = ? AND created_at >= ? GROUP BY author"
-    )
-    .all(contract, symbol, since) as Array<{ author: string; n: number }>;
+  const rows = (
+    contract && symbol
+      ? db
+          .prepare(
+            "SELECT author, COUNT(*) AS n FROM posts WHERE contract = ? AND symbol = ? AND created_at >= ? GROUP BY author"
+          )
+          .all(contract, symbol, since)
+      : db.prepare("SELECT author, COUNT(*) AS n FROM posts WHERE created_at >= ? GROUP BY author").all(since)
+  ) as Array<{ author: string; n: number }>;
   const out: Record<string, number> = {};
   for (const row of rows) out[row.author] = Number(row.n) || 0;
   return out;
@@ -226,29 +230,35 @@ function handleFeed(db: DatabaseSync, url: URL, res: ServerResponse) {
   const symbol = (url.searchParams.get("symbol") || "").trim().toUpperCase();
   const parent = url.searchParams.get("parent");
   const range = parseFeedRange(url.searchParams.get("range"));
-  if (!validAccount(contract) || !validSymbol(symbol)) {
+  const global = url.searchParams.get("global") === "1";
+  if (!global && (!validAccount(contract) || !validSymbol(symbol))) {
     send(res, 400, { error: "Need contract and symbol." });
     return;
   }
   const parentId = parent != null && parent !== "" ? Number(parent) : null;
   const since = rangeSince(range);
   const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
-  const rows =
-    parentId != null && Number.isFinite(parentId)
-      ? (db
-          .prepare(
-            `${POST_SELECT} WHERE p.contract = ? AND p.symbol = ? AND p.parent_id = ?
-             ORDER BY p.created_at ASC LIMIT 200`
-          )
-          .all(contract, symbol, parentId) as Record<string, unknown>[])
-      : (db
-          .prepare(
-            `${POST_SELECT} WHERE p.contract = ? AND p.symbol = ? AND p.parent_id IS NULL AND p.created_at >= ?
-             ORDER BY (p.author_score + COALESCE((SELECT SUM(amount_raw) FROM ups u WHERE u.to_account = p.author AND u.created_at >= ?), 0)) DESC,
-                      p.created_at DESC LIMIT 80`
-          )
-          .all(contract, symbol, since, dayAgo) as Record<string, unknown>[]);
-  send(res, 200, { posts: rows, activity: activityMap(db, contract, symbol), upsEasy: upsEasyMap(db), range });
+  const order = `ORDER BY (p.author_score + COALESCE((SELECT SUM(amount_raw) FROM ups u WHERE u.to_account = p.author AND u.created_at >= ?), 0)) DESC, p.created_at DESC LIMIT 80`;
+  let rows: Record<string, unknown>[];
+  if (parentId != null && Number.isFinite(parentId)) {
+    rows = db
+      .prepare(`${POST_SELECT} WHERE p.contract = ? AND p.symbol = ? AND p.parent_id = ? ORDER BY p.created_at ASC LIMIT 200`)
+      .all(contract, symbol, parentId) as Record<string, unknown>[];
+  } else if (global) {
+    rows = db
+      .prepare(`${POST_SELECT} WHERE p.parent_id IS NULL AND p.created_at >= ? ${order}`)
+      .all(since, dayAgo) as Record<string, unknown>[];
+  } else {
+    rows = db
+      .prepare(`${POST_SELECT} WHERE p.contract = ? AND p.symbol = ? AND p.parent_id IS NULL AND p.created_at >= ? ${order}`)
+      .all(contract, symbol, since, dayAgo) as Record<string, unknown>[];
+  }
+  send(res, 200, {
+    posts: rows,
+    activity: global ? activityMap(db) : activityMap(db, contract, symbol),
+    upsEasy: upsEasyMap(db),
+    range,
+  });
 }
 
 async function handlePost(

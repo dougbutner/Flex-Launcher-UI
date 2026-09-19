@@ -1,10 +1,9 @@
 import { hasAngelChannels, type FlexProgram } from "@/config/launch";
+import { PctBpsField } from "@/components/launch/PctBpsField";
 import { Field } from "@/components/launch/ui";
 import {
-  bpsToPercentInput,
   formatBpsPercent,
   hasProjectTax,
-  percentInputToBps,
   taxAdjustValid,
   taxCreateValid,
   taxSum,
@@ -20,36 +19,6 @@ type Props = {
   /** After the first setfees, pass on-chain rates so later edits follow contract rules. */
   chain?: TaxDraft | null;
 };
-
-function PctInput(props: {
-  label: string;
-  bps: number;
-  disabled?: boolean;
-  onBps: (n: number) => void;
-  hint?: string;
-}) {
-  return (
-    <Field label={props.label} hint={props.hint}>
-      <div className="relative">
-        <input
-          className="input font-mono pr-8"
-          inputMode="decimal"
-          disabled={props.disabled}
-          value={bpsToPercentInput(props.bps)}
-          onChange={(e) => {
-            const raw = e.target.value.replace(/[^\d.]/g, "");
-            const parts = raw.split(".");
-            const cleaned = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join("").slice(0, 2)}` : parts[0];
-            props.onBps(percentInputToBps(cleaned));
-          }}
-        />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-          %
-        </span>
-      </div>
-    </Field>
-  );
-}
 
 export function TaxBucketsForm({
   program,
@@ -85,7 +54,7 @@ export function TaxBucketsForm({
       </div>
 
       <div className={`grid grid-cols-1 gap-4 ${projectOk ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-        <PctInput
+        <PctBpsField
           label="Reflection"
           bps={value.reflectionRate}
           disabled={disabled}
@@ -99,7 +68,7 @@ export function TaxBucketsForm({
               : "Goes to the reflection pool (makeitrain)."
           }
         />
-        <PctInput
+        <PctBpsField
           label="Burn"
           bps={value.burnRate}
           disabled={disabled}
@@ -107,7 +76,7 @@ export function TaxBucketsForm({
           hint="Queued burn on successful splash."
         />
         {projectOk ? (
-          <PctInput
+          <PctBpsField
             label="Project"
             bps={value.projectRate}
             disabled={disabled}
@@ -141,13 +110,13 @@ export function TaxBucketsForm({
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PctInput
+            <PctBpsField
               label="Angel numbers"
               bps={value.angelNumbersBps}
               disabled={disabled}
               onBps={(angelNumbersBps) => patch({ angelNumbersBps })}
             />
-            <PctInput
+            <PctBpsField
               label="Jackpot"
               bps={value.jackpotBps}
               disabled={disabled}

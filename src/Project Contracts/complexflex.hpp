@@ -12,7 +12,7 @@ namespace eosio {
    /**
     * complexflex — grams-style reflections, anyone can create.
     *
-    * Until liftoff, the only legal `to` is swap.alcor (seed/lock). swap.alcor cannot send out.
+    * Until launched, only swap.alcor (or a presale insider). swap.alcor cannot send out until launch_time.
     * Same 90-day one-sided Alcor lock and nyra/reflections bps on xtoken quotes as flexforex.
     * No Numbers / Jackpot / RNG.
     */
@@ -47,7 +47,20 @@ namespace eosio {
                           int32_t tick_upper, const uint128_t& sqrt_price_x64, uint64_t xtoken_proof_pool_id,
                           bool swap_underlying_default);
          ACTION liftoff(const string& token_symbol, uint64_t pool_id, int32_t tick_lower, int32_t tick_upper);
+         ACTION golive(const string& token_symbol);
          ACTION checklock(const string& token_symbol);
+         ACTION setpresale(const string& token_symbol, uint32_t launch_time, uint32_t insider_time,
+                           uint8_t mode, uint16_t insider_bps, uint16_t locked_insider_bps,
+                           const name& collection, const name& schema, uint32_t nft_min,
+                           const extended_asset& min_token, bool need_kyc,
+                           int64_t lp_min, int64_t locked_lp_min, uint32_t lock_secs);
+         ACTION setlaunchtime(const string& token_symbol,
+                              const std::optional<uint32_t>& launch_time,
+                              const std::optional<uint32_t>& insider_time);
+         ACTION addinsiders(const string& token_symbol, const string& accounts);
+         ACTION reginsider(const name& owner, const string& token_symbol);
+         ACTION rminsider(const name& account, const string& token_symbol);
+         ACTION provelock(const name& owner, const string& token_symbol, uint64_t pool_id, uint64_t position_id);
 
          static asset get_supply(const name& token_contract_account, const symbol_code& sym_code) {
             stats statstable(token_contract_account, sym_code.raw());
@@ -76,7 +89,14 @@ namespace eosio {
          using inheritmemo_action = eosio::action_wrapper<"inheritmemo"_n, &complexflex::inheritmemo>;
          using startlaunch_action = eosio::action_wrapper<"startlaunch"_n, &complexflex::startlaunch>;
          using liftoff_action = eosio::action_wrapper<"liftoff"_n, &complexflex::liftoff>;
+         using golive_action = eosio::action_wrapper<"golive"_n, &complexflex::golive>;
          using checklock_action = eosio::action_wrapper<"checklock"_n, &complexflex::checklock>;
+         using setpresale_action = eosio::action_wrapper<"setpresale"_n, &complexflex::setpresale>;
+         using setlaunchtime_action = eosio::action_wrapper<"setlaunchtime"_n, &complexflex::setlaunchtime>;
+         using addinsiders_action = eosio::action_wrapper<"addinsiders"_n, &complexflex::addinsiders>;
+         using reginsider_action = eosio::action_wrapper<"reginsider"_n, &complexflex::reginsider>;
+         using rminsider_action = eosio::action_wrapper<"rminsider"_n, &complexflex::rminsider>;
+         using provelock_action = eosio::action_wrapper<"provelock"_n, &complexflex::provelock>;
 
          static constexpr name SWAP_ALCOR = "swap.alcor"_n;
          static constexpr name XTOKENS = "xtokens"_n;
@@ -92,6 +112,11 @@ namespace eosio {
          static constexpr uint16_t PROTO_BPS_HALF = 25;  // 0.25% each; +0.25% each if LP unlocked
          static constexpr uint32_t PAY_NUM = 382;
          static constexpr uint32_t PAY_DEN = 1000;
+         static constexpr uint32_t PRESALE_LOCK_SLACK = 3 * 24 * 60 * 60;
+         static constexpr uint8_t PS_FREEZE = 0;
+         static constexpr uint8_t PS_BUY_NO_SELL = 1;
+         static constexpr uint8_t PS_BUY_LP = 2;
+         static constexpr uint8_t PS_BUY_LP_IN = 3;
 
       private:
          TABLE account {
@@ -165,11 +190,41 @@ namespace eosio {
             uint64_t primary_key()const { return token_symbol.code().raw(); }
          };
 
+         // Presale window + gates. Scope = token symbol code. Absent row = legacy transfer rules.
+         TABLE presale {
+            symbol          token_symbol;
+            uint32_t        launch_time = 0;
+            uint32_t        insider_time = 0;
+            uint8_t         mode = 0;
+            uint16_t        insider_bps = 0;          // max % of issued supply (0–10000)
+            uint16_t        locked_insider_bps = 0;   // cap after locked_pos; ≥ insider_bps
+            name            collection;
+            name            schema;
+            uint32_t        nft_min = 0;              // collection+schema count
+            extended_asset  min_token;
+            bool            need_kyc = false;
+            int64_t         lp_min = 0;
+            int64_t         locked_lp_min = 0;
+            uint32_t        lock_secs = 0;
+            uint64_t primary_key() const { return token_symbol.code().raw(); }
+         };
+
+         // Whitelist + lock proof. Scope = token symbol code.
+         TABLE insider {
+            name     account;
+            bool     approved = false;
+            uint8_t  source = 0;              // 0 issuer, 1 self
+            uint64_t locked_pos = 0;          // proven Alcor position id; 0 = not proven
+            uint64_t primary_key() const { return account.value; }
+         };
+
          using settings_table = eosio::multi_index<"settings"_n, settings>;
          using launches_table = eosio::multi_index<"launches"_n, launch>;
          using accounts = eosio::multi_index<"accounts"_n, account>;
          using stats = eosio::multi_index<"stat"_n, currency_stats>;
          using flexers = eosio::multi_index<"flexers"_n, flexer>;
+         using presales_table = eosio::multi_index<"presales"_n, presale>;
+         using insiders_table = eosio::multi_index<"insiders"_n, insider>;
 
          void sub_balance(const name& owner, const asset& value);
          void add_balance(const name& owner, const asset& value, const name& ram_payer);
@@ -179,5 +234,9 @@ namespace eosio {
          void drop_flexer_if_empty(const name& owner, const symbol& sym);
          void require_token_auth(const currency_stats& st, const settings& conf, const name& optional_user = name());
          void maybe_apply_unlock_fee(launches_table& launches, launches_table::const_iterator launch_it, bool force_alcor);
+         void enforce_presale(const name& from, const name& to, const asset& quantity, const string& memo, const name& issuer, const symbol_code& sym, int64_t supply);
+         bool presale_gates_ok(const name& account, const presale& cfg, const insider* row, const symbol_code& sym);
+         int64_t presale_cap(const name& account, const presale& cfg, const insider* row, int64_t supply);
+         void parse_add_insiders(insiders_table& table, const string& accounts, const name& ram_payer);
    };
 }

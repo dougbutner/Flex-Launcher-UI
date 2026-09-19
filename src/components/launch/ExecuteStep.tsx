@@ -40,6 +40,7 @@ import { getCurrencyBalance } from "@/services/rpc";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { hasProjectTax } from "@/services/taxRates";
 import { persistLaunchDraft } from "@/services/managerApi";
+import { clubSignActions, insidersStepValid, parseInviteAccounts } from "@/services/insidersClub";
 import { runCreateGates, runPreflight, type PreflightItem } from "@/services/preflight";
 
 type Props = {
@@ -257,10 +258,13 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
   const [buyBusy, setBuyBusy] = useState(false);
   const [editBuy, setEditBuy] = useState(false);
   const [buyText, setBuyText] = useState("");
+  const [presaleError, setPresaleError] = useState("");
   const buyInputRef = useRef<HTMLInputElement>(null);
   const code = flexAccount(draft.program);
   const quotePrecision = plan?.quote.precision ?? 0;
   const quoteSymbol = plan?.quote.symbol ?? "";
+  const presaleOn = draft.presaleEnabled;
+  const presaleSigned = Boolean(draft.presaleTx);
 
   const checkGates = useCallback(async () => {
     if (!actor || draft.createTx) return;
@@ -330,6 +334,10 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
   }, [locked, draft.liftoffTx, checkPreflight]);
 
   useEffect(() => {
+    if (presaleOn) setBuyFirst(false);
+  }, [presaleOn]);
+
+  useEffect(() => {
     if (!editBuy) return;
     buyInputRef.current?.focus();
     buyInputRef.current?.select();
@@ -367,7 +375,11 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
 
   const liftoff = async () => {
     if (!actor || !plan || draft.poolId == null) return;
-    if (buyFirst && buyUnits <= 0) {
+    if (presaleOn && !presaleSigned) {
+      setLiftoffError("Sign the Insiders club after lock, or turn it off on the Insiders tab.");
+      return;
+    }
+    if (!presaleOn && buyFirst && buyUnits <= 0) {
       setLiftoffError("Pick an amount of quote to spend, or uncheck purchase first.");
       return;
     }
@@ -375,7 +387,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
     setLiftoffError("");
     try {
       const actions: ChainAction[] = [liftoffAction(code, plan, draft.poolId)];
-      if (buyFirst && buyUnits > 0) {
+      if (!presaleOn && buyFirst && buyUnits > 0) {
         actions.push(
           firstBuySwapAction(
             actor,
@@ -395,6 +407,33 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
       setLiftoffError(hint ? `${msg} - ${hint}` : msg);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const signPresale = async () => {
+    if (!actor || !plan) return;
+    if (!draft.lockTx) {
+      setPresaleError("Lock liquidity first, then sign the club.");
+      return;
+    }
+    const invalid = insidersStepValid(draft);
+    if (invalid) {
+      setPresaleError(invalid);
+      return;
+    }
+    setBusyId("presale");
+    setPresaleError("");
+    try {
+      const result = await transact(clubSignActions(code, plan.launched.symbol, draft));
+      const next = { ...draft, presaleTx: txIdFromResult(result) || "ok" };
+      patch({ presaleTx: next.presaleTx });
+      void persistLaunchDraft(actor, next);
+    } catch (err) {
+      const msg = txErrorMessage(err);
+      const hint = hintForError(msg);
+      setPresaleError(hint ? `${msg} - ${hint}` : msg);
     } finally {
       setBusyId(null);
     }
@@ -576,24 +615,75 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
             <p className="text-xs text-muted-foreground">Reading chain state…</p>
           )}
           {liftoffError ? <p className="text-xs font-medium text-destructive">{liftoffError}</p> : null}
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background/40 p-3">
-            <input
-              type="checkbox"
-              className="mt-1"
-              checked={buyFirst}
-              onChange={(e) => {
-                setBuyFirst(e.target.checked);
-                if (!e.target.checked) setEditBuy(false);
-              }}
-            />
-            <span>
-              <span className="block text-sm font-semibold">Purchase my token first</span>
-              <span className="mt-1 block text-xs text-muted-foreground">
-                Same wallet prompt as liftoff. Spends {quoteSymbol || "quote"} into the new pool before anyone else can.
+
+          <div className="space-y-2 rounded-xl border border-border bg-background/40 p-3">
+            <span className="block text-sm font-semibold">Insiders</span>
+            {presaleOn ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Sign after lock, before liftoff
+                  {parseInviteAccounts(draft.presaleInviteList).length
+                    ? ` (includes ${parseInviteAccounts(draft.presaleInviteList).length} invites)`
+                    : ""}
+                  . Public transfers wait until you launch.
+                </p>
+                {presaleError ? <p className="text-xs font-medium text-destructive">{presaleError}</p> : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  {presaleSigned ? (
+                    <>
+                      <span className="chip-success">club signed</span>
+                      <TxLink tx={draft.presaleTx} />
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      disabled={!isLoggedIn || busyId != null || !draft.lockTx || Boolean(insidersStepValid(draft))}
+                      onClick={() => void signPresale()}
+                    >
+                      {busyId === "presale" ? "Signing…" : "Sign insiders"}
+                    </button>
+                  )}
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    Wallet will ask to set insiders
+                    {parseInviteAccounts(draft.presaleInviteList).length ? " and invites" : ""}
+                  </span>
+                </div>
+                {!draft.lockTx ? (
+                  <p className="text-xs text-warning">Lock liquidity first, then this button unlocks.</p>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Off. Public liftoff after lock. Turn it on in the Insiders tab if you want a gated window.
+              </p>
+            )}
+          </div>
+
+          {!presaleOn ? (
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background/40 p-3">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={buyFirst}
+                onChange={(e) => {
+                  setBuyFirst(e.target.checked);
+                  if (!e.target.checked) setEditBuy(false);
+                }}
+              />
+              <span>
+                <span className="block text-sm font-semibold">Purchase my token first</span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Same wallet prompt as liftoff. Spends {quoteSymbol || "quote"} into the new pool before anyone else can.
+                </span>
               </span>
-            </span>
-          </label>
-          {buyFirst ? (
+            </label>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              First-buy is off during the club window. Alcor cannot send out until launch_time, and buyers must be approved.
+            </p>
+          )}
+          {!presaleOn && buyFirst ? (
             <div className="space-y-2">
               {buyBusy ? (
                 <p className="text-xs text-muted-foreground">Reading {quoteSymbol} balance…</p>
@@ -650,19 +740,26 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
           ) : null}
           <p className="font-mono text-[11px] text-muted-foreground">
             Wallet will ask for {code}::liftoff
-            {buyFirst ? ` + ${plan.quote.contract}::transfer` : ""}
+            {!presaleOn && buyFirst ? ` + ${plan.quote.contract}::transfer` : ""}
           </p>
           <button
             type="button"
             className="btn btn-accent btn-lg w-full"
-            disabled={!preflightOk || busyId != null || (buyFirst && (buyBusy || buyUnits <= 0))}
+            disabled={
+              !preflightOk ||
+              busyId != null ||
+              (presaleOn && !presaleSigned) ||
+              (!presaleOn && buyFirst && (buyBusy || buyUnits <= 0))
+            }
             onClick={() => void liftoff()}
           >
             {busyId === "liftoff"
               ? "Signing…"
-              : buyFirst
-                ? "Liftoff and buy first"
-                : "Liftoff - make it transferable"}
+                : presaleOn
+                ? "Liftoff (club stays gated)"
+                : buyFirst
+                  ? "Liftoff and buy first"
+                  : "Liftoff - make it transferable"}
           </button>
         </div>
       ) : null}

@@ -12,6 +12,7 @@ import {
   type ChainAction,
 } from "@/services/launchActions";
 import { parseProtonSymbol } from "@/services/tokenProton";
+import { percentInputToBps, sanitizePercentInput } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]): unknown {
@@ -206,6 +207,13 @@ export function HolderPrefs({
             sentence
             label="Inheritance"
             hint="Percent of your splash paid to any account (0-100). Leave blank for self."
+            aside={
+              ratePct !== "" ? (
+                <span className="font-mono text-[11px] font-medium text-muted-foreground">
+                  {percentInputToBps(ratePct)} bps
+                </span>
+              ) : null
+            }
           >
             <div className="flex flex-wrap gap-2">
               <input
@@ -221,19 +229,19 @@ export function HolderPrefs({
                 placeholder="% to bene"
                 value={ratePct}
                 disabled={disabled}
-                onChange={(e) => setRatePct(e.target.value)}
+                onChange={(e) => setRatePct(sanitizePercentInput(e.target.value))}
               />
               <button
                 type="button"
                 className="btn btn-outline btn-sm"
                 disabled={disabled || (bene !== "" && !validAccount(bene))}
                 onClick={() => {
-                  const pct = Number(ratePct);
-                  if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+                  const bps = percentInputToBps(ratePct);
+                  if (ratePct !== "" && (bps < 0 || bps > 10000 || Number(sanitizePercentInput(ratePct)) > 100)) {
                     setMsg({ err: "Rate must be 0-100%." });
                     return;
                   }
-                  void run(inheritanceAction(contract, actor, bene, Math.round(pct * 100), symbol));
+                  void run(inheritanceAction(contract, actor, bene, bps, symbol));
                 }}
               >
                 {signing ? "Signing…" : "Save inheritance"}

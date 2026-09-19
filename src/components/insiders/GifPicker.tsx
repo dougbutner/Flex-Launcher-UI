@@ -1,9 +1,40 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { Grid, SearchBar, SearchContext, SearchContextManager, SuggestionBar } from "@giphy/react-components";
+import type { IGif } from "@giphy/js-types";
 import { validGiphyUrl } from "@/services/insidersRules";
 
-type Hit = { id: string; url: string; preview: string };
+/** Giphy's published Web SDK demo key; override with VITE_GIPHY_API_KEY. */
+const KEY = import.meta.env.VITE_GIPHY_API_KEY?.trim() || "sXpGFDGAd0syZp9YaS3szp2L42VIuHTz";
 
-const KEY = import.meta.env.VITE_GIPHY_API_KEY?.trim() || "";
+function gifUrl(gif: IGif) {
+  const images = gif.images as { downsized?: { url?: string }; original?: { url?: string } };
+  return images.downsized?.url || images.original?.url || "";
+}
+
+function PickerBody({ onPick }: { onPick: (url: string) => void }) {
+  const { fetchGifs, searchKey } = useContext(SearchContext);
+  return (
+    <div className="insiders-gif-pop">
+      <SearchBar placeholder="Search Giphy" />
+      <SuggestionBar />
+      <Grid
+        key={searchKey}
+        width={320}
+        columns={3}
+        gutter={4}
+        borderRadius={0}
+        fetchGifs={fetchGifs}
+        noLink
+        hideAttribution
+        onGifClick={(gif, e) => {
+          e.preventDefault();
+          const url = gifUrl(gif);
+          if (validGiphyUrl(url)) onPick(url);
+        }}
+      />
+    </div>
+  );
+}
 
 export function GifPicker({
   value,
@@ -12,43 +43,14 @@ export function GifPicker({
   value: string;
   onPick: (url: string) => void;
 }) {
-  const [q, setQ] = useState("");
-  const [hits, setHits] = useState<Hit[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-
-  const search = () => {
-    const query = q.trim();
-    if (!query || !KEY) return;
-    setBusy(true);
-    setErr("");
-    void fetch(
-      `https://api.giphy.com/v1/gifs/search?api_key=${encodeURIComponent(KEY)}&q=${encodeURIComponent(query)}&limit=8&rating=pg-13`
-    )
-      .then(async (res) => {
-        const body = (await res.json()) as {
-          data?: Array<{ id: string; images?: { downsized?: { url?: string }; fixed_height_small?: { url?: string } } }>;
-        };
-        const next = (body.data ?? [])
-          .map((g) => ({
-            id: g.id,
-            url: g.images?.downsized?.url || "",
-            preview: g.images?.fixed_height_small?.url || g.images?.downsized?.url || "",
-          }))
-          .filter((g) => g.url && validGiphyUrl(g.url));
-        setHits(next);
-        if (!next.length) setErr("No GIFs.");
-      })
-      .catch((e) => setErr(e instanceof Error ? e.message : String(e)))
-      .finally(() => setBusy(false));
-  };
+  const [open, setOpen] = useState(false);
 
   if (value) {
     return (
       <div className="insiders-gif-picked">
         <img src={value} alt="" />
-        <button type="button" className="link text-xs" onClick={() => onPick("")}>
-          Remove GIF
+        <button type="button" className="insiders-quiet" onClick={() => onPick("")}>
+          remove
         </button>
       </div>
     );
@@ -56,47 +58,18 @@ export function GifPicker({
 
   return (
     <div className="insiders-gif">
-      <div className="flex gap-2">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              search();
-            }
-          }}
-          placeholder={KEY ? "Search Giphy" : "Paste a Giphy URL"}
-          className="min-w-0 flex-1 border border-border bg-transparent px-2 py-1 text-xs"
-          aria-label="GIF search"
-        />
-        {KEY ? (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={search} disabled={busy || !q.trim()}>
-            {busy ? "…" : "GIF"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              const url = q.trim();
-              if (validGiphyUrl(url)) onPick(url);
-              else setErr("Need a https Giphy URL.");
+      <button type="button" className="insiders-quiet" onClick={() => setOpen((v) => !v)}>
+        gif
+      </button>
+      {open ? (
+        <SearchContextManager apiKey={KEY} theme={{ mode: "dark", searchbarHeight: 36 }} shouldDefaultToTrending>
+          <PickerBody
+            onPick={(url) => {
+              onPick(url);
+              setOpen(false);
             }}
-          >
-            Attach
-          </button>
-        )}
-      </div>
-      {err ? <p className="mt-1 text-[11px] text-destructive">{err}</p> : null}
-      {hits.length ? (
-        <div className="insiders-gif-grid">
-          {hits.map((g) => (
-            <button key={g.id} type="button" onClick={() => onPick(g.url)} aria-label="Pick GIF">
-              <img src={g.preview} alt="" />
-            </button>
-          ))}
-        </div>
+          />
+        </SearchContextManager>
       ) : null}
     </div>
   );

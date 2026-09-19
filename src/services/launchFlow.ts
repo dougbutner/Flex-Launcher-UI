@@ -7,6 +7,7 @@ import {
   type FlexProgram,
 } from "@/config/launch";
 import {
+  addinsidersAction,
   addliquidAction,
   addLaunchQuotePoolAction,
   addpoolAction,
@@ -17,18 +18,24 @@ import {
   createpoolAction,
   depositAction,
   feeoptoutAction,
+  goliveAction,
   inheritanceAction,
   inheritmemoAction,
   liftoffAction,
   lockposAction,
   payoutAction,
+  provelockAction,
   pullangelAction,
   pulljackpotAction,
   ratiosAction,
+  reginsiderAction,
+  rminsiderAction,
   setangelnumAction,
   setdistAction,
   setfeesAction,
+  setlaunchtimeAction,
   setminAction,
+  setpresaleAction,
   startlaunchAction,
   supplyAction,
   type ChainAction,
@@ -210,5 +217,21 @@ export function simulateManageActions(args: {
     out.push(pullangelAction(code, symbol));
     out.push(pulljackpotAction(code, symbol));
   }
+  const now = Math.floor(Date.now() / 1000);
+  out.push(
+    setpresaleAction(code, symbol, {
+      launchTime: now + 14 * 86400,
+      insiderTime: now + 7 * 86400,
+      mode: 1,
+      insiderBps: 100,
+      lockedInsiderBps: 200,
+    })
+  );
+  out.push(setlaunchtimeAction(code, symbol, now + 21 * 86400, now + 10 * 86400));
+  out.push(addinsidersAction(code, symbol, "bob,carol"));
+  out.push(reginsiderAction(code, actor, symbol));
+  out.push(rminsiderAction(code, "bob", symbol));
+  out.push(provelockAction(code, actor, symbol, 99, 1));
+  out.push(goliveAction(code, symbol));
   return out;
 }

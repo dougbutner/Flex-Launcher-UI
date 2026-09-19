@@ -18,7 +18,7 @@ Always pass **symbol + contract**. `stat` / `settings` / `flexers` / `flexpools`
 
 ## Wizard order
 
-`create` → `setfees` → `mint`/`issue` 100% to issuer → `startlaunch` (`swap_underlying_default` default true) → Alcor `createpool` / `activepool#id` / `transfer` memo `deposit` / one-sided `addliquid` / `lockpos` ≥90d → `liftoff` → `addpool` launch quote pair. Issuer signs Alcor, not the flex contract. Until `launches.launched`, only `to=swap.alcor`. Do not gift `eosio::buyram` to the token contract. After a successful create, freeze Token / Flexonomics / Quote / Range so execute preflight cannot drift.
+`create` → `setfees` → `mint`/`issue` 100% to issuer → `startlaunch` (`swap_underlying_default` default true) → Alcor `createpool` / `activepool#id` / `transfer` memo `deposit` / one-sided `addliquid` / `lockpos` ≥90d → optional `setpresale` (+ `addinsiders`) → `liftoff` → `addpool` launch quote pair. Issuer signs Alcor, not the flex contract. Until `launches.launched`, only `to=swap.alcor`. Do not gift `eosio::buyram` to the token contract. After a successful create, freeze Token / Flexonomics / Quote / Range so execute preflight cannot drift. Insiders stay editable until `setpresale` is signed.
 
 ## Do not
 

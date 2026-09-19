@@ -7,15 +7,17 @@ import { TokenDetailsStep } from "@/components/launch/TokenDetailsStep";
 import { FlexonomicsStep } from "@/components/launch/FlexonomicsStep";
 import { QuoteStep } from "@/components/launch/QuoteStep";
 import { RangeStep } from "@/components/launch/RangeStep";
+import { InsidersStep } from "@/components/launch/InsidersStep";
 import { ReviewStep } from "@/components/launch/ReviewStep";
 import { ExecuteStep } from "@/components/launch/ExecuteStep";
 import { LiftoffModal } from "@/components/launch/LiftoffModal";
 import { LaunchPreview } from "@/components/launch/LaunchPreview";
 import { EasyHoldNotice } from "@/components/launch/EasyHoldNotice";
 import { quoteStepValid, rangeStepValid, taxStepValid, tokenStepValid } from "@/components/launch/draftPlan";
+import { insidersStepValid } from "@/services/insidersClub";
 import { hasProjectTax } from "@/services/taxRates";
 
-const EXECUTE_STEP = 5;
+const EXECUTE_STEP = 6;
 
 export default function Launch() {
   const { draft, patch, reset } = useLaunchDraft();
@@ -74,6 +76,13 @@ export default function Launch() {
         title: "Price Range & lock",
         desc: "Set price, see impact",
         done: !rangeStepValid(draft),
+        locked: !tokenOk,
+      },
+      {
+        id: "insiders",
+        title: "Insiders",
+        desc: "Buy & LP early",
+        done: !insidersStepValid(draft),
         locked: !tokenOk,
       },
       {
@@ -153,10 +162,12 @@ export default function Launch() {
           ) : step === 3 ? (
             <RangeStep draft={draft} patch={patch} locked={started} onNext={() => setStep(4)} onBack={() => setStep(2)} />
           ) : step === 4 ? (
-            <ReviewStep draft={draft} onNext={() => setStep(5)} onBack={() => setStep(3)} />
+            <InsidersStep draft={draft} patch={patch} onNext={() => setStep(5)} onBack={() => setStep(3)} />
+          ) : step === 5 ? (
+            <ReviewStep draft={draft} onNext={() => setStep(6)} onBack={() => setStep(4)} />
           ) : (
             <>
-              <ExecuteStep draft={draft} patch={patch} onBack={() => setStep(4)} onDone={() => setCelebrate(true)} />
+              <ExecuteStep draft={draft} patch={patch} onBack={() => setStep(5)} onDone={() => setCelebrate(true)} />
               <EasyHoldNotice active />
             </>
           )}

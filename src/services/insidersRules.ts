@@ -2,6 +2,7 @@ export const BODY_USER_MAX = 480;
 export const BODY_STORED_MAX = 500;
 export const UP_IDLE_MS = 3000;
 export const UP_MAX_STEP = 10;
+export const GLOBAL_FEED_TOP = 10;
 
 export type FeedRange = "day" | "week" | "month" | "year" | "all";
 
@@ -73,6 +74,11 @@ export function effectiveAuthorScore(stored: number, upsEasy24h: number) {
   const s = Number.isFinite(stored) ? stored : 0;
   const u = Number.isFinite(upsEasy24h) ? Math.max(0, upsEasy24h) : 0;
   return Math.max(0, Math.min(100, Math.round(s + u)));
+}
+
+export function splitFeatured<T>(rows: T[], n = GLOBAL_FEED_TOP) {
+  const cap = Number.isFinite(n) && n > 0 ? Math.floor(n) : GLOBAL_FEED_TOP;
+  return { featured: rows.slice(0, cap), rest: rows.slice(cap) };
 }
 
 /** One top-level post per UTC day. Replies do not consume this. */

@@ -12,6 +12,8 @@
     "sync-token-icons": "node scripts/sync-token-icons.mjs"
   },
   "dependencies": {
+    "@giphy/js-fetch-api": "^5.8.0",
+    "@giphy/react-components": "^10.1.2",
     "@proton/link": "^5.0.0",
     "@proton/web-sdk": "^5.0.0",
     "@wharfkit/session": "^1.6.1",

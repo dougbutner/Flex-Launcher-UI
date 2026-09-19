@@ -342,7 +342,10 @@ export type LaunchEvidence = {
   hasStat?: boolean;
   supplyPositive?: boolean;
   hasLaunch?: boolean;
+  /** On-chain launches.launched (false during gated presale). */
   launched?: boolean;
+  /** Liftoff filled pure_liquid_alcor_pool_id (may still be !launched). */
+  liftoffFilled?: boolean;
   hasPool?: boolean;
   poolActive?: boolean | null;
   deposited?: boolean;
@@ -356,21 +359,22 @@ export type LaunchEvidence = {
 export function launchProgressFrom(ev: LaunchEvidence): LaunchProgress {
   const tx = ev.txs ?? {};
   const addpoolDone = txDone(tx.addpool) || Boolean(ev.quotePoolAdded);
-  const launched = Boolean(ev.launched) || txDone(tx.liftoff);
-  const hasLock = launched || Boolean(ev.hasLock) || txDone(tx.lockpos);
+  const live = Boolean(ev.launched);
+  const liftoffDone = live || Boolean(ev.liftoffFilled) || txDone(tx.liftoff);
+  const hasLock = liftoffDone || Boolean(ev.hasLock) || txDone(tx.lockpos);
   const hasPosition = hasLock || Boolean(ev.hasPosition) || txDone(tx.addliquid);
   const deposited = hasPosition || Boolean(ev.deposited) || txDone(tx.deposit);
   const hasPool = deposited || Boolean(ev.hasPool) || txDone(tx.createpool);
   const activateDone =
     !hasPool
       ? false
-      : launched ||
+      : liftoffDone ||
         hasPosition ||
         deposited ||
         ev.poolActive === true ||
         txDone(tx.activate) ||
         ev.poolActive == null;
-  const hasLaunch = launched || hasPool || Boolean(ev.hasLaunch) || txDone(tx.startlaunch);
+  const hasLaunch = liftoffDone || hasPool || Boolean(ev.hasLaunch) || txDone(tx.startlaunch);
   const supplyPositive = hasLaunch || Boolean(ev.supplyPositive) || txDone(tx.supply) || txDone(tx.mint);
   const setfeesDone = supplyPositive || txDone(tx.setfees) || Boolean(ev.feesSet);
   const hasStat = setfeesDone || Boolean(ev.hasStat) || txDone(tx.create);
@@ -385,14 +389,24 @@ export function launchProgressFrom(ev: LaunchEvidence): LaunchProgress {
     deposit: deposited,
     addliquid: hasPosition,
     lockpos: hasLock,
-    liftoff: launched,
-    addpool: addpoolDone || launched,
+    liftoff: liftoffDone,
+    addpool: addpoolDone || live,
   };
 }
 
-export function nextLaunchStep(progress: LaunchProgress): { id: LaunchStepId | "done"; label: string; prompt: string } {
+export function nextLaunchStep(
+  progress: LaunchProgress,
+  opts?: { inPresale?: boolean }
+): { id: LaunchStepId | "done"; label: string; prompt: string } {
   for (const id of LAUNCH_STEP_IDS) {
     if (!progress[id]) return { id, label: LAUNCH_STEPS[id].label, prompt: LAUNCH_STEPS[id].prompt };
+  }
+  if (opts?.inPresale) {
+    return {
+      id: "done",
+      label: "Insiders club",
+      prompt: "Liftoff filled the pool. Joiners use the token page. Sign launch when you want full transfers.",
+    };
   }
   return {
     id: "done",
@@ -434,7 +448,8 @@ export function mergeManagerViews(chain: ChainIssuerToken[], stored: ManagerToke
       hasStat: true,
       supplyPositive: Boolean(row.mintTx),
       hasLaunch: Boolean(row.startTx),
-      launched: Boolean(row.liftoffTx),
+      launched: false,
+      liftoffFilled: Boolean(row.liftoffTx) || row.poolId != null,
       hasPool: row.poolId != null || Boolean(row.poolTx),
       poolActive: row.activateTx ? true : row.poolTx ? false : null,
       deposited: Boolean(row.depositTx),
@@ -486,11 +501,13 @@ export function mergeManagerViews(chain: ChainIssuerToken[], stored: ManagerToke
           poolId: c.poolId,
           createTx: c.createTx || "onchain",
         };
+    const inPresale = !c.launched && c.poolId != null;
     const progress = launchProgressFrom({
       hasStat: c.hasStat || Boolean(token.createTx),
       supplyPositive: c.supplyPositive || Boolean(token.mintTx),
       hasLaunch: c.hasLaunch || Boolean(token.startTx),
-      launched: c.launched || Boolean(token.liftoffTx),
+      launched: c.launched,
+      liftoffFilled: c.poolId != null || Boolean(token.liftoffTx),
       hasPool: c.poolId != null || Boolean(token.poolTx) || Boolean(token.poolId),
       poolActive: token.activateTx ? true : null,
       deposited: Boolean(token.depositTx),
@@ -511,8 +528,14 @@ export function mergeManagerViews(chain: ChainIssuerToken[], stored: ManagerToke
         addpool: token.addpoolTx,
       },
     });
-    const next = nextLaunchStep(progress);
-    map.set(key, { token, chain: c, progress, next, inProgress: next.id !== "done" });
+    const next = nextLaunchStep(progress, { inPresale });
+    map.set(key, {
+      token,
+      chain: c,
+      progress,
+      next,
+      inProgress: next.id !== "done" || inPresale,
+    });
   }
   return [...map.values()].sort((a, b) => {
     if (a.inProgress !== b.inProgress) return a.inProgress ? -1 : 1;

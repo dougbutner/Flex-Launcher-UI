@@ -32,6 +32,9 @@ export function LaunchPreview({
     { label: "Deposited", done: Boolean(draft.depositTx) },
     { label: "Ranged", done: Boolean(draft.rangeTx) },
     { label: "Locked", done: Boolean(draft.lockTx) },
+    ...(draft.presaleEnabled
+      ? [{ label: "Insiders", done: Boolean(draft.presaleTx) }]
+      : []),
     { label: "Liftoff", done: Boolean(draft.liftoffTx) },
     { label: "Quote pool", done: Boolean(draft.addpoolTx) },
   ];

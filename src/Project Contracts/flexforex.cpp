@@ -290,9 +290,8 @@ ACTION flexforex::transfer(const name& from, const name& to, const asset& quanti
     auto launch_it = launches.find(sym.raw());
     const bool launched = launch_it != launches.end() && launch_it->launched;
     const bool to_alcor = (to == SWAP_ALCOR);
-    if(!launched && !to_alcor) {
-        check(false, "⟁ Place a one-sided Alcor range, lock ≥ 90 days, then liftoff to activate this token");
-    }
+    if(!launched)
+        enforce_presale(from, to, quantity, memo, st.issuer, sym, st.supply.amount);
 
     flexers flex_table(get_self(), sym.raw());
     auto flex_it = flex_table.find(from.value);
@@ -934,7 +933,7 @@ ACTION flexforex::startlaunch(const string& token_symbol, const extended_asset& 
 
     launches_table launches(get_self(), get_self().value);
     auto itr = launches.find(code.raw());
-    check(itr == launches.end() || !itr->launched, "⟁ already lifted off; launch params are locked");
+    check(itr == launches.end() || (!itr->launched && !itr->pure_liquid_alcor_pool_id), "⟁ already lifted off; launch params are locked");
 
     auto write = [&](auto& row) {
         row.token_symbol = st.supply.symbol;
@@ -967,7 +966,7 @@ ACTION flexforex::liftoff(const string& token_symbol, uint64_t pool_id, int32_t 
     launches_table launches(get_self(), get_self().value);
     auto launch_it = launches.find(code.raw());
     check(launch_it != launches.end(), "⟁ startlaunch first");
-    check(!launch_it->launched, "⟁ already lifted off");
+    check(!launch_it->launched && !launch_it->pure_liquid_alcor_pool_id, "⟁ already lifted off");
     check(tick_lower == launch_it->tick_lower && tick_upper == launch_it->tick_upper, "⟁ ticks must match startlaunch");
 
     uint64_t prior = 0;
@@ -1025,9 +1024,11 @@ ACTION flexforex::liftoff(const string& token_symbol, uint64_t pool_id, int32_t 
     check(alcor::get_unused_balance(SWAP_ALCOR, st.issuer, get_self(), launched_sym) == 0,
           "⟁ unused Alcor balance must be 0 — put 100% into the position");
 
+    presales_table ps(get_self(), code.raw());
+    const bool live = ps.find(code.raw()) == ps.end();
     const uint16_t bps = launch_it->flex_quote ? 0 : PROTO_BPS_HALF;
     launches.modify(launch_it, same_payer, [&](auto& row) {
-        row.launched = true;
+        row.launched = live;
         row.pure_liquid_alcor_pool_id = pool_id;
         row.position_id = pos.id;
         row.dev_bps = bps;
@@ -1045,6 +1046,19 @@ ACTION flexforex::checklock(const string& token_symbol) {
           "⟁ Place a one-sided Alcor range, lock ≥ 90 days, then liftoff to activate this token");
     maybe_apply_unlock_fee(launches, launch_it, true);
 }//END checklock()
+
+ACTION flexforex::golive(const string& token_symbol) {
+    check(!token_symbol.empty(), "⟁ Token symbol is required");
+    symbol_code code(token_symbol);
+    stats statstable(get_self(), code.raw());
+    const auto& st = statstable.get(code.raw(), "⟁ token with symbol does not exist");
+    check(has_auth(get_self()) || has_auth(st.issuer), "⟁ missing issuer or contract authority");
+    launches_table launches(get_self(), get_self().value);
+    auto launch_it = launches.find(code.raw());
+    check(launch_it != launches.end() && launch_it->pure_liquid_alcor_pool_id, "⟁ liftoff first");
+    check(!launch_it->launched, "⟁ already lifted off");
+    launches.modify(launch_it, same_payer, [&](auto& row) { row.launched = true; });
+}//END golive()
 
 // === Alcor pool routing + inheritance === //
 
@@ -1160,5 +1174,308 @@ ACTION flexforex::inheritmemo(const name& flexer, const string& custom_memo, con
                              has_auth(get_self()) ? get_self() : flexer);
     flex_table.modify(itr, same_payer, [&](auto& f) { f.custom_memo = custom_memo; });
 }//END inheritmemo()
+
+// === Presale / insider window === //
+
+void flexforex::parse_add_insiders(insiders_table& table, const string& accounts, const name& ram_payer) {
+    string compact;
+    compact.reserve(accounts.size());
+    for(char c : accounts)
+        if(c != ' ' && c != '\t') compact += c;
+    size_t i = 0;
+    while(i < compact.size()) {
+        size_t j = compact.find(',', i);
+        if(j == string::npos) j = compact.size();
+        if(j > i) {
+            string part = compact.substr(i, j - i);
+            check(part.size() <= 13, "⟁ bad insider name");
+            name acc(part);
+            check(is_account(acc), "⟁ insider account does not exist");
+            auto it = table.find(acc.value);
+            if(it == table.end())
+                table.emplace(ram_payer, [&](auto& r) {
+                    r.account = acc;
+                    r.approved = true;
+                    r.source = 0;
+                });
+            else
+                table.modify(it, same_payer, [&](auto& r) {
+                    r.approved = true;
+                    r.source = 0;
+                });
+        }
+        i = j + 1;
+    }
+}//END parse_add_insiders()
+
+bool flexforex::presale_gates_ok(const name& account, const presale& cfg, const insider* row, const symbol_code& sym) {
+    bool any = false;
+
+    if(cfg.collection.value) {
+        any = true;
+        // backed_tokens is ABI only — we count collection+schema, never backing.
+        struct aa_asset {
+            uint64_t           asset_id;
+            name               collection_name;
+            name               schema_name;
+            int32_t            template_id;
+            name               ram_payer;
+            std::vector<asset> backed_tokens;
+            std::vector<uint8_t> immutable_serialized_data;
+            std::vector<uint8_t> mutable_serialized_data;
+            uint64_t primary_key() const { return asset_id; }
+        };
+        multi_index<"assets"_n, aa_asset> assets("atomicassets"_n, account.value);
+        uint32_t need = cfg.nft_min ? cfg.nft_min : 1;
+        uint32_t n = 0;
+        for(auto i = assets.begin(); i != assets.end(); ++i)
+            if(i->collection_name == cfg.collection && i->schema_name == cfg.schema)
+                if(++n >= need) return true;
+    }
+
+    if(cfg.min_token.quantity.amount > 0) {
+        any = true;
+        struct token_account {
+            asset    balance;
+            uint64_t primary_key() const { return balance.symbol.code().raw(); }
+        };
+        multi_index<"accounts"_n, token_account> ac(cfg.min_token.contract, account.value);
+        auto bit = ac.find(cfg.min_token.quantity.symbol.code().raw());
+        if(bit != ac.end() && bit->balance.symbol == cfg.min_token.quantity.symbol &&
+           bit->balance.amount >= cfg.min_token.quantity.amount)
+            return true;
+    }
+
+    if(cfg.need_kyc) any = true;
+
+    if(cfg.lp_min > 0) {
+        any = true;
+        launches_table launches(get_self(), get_self().value);
+        auto lit = launches.find(sym.raw());
+        if(lit != launches.end() && lit->pure_liquid_alcor_pool_id) {
+            alcor::positions_t pos(SWAP_ALCOR, lit->pure_liquid_alcor_pool_id);
+            auto byown = pos.get_index<"buyowner"_n>();
+            int64_t liq = 0;
+            for(auto i = byown.lower_bound(account.value); i != byown.end() && i->owner == account; ++i)
+                liq += (int64_t)i->liquidity;
+            if(liq >= cfg.lp_min) return true;
+        }
+    }
+
+    // locked_lp_min / locked_pos are provelock proof only — not a buy gate.
+    (void)row;
+    return !any;
+}//END presale_gates_ok()
+
+int64_t flexforex::presale_cap(const name& account, const presale& cfg, const insider* row, int64_t supply) {
+    if(account == get_self() || account == SWAP_ALCOR || account == "alcor"_n) return 0x7FFFFFFFFFFFFFFF;
+    uint16_t bps = (row && row->locked_pos && cfg.locked_insider_bps) ? cfg.locked_insider_bps : cfg.insider_bps;
+    if(!bps || supply <= 0) return 0;
+    return (int64_t)((__int128)supply * bps / 10000);
+}//END presale_cap()
+
+void flexforex::enforce_presale(const name& from, const name& to, const asset& quantity, const string& memo, const name& issuer, const symbol_code& sym, int64_t supply) {
+    const bool to_alcor = (to == SWAP_ALCOR);
+    const bool from_alcor = (from == SWAP_ALCOR || from == "alcor"_n);
+    presales_table p(get_self(), sym.raw());
+    auto it = p.find(sym.raw());
+    if(it == p.end()) {
+        check(to_alcor, "⟁ Place a one-sided Alcor range, lock ≥ 90 days, then liftoff to activate this token");
+        return;
+    }
+    if(from == issuer && to_alcor) return;
+    if(to == issuer) return;
+
+    uint32_t now = current_time_point().sec_since_epoch();
+    uint32_t open_d = (it->launch_time > now ? it->launch_time - now : 0) / (24 * 60 * 60);
+    string open = std::to_string(it->launch_time) + " · " + std::to_string(open_d) + "d";
+    if(it->mode == PS_FREEZE)
+        check(false, "⟁ presale freeze · " + open);
+
+    insiders_table ins(get_self(), sym.raw());
+    if(to_alcor) {
+        check(now >= it->insider_time,
+              "⟁ presale not open · " + std::to_string(it->insider_time) + " · " + std::to_string((it->insider_time > now ? it->insider_time - now : 0) / (24 * 60 * 60)) + "d");
+        check(now < it->launch_time, "⟁ sells locked · " + open);
+        check(memo.size() >= 3 && memo.compare(0, 3, "dep") == 0, "⟁ deposit memo required");
+        auto iit = ins.find(from.value);
+        check(iit != ins.end() && iit->approved, "⟁ not an insider");
+        return;
+    }
+    if(from == issuer || from_alcor) {
+        if(from_alcor)
+            check(now >= it->launch_time, "⟁ presale not open · " + open);
+        auto iit = ins.find(to.value);
+        check(iit != ins.end() && iit->approved, "⟁ not an insider");
+        if(from_alcor) {
+            int64_t cap = presale_cap(to, *it, &(*iit), supply);
+            accounts ac(get_self(), to.value);
+            auto ait = ac.find(sym.raw());
+            int64_t have = ait == ac.end() ? 0 : ait->balance.amount;
+            check(have + quantity.amount <= cap, "⟁ insider cap · " + std::to_string(cap));
+        }
+        return;
+    }
+    check(false, "⟁ sells locked · " + open);
+}//END enforce_presale()
+
+ACTION flexforex::setpresale(const string& token_symbol, uint32_t launch_time, uint32_t insider_time,
+                             uint8_t mode, uint16_t insider_bps, uint16_t locked_insider_bps,
+                             const name& collection, const name& schema, uint32_t nft_min,
+                             const extended_asset& min_token, bool need_kyc,
+                             int64_t lp_min, int64_t locked_lp_min, uint32_t lock_secs) {
+    check(!token_symbol.empty(), "⟁ Token symbol is required");
+    symbol_code code(token_symbol);
+    stats statstable(get_self(), code.raw());
+    const auto& st = statstable.get(code.raw(), "⟁ token with symbol does not exist");
+    check(has_auth(get_self()) || has_auth(st.issuer), "⟁ missing issuer or contract authority");
+
+    launches_table launches(get_self(), get_self().value);
+    auto lit = launches.find(code.raw());
+    check(lit == launches.end() || !lit->launched, "⟁ already lifted off");
+    check(insider_time > 0 && launch_time > insider_time, "⟁ insider_time must precede launch_time");
+    check(mode <= PS_BUY_LP_IN, "⟁ bad presale mode");
+    check(insider_bps <= 10000 && locked_insider_bps <= 10000, "⟁ bps > 100%");
+    if(locked_insider_bps)
+        check(locked_insider_bps >= insider_bps, "⟁ locked_insider_bps must be ≥ insider_bps");
+    check(!need_kyc, "⟁ KYC gate not wired");
+    if(collection.value || schema.value)
+        check(collection.value && schema.value, "⟁ NFT gate needs collection and schema");
+    if(locked_lp_min > 0 || lock_secs > 0)
+        check(lock_secs + PRESALE_LOCK_SLACK <= MIN_LOCK_SECS, "⟁ insider lock must be ≥ 3d shorter than 90d main lock");
+    extended_asset mt{};
+    if(min_token.quantity.amount > 0) {
+        check(is_account(min_token.contract), "⟁ min_token contract does not exist");
+        check(min_token.quantity.symbol.is_valid(), "⟁ min_token symbol invalid");
+        mt = min_token;
+    }
+
+    name ram_payer = has_auth(get_self()) ? get_self() : st.issuer;
+    presales_table p(get_self(), code.raw());
+    auto it = p.find(code.raw());
+    auto write = [&](auto& r) {
+        r.token_symbol = st.supply.symbol;
+        r.launch_time = launch_time;
+        r.insider_time = insider_time;
+        r.mode = mode;
+        r.insider_bps = insider_bps;
+        r.locked_insider_bps = locked_insider_bps;
+        r.collection = collection;
+        r.schema = schema;
+        r.nft_min = collection.value && !nft_min ? 1 : nft_min;
+        r.min_token = mt;
+        r.need_kyc = false;
+        r.lp_min = lp_min;
+        r.locked_lp_min = locked_lp_min;
+        r.lock_secs = lock_secs;
+    };
+    if(it == p.end()) p.emplace(ram_payer, write);
+    else p.modify(it, same_payer, write);
+}//END setpresale()
+
+ACTION flexforex::setlaunchtime(const string& token_symbol,
+                                const std::optional<uint32_t>& launch_time,
+                                const std::optional<uint32_t>& insider_time) {
+    check(!token_symbol.empty(), "⟁ Token symbol is required");
+    symbol_code code(token_symbol);
+    stats statstable(get_self(), code.raw());
+    const auto& st = statstable.get(code.raw(), "⟁ token with symbol does not exist");
+    check(has_auth(get_self()) || has_auth(st.issuer), "⟁ missing issuer or contract authority");
+
+    presales_table p(get_self(), code.raw());
+    auto it = p.find(code.raw());
+    check(it != p.end(), "⟁ presale not set");
+    uint32_t now = current_time_point().sec_since_epoch();
+    const bool as_self = has_auth(get_self());
+    if(!as_self && now >= it->launch_time)
+        check(false, "⟁ launch window locked");
+    uint32_t new_l = launch_time.value_or(it->launch_time);
+    uint32_t new_i = insider_time.value_or(it->insider_time);
+    check(new_i > 0 && new_l > new_i, "⟁ insider_time must precede launch_time");
+    if(!as_self) {
+        check(new_l >= it->launch_time, "⟁ cannot pull launch_time forward");
+        if(now >= it->insider_time)
+            check(new_i >= it->insider_time, "⟁ cannot pull insider_time forward");
+    }
+    p.modify(it, same_payer, [&](auto& r) {
+        r.launch_time = new_l;
+        r.insider_time = new_i;
+    });
+}//END setlaunchtime()
+
+ACTION flexforex::addinsiders(const string& token_symbol, const string& accounts) {
+    check(!token_symbol.empty(), "⟁ Token symbol is required");
+    symbol_code code(token_symbol);
+    stats statstable(get_self(), code.raw());
+    const auto& st = statstable.get(code.raw(), "⟁ token with symbol does not exist");
+    check(has_auth(get_self()) || has_auth(st.issuer), "⟁ missing issuer or contract authority");
+    insiders_table ins(get_self(), code.raw());
+    parse_add_insiders(ins, accounts, has_auth(get_self()) ? get_self() : st.issuer);
+}//END addinsiders()
+
+ACTION flexforex::reginsider(const name& owner, const string& token_symbol) {
+    require_auth(owner);
+    check(!token_symbol.empty(), "⟁ Token symbol is required");
+    symbol_code code(token_symbol);
+    stats statstable(get_self(), code.raw());
+    statstable.get(code.raw(), "⟁ token with symbol does not exist");
+    presales_table p(get_self(), code.raw());
+    const auto& cfg = p.get(code.raw(), "⟁ presale not set");
+    uint32_t now = current_time_point().sec_since_epoch();
+    check(now >= cfg.insider_time,
+          "⟁ presale not open · " + std::to_string(cfg.insider_time) + " · " + std::to_string((cfg.insider_time > now ? cfg.insider_time - now : 0) / (24 * 60 * 60)) + "d");
+    insiders_table ins(get_self(), code.raw());
+    auto iit = ins.find(owner.value);
+    const insider* row = iit == ins.end() ? nullptr : &(*iit);
+    check(presale_gates_ok(owner, cfg, row, code), "⟁ presale gates");
+    if(iit == ins.end())
+        ins.emplace(owner, [&](auto& r) {
+            r.account = owner;
+            r.approved = true;
+            r.source = 1;
+        });
+    else
+        ins.modify(iit, same_payer, [&](auto& r) { r.approved = true; });
+}//END reginsider()
+
+ACTION flexforex::rminsider(const name& account, const string& token_symbol) {
+    check(!token_symbol.empty(), "⟁ Token symbol is required");
+    symbol_code code(token_symbol);
+    stats statstable(get_self(), code.raw());
+    const auto& st = statstable.get(code.raw(), "⟁ token with symbol does not exist");
+    check(has_auth(get_self()) || has_auth(st.issuer), "⟁ missing issuer or contract authority");
+    insiders_table ins(get_self(), code.raw());
+    auto it = ins.find(account.value);
+    check(it != ins.end(), "⟁ insider not found");
+    ins.erase(it);
+}//END rminsider()
+
+ACTION flexforex::provelock(const name& owner, const string& token_symbol, uint64_t pool_id, uint64_t position_id) {
+    require_auth(owner);
+    check(!token_symbol.empty(), "⟁ Token symbol is required");
+    symbol_code code(token_symbol);
+    stats statstable(get_self(), code.raw());
+    statstable.get(code.raw(), "⟁ token with symbol does not exist");
+    presales_table p(get_self(), code.raw());
+    const auto& cfg = p.get(code.raw(), "⟁ presale not set");
+    check(cfg.locked_lp_min > 0 || cfg.lock_secs > 0, "⟁ lock proof not configured");
+    alcor::positions_t positions(SWAP_ALCOR, pool_id);
+    auto pit = positions.find(position_id);
+    check(pit != positions.end() && pit->owner == owner, "⟁ position not found");
+    check((int64_t)pit->liquidity >= cfg.locked_lp_min, "⟁ LP too small");
+    uint32_t unlock = alcor::get_unlock_time(SWAP_ALCOR, position_id);
+    uint32_t now = current_time_point().sec_since_epoch();
+    check(unlock >= now + cfg.lock_secs,
+          "⟁ lock too short · " + std::to_string(now + cfg.lock_secs) + " · " + std::to_string(cfg.lock_secs / (24 * 60 * 60)) + "d");
+    insiders_table ins(get_self(), code.raw());
+    auto iit = ins.find(owner.value);
+    if(iit == ins.end())
+        ins.emplace(owner, [&](auto& r) {
+            r.account = owner;
+            r.locked_pos = position_id;
+        });
+    else
+        ins.modify(iit, same_payer, [&](auto& r) { r.locked_pos = position_id; });
+}//END provelock()
 
 } /// namespace eosio

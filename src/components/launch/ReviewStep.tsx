@@ -14,6 +14,7 @@ import { formatSupplyCommas } from "@/services/assets";
 import { formatRainAsset } from "@/services/rainDefaults";
 import { unlockTimeUnix } from "@/services/launchMath";
 import { formatBpsPercent, hasProjectTax, taxSum } from "@/services/taxRates";
+import { parseInviteAccounts } from "@/services/insidersClub";
 
 type Props = {
   draft: LaunchDraft;
@@ -117,6 +118,19 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
         ) : null}
         <Row k="Deposit" v={`100% of supply → ${SWAP_ALCOR}`} />
         <Row k="Lock" v={`${Math.max(90, draft.lockDays)} days · until ~${unlockDate}`} />
+        {draft.presaleEnabled ? (
+          <Row
+            k="Insiders"
+            v={`${draft.presaleInsiderBps / 100}% Insider Max${
+              draft.presaleLockedInsiderBps > draft.presaleInsiderBps
+                ? ` · ${draft.presaleLockedInsiderBps / 100}% LP bonus`
+                : ""
+            }${parseInviteAccounts(draft.presaleInviteList).length ? ` · invite ${parseInviteAccounts(draft.presaleInviteList).length}` : ""}`}
+            mono={false}
+          />
+        ) : (
+          <Row k="Insiders" v="Off (public after liftoff)" mono={false} />
+        )}
         <Row k="EASY to launch" v={holdLine} />
         {preset.flexQuote ? null : <FlexPairHoldTip program={draft.program} />}
       </div>
@@ -127,6 +141,19 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
           Do not try to send it to a friend first. After liftoff, transfers work with the normal flex tax. Protocol skim
           starts at {skimLabel} and rises by +0.25% each if the Alcor lock expires (via checklock or makeitrain).
         </p>
+        {draft.presaleEnabled ? (
+          <p className="text-warning/80">
+            Insiders: after lock, Execute signs the club
+            {parseInviteAccounts(draft.presaleInviteList).length
+              ? ` and invites (${parseInviteAccounts(draft.presaleInviteList).join(", ")})`
+              : ""}
+            . Public transfers wait until public launch. Insider Max {draft.presaleInsiderBps / 100}% of supply
+            {draft.presaleLockedInsiderBps > draft.presaleInsiderBps
+              ? ` (${draft.presaleLockedInsiderBps / 100}% LP provider bonus)`
+              : ""}
+            . Approved accounts can buy from insider buys start.
+          </p>
+        ) : null}
         {hasAngelChannels(draft.program) && (tax.angelNumbersBps > 0 || tax.jackpotBps > 0) ? (
           <p className="text-warning/80">
             Angel / jackpot pulls need setdist (winners, cooldown) after launch. ratios alone only sets the channel

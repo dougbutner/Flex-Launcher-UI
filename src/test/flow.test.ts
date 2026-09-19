@@ -71,6 +71,28 @@ const ABI_FIELDS: Record<string, string[]> = {
   setangelnum: ["owner", "token_symbol", "angel_number"],
   pullangel: ["token_symbol"],
   pulljackpot: ["token_symbol"],
+  setpresale: [
+    "token_symbol",
+    "launch_time",
+    "insider_time",
+    "mode",
+    "insider_bps",
+    "locked_insider_bps",
+    "collection",
+    "schema",
+    "nft_min",
+    "min_token",
+    "need_kyc",
+    "lp_min",
+    "locked_lp_min",
+    "lock_secs",
+  ],
+  setlaunchtime: ["token_symbol", "launch_time", "insider_time"],
+  addinsiders: ["token_symbol", "accounts"],
+  reginsider: ["owner", "token_symbol"],
+  rminsider: ["account", "token_symbol"],
+  provelock: ["owner", "token_symbol", "pool_id", "position_id"],
+  golive: ["token_symbol"],
 };
 
 const PROGRAMS: FlexProgram[] = ["easyflex", "complexflex", "flexforex"];
@@ -230,8 +252,18 @@ describe("mainnet launch flow simulation", () => {
     expect(names).toContain("choosereward");
     expect(names).toContain("feeoptout");
     expect(names).toContain("setfees");
+    expect(names).toContain("setpresale");
+    expect(names).toContain("golive");
+    expect(names).toContain("reginsider");
+    expect(names).toContain("provelock");
     expect(names).not.toContain("setconfig");
     expect(names).not.toContain("receiverand");
+    const setps = actions.find((a) => a.name === "setpresale")!;
+    expect(setps.data.need_kyc).toBe(false);
+    expect(setps.data.mode).toBe(1);
+    expect(Number(setps.data.insider_time)).toBeLessThan(Number(setps.data.launch_time));
+    assertMatchesAbi("setpresale", setps.data);
+    assertMatchesAbi("golive", actions.find((a) => a.name === "golive")!.data);
     if (program === "easyflex") {
       expect(names).toContain("setmin");
       expect(names).not.toContain("mint");

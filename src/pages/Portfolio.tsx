@@ -38,6 +38,7 @@ type Issued = {
   contract: string;
   symbol: string;
   launched: boolean;
+  poolId: number | null;
 };
 
 type PokeKind = "rain" | "checklock" | "pullangel" | "pulljackpot";
@@ -101,6 +102,7 @@ export default function Portfolio() {
                   contract: code,
                   symbol,
                   launched: Boolean(pick(l, "launched")),
+                  poolId: Number(pick(l, "pure_liquid_alcor_pool_id", "pool_id") ?? 0) || null,
                 });
               }
               if (!pick(l, "launched")) return;
@@ -260,7 +262,8 @@ export default function Portfolio() {
                   <div>
                   <div className="font-mono font-bold">${t.symbol}</div>
                   <div className="text-xs text-muted-foreground">
-                    {t.program} @ {t.contract} · {t.launched ? "live" : "in progress"}
+                    {t.program} @ {t.contract} ·{" "}
+                    {t.launched ? "live" : t.poolId ? "insiders" : "in progress"}
                   </div>
                   </div>
                 </div>

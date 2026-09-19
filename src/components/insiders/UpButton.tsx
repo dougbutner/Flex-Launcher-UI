@@ -4,10 +4,12 @@ import { UP_IDLE_MS, upDeltaForClick } from "@/services/insidersRules";
 type Flash = { id: number; n: number };
 
 export function UpButton({
-  disabled,
+  connected,
+  onNeedConnect,
   onCommit,
 }: {
-  disabled?: boolean;
+  connected: boolean;
+  onNeedConnect?: () => void;
   onCommit: (whole: number) => Promise<void>;
 }) {
   const [clicks, setClicks] = useState(0);
@@ -45,13 +47,17 @@ export function UpButton({
   };
 
   return (
-    <div className="insiders-up">
+    <span className="insiders-up">
       <button
         type="button"
-        className="insiders-up-btn"
-        disabled={disabled || busy}
+        className="insiders-quiet insiders-up-btn"
+        disabled={busy}
         onClick={() => {
-          if (disabled || busy) return;
+          if (busy) return;
+          if (!connected) {
+            onNeedConnect?.();
+            return;
+          }
           const nextClicks = clicks + 1;
           const delta = upDeltaForClick(nextClicks);
           const next = pending + delta;
@@ -66,17 +72,15 @@ export function UpButton({
           timer.current = setTimeout(fire, UP_IDLE_MS);
         }}
       >
-        {busy ? "Signing…" : pending > 0 ? `UP ${pending}` : "UP"}
+        {busy ? "signing" : pending > 0 ? `UP ${pending}` : "UP"}
       </button>
       {flashes.map((f) => (
         <span key={f.id} className="insiders-up-flash">
           +{f.n}
         </span>
       ))}
-      {pending > 0 && !busy ? (
-        <span className="insiders-up-hint">Stay connected. TX in {UP_IDLE_MS / 1000}s idle.</span>
-      ) : null}
-      {err ? <span className="text-[11px] text-destructive">{err}</span> : null}
-    </div>
+      {pending > 0 && !busy ? <span className="insiders-up-hint">stay connected</span> : null}
+      {err ? <span className="insiders-err">{err}</span> : null}
+    </span>
   );
 }

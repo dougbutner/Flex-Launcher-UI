@@ -22,6 +22,9 @@ import {
   inheritmemoAction,
   abiSymbol,
   setminAction,
+  setpresaleAction,
+  goliveAction,
+  presaleCapRaw,
 } from "@/services/launchActions";
 import {
   COMPLEXFLEX_CONTRACT,
@@ -55,6 +58,7 @@ import {
   defaultTaxDraft,
   formatBpsPercent,
   percentInputToBps,
+  sanitizePercentInput,
   taxAdjustValid,
   taxCreateValid,
   taxSum,
@@ -283,6 +287,27 @@ describe("launch plan", () => {
       min_hold: 10,
       min_pool: 20,
     });
+    const now = 1_700_000_000;
+    const ps = setpresaleAction("3asy", "FOO", {
+      launchTime: now + 14 * 86400,
+      insiderTime: now + 7 * 86400,
+      mode: 1,
+      insiderBps: 100,
+      lockedInsiderBps: 250,
+    });
+    expect(ps.name).toBe("setpresale");
+    expect(ps.data.need_kyc).toBe(false);
+    expect(ps.data.mode).toBe(1);
+    expect(ps.data.insider_bps).toBe(100);
+    expect(ps.data.locked_insider_bps).toBe(250);
+    expect(Number(ps.data.insider_time)).toBeLessThan(Number(ps.data.launch_time));
+    expect(goliveAction("3asy", "FOO")).toEqual({
+      account: "3asy",
+      name: "golive",
+      data: { token_symbol: "FOO" },
+    });
+    expect(presaleCapRaw(1_000_000_0000, 100, 250, 0)).toBe(10_000_0000);
+    expect(presaleCapRaw(1_000_000_0000, 100, 250, 42)).toBe(25_000_0000);
     expect(flexAccount("easyflex")).toBe(EASYFLEX_CONTRACT);
     expect(flexAccount("complexflex")).toBe(COMPLEXFLEX_CONTRACT);
     expect(flexAccount("flexforex")).toBe(FLEXFOREX_CONTRACT);
@@ -612,7 +637,14 @@ describe("tax rates", () => {
     expect(taxCreateValid(easy, "easyflex")).toBeNull();
     expect(taxCreateValid({ ...easy, angelNumbersBps: 6000, jackpotBps: 5000 }, "flexforex")).toMatch(/100%/);
     expect(percentInputToBps("1.5")).toBe(150);
+    expect(percentInputToBps("1.")).toBe(100);
+    expect(percentInputToBps("1.25")).toBe(125);
+    expect(percentInputToBps("1.259")).toBe(125);
+    expect(percentInputToBps("")).toBe(0);
+    expect(sanitizePercentInput("1.259")).toBe("1.25");
+    expect(sanitizePercentInput("12.3.9")).toBe("12.39");
     expect(formatBpsPercent(100)).toBe("1%");
+    expect(formatBpsPercent(125)).toBe("1.25%");
   });
 
   it("blocks later setfees that raise total or cut reflection", () => {
@@ -932,6 +964,22 @@ describe("issuer manager store", () => {
     const progress = launchProgressFrom({ launched: true });
     expect(LAUNCH_STEP_IDS.every((id) => progress[id])).toBe(true);
     expect(nextLaunchStep(progress).id).toBe("done");
+  });
+
+  it("treats liftoff-filled pool without launched as presale", () => {
+    const progress = launchProgressFrom({
+      hasStat: true,
+      supplyPositive: true,
+      hasLaunch: true,
+      launched: false,
+      liftoffFilled: true,
+      hasPool: true,
+      hasLock: true,
+      txs: { liftoff: "txlift", addpool: "txadd" },
+    });
+    expect(progress.liftoff).toBe(true);
+    expect(progress.addpool).toBe(true);
+    expect(nextLaunchStep(progress, { inPresale: true }).label).toBe("Insiders club");
   });
 
   it("merges sqlite metadata onto an on-chain issuer token", () => {

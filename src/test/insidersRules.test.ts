@@ -8,6 +8,7 @@ import {
   effectiveAuthorScore,
   parseFeedRange,
   rangeSince,
+  splitFeatured,
   upDeltaForClick,
   utcDayStart,
   validGiphyUrl,
@@ -53,6 +54,11 @@ describe("insidersRules", () => {
   it("caps ranking score with 24h UP EASY", () => {
     expect(effectiveAuthorScore(89, 10)).toBe(99);
     expect(effectiveAuthorScore(96, 20)).toBe(100);
+  });
+
+  it("splits a global feed into a top 10 and the rest", () => {
+    const rows = Array.from({ length: 12 }, (_, i) => i);
+    expect(splitFeatured(rows)).toEqual({ featured: rows.slice(0, 10), rest: [10, 11] });
   });
 
   it("accepts giphy https urls and 64-char tx ids", () => {

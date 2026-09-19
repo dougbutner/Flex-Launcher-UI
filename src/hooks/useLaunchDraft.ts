@@ -59,6 +59,27 @@ export type LaunchDraft = {
   lockTx: string;
   liftoffTx: string;
   addpoolTx: string;
+  /** Hold launched false after liftoff until golive. */
+  presaleEnabled: boolean;
+  /** 0 freeze, 1 insider window. */
+  presaleMode: number;
+  /** datetime-local strings → unix on sign. */
+  presaleInsiderTime: string;
+  presaleLaunchTime: string;
+  presaleInsiderBps: number;
+  presaleLockedInsiderBps: number;
+  presaleCollection: string;
+  presaleSchema: string;
+  presaleNftMin: number;
+  presaleMinTokenQty: string;
+  presaleMinTokenContract: string;
+  presaleLpMin: number;
+  presaleLockedLpMin: number;
+  /** Seconds remaining on proven Alcor lock for higher cap. */
+  presaleLockSecs: number;
+  /** Issuer addinsiders comma/space list, signed with setpresale after lock. */
+  presaleInviteList: string;
+  presaleTx: string;
 };
 
 const KEY = "flex-launch-draft-v8";
@@ -129,6 +150,22 @@ export const emptyDraft = (): LaunchDraft => {
     lockTx: "",
     liftoffTx: "",
     addpoolTx: "",
+    presaleEnabled: false,
+    presaleMode: 1,
+    presaleInsiderTime: "",
+    presaleLaunchTime: "",
+    presaleInsiderBps: 100,
+    presaleLockedInsiderBps: 0,
+    presaleCollection: "",
+    presaleSchema: "",
+    presaleNftMin: 0,
+    presaleMinTokenQty: "",
+    presaleMinTokenContract: "",
+    presaleLpMin: 0,
+    presaleLockedLpMin: 0,
+    presaleLockSecs: 0,
+    presaleInviteList: "",
+    presaleTx: "",
   };
 };
 

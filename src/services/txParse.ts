@@ -83,7 +83,16 @@ const HINTS: Array<[string, string]> = [
   ["issuer position has no liquidity", "Run addliquid before liftoff."],
   ["Place a one-sided Alcor range", "Token not live yet; finish lock + liftoff. Transfers only go to swap.alcor until then."],
   ["startlaunch first", "Run startlaunch before liftoff."],
+  ["already lifted off", "Cannot set the club after the token is live. Use launch only if liftoff left launched false."],
   ["already launched", "Launch finished."],
+  ["liftoff first", "Run liftoff before launch."],
+  ["presale not open", "Wait until insider buys start (or public launch for buys)."],
+  ["presale freeze", "Freeze blocks gated transfers until you unfreeze or launch."],
+  ["presale gates", "Pass an NFT, Min Hold, or LP gate, then join."],
+  ["not an insider", "Join the list, or ask the issuer to invite you."],
+  ["insider cap", "Buy would exceed this account's Insider Max."],
+  ["KYC gate not wired", "need_kyc must stay false."],
+  ["sells locked", "Alcor cannot send out until public launch; wallet sells stay locked until launch."],
   ["flex quotes do not use xtoken_proof_pool_id", "Flex quotes take proof pool 0."],
   ["quote must be a zero-amount", "Quote quantity must be zero in startlaunch."],
   ["quote contract does not exist", "Quote token contract is not a live account."],
@@ -125,6 +134,7 @@ const HINTS: Array<[string, string]> = [
   ["bad inheritance data", "Beneficiary rate must be 0-10000 bps = 0.00% - 100.00% ."],
   ["bad inheritmemo data", "Custom memo must be ≤ 200 characters."],
   ["beneficiary account does not exist", "Enter a live XPR account name for the beneficiary."],
+  ["max length for token name is 16", "token.proton display name must be 16 characters or fewer."],
 ];
 
 export function hintForError(message: string): string | null {

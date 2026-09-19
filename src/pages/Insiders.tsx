@@ -6,7 +6,7 @@ import { TokenIcon } from "@/components/TokenIcon";
 import { MON3Y } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { createPost, fetchFeed, recordUp, type InsiderPost } from "@/services/insidersApi";
-import { easyQuantity, effectiveAuthorScore, type FeedRange } from "@/services/insidersRules";
+import { easyQuantity, effectiveAuthorScore, splitFeatured, type FeedRange } from "@/services/insidersRules";
 import {
   actorHoldsToken,
   countTokenTxs24h,
@@ -16,6 +16,8 @@ import {
   type TokenMetrics,
 } from "@/services/mechanicsLive";
 import { scoreParts } from "@/services/mechanicsScore";
+import { clubKey, clubMarkOf, loadClubMarks, type ClubMark } from "@/services/insidersClub";
+import { readInsiders } from "@/services/flexTables";
 import { txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 const RANGES: FeedRange[] = ["day", "week", "month", "year", "all"];
@@ -27,28 +29,61 @@ const RANGE_LABEL: Record<FeedRange, string> = {
   all: "All",
 };
 
+function listPosts(
+  posts: InsiderPost[],
+  totalOf: (account: string, stored: number) => number,
+  upsOf: (account: string) => number,
+  actor: string | null,
+  canWrite: boolean,
+  myScore: number,
+  refresh: () => void,
+  sendUp: (post: InsiderPost, whole: number) => Promise<string>,
+  onNeedConnect: () => void,
+  clubOf: (account: string, contract: string, symbol: string) => ClubMark | null
+) {
+  return posts.map((p) => (
+    <FeedPost
+      key={p.id}
+      post={p}
+      totalOf={totalOf}
+      upsOf={upsOf}
+      actor={actor}
+      canWrite={canWrite}
+      lockedReason="Verify as a holder or on-chain insider to reply."
+      authorScore={actor ? myScore : 0}
+      onPosted={refresh}
+      onUp={sendUp}
+      onNeedConnect={onNeedConnect}
+      clubOf={clubOf}
+    />
+  ));
+}
+
 export default function Insiders() {
   const { contract = "", symbol = "" } = useParams<{ contract?: string; symbol?: string }>();
   const code = contract.trim().toLowerCase();
   const sym = symbol.trim().toUpperCase();
-  const { actor, isLoggedIn, transact } = useWallet();
+  const { actor, isLoggedIn, transact, login, addAnchorWallet } = useWallet();
 
   const [rooms, setRooms] = useState<LaunchRoom[] | null>(null);
-  const [posts, setPosts] = useState<InsiderPost[]>([]);
+  const [globalPosts, setGlobalPosts] = useState<InsiderPost[]>([]);
+  const [roomPosts, setRoomPosts] = useState<InsiderPost[]>([]);
   const [activity, setActivity] = useState<Record<string, number>>({});
   const [upsEasy, setUpsEasy] = useState<Record<string, number>>({});
   const [metrics, setMetrics] = useState<TokenMetrics | null>(null);
   const [txByAuthor, setTxByAuthor] = useState<Record<string, number>>({});
   const [holds, setHolds] = useState(false);
+  const [clubMarks, setClubMarks] = useState<Record<string, ClubMark>>({});
+  const [myClub, setMyClub] = useState<ClubMark | null>(null);
   const [verified, setVerified] = useState(false);
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [range, setRange] = useState<FeedRange>("day");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const liveRooms = useMemo(() => (rooms ?? []).filter((r) => r.launched), [rooms]);
+  const liveRooms = useMemo(() => (rooms ?? []).filter((r) => r.launched || r.poolId > 0), [rooms]);
   const room = liveRooms.find((r) => r.contract === code && r.symbol === sym) ?? null;
-  const pending = (rooms ?? []).find((r) => r.contract === code && r.symbol === sym && !r.launched) ?? null;
+  const pending = (rooms ?? []).find((r) => r.contract === code && r.symbol === sym && !r.launched && r.poolId <= 0) ?? null;
 
   useEffect(() => {
     let live = true;
@@ -67,26 +102,48 @@ export default function Insiders() {
   useEffect(() => {
     setVerified(false);
     setHolds(false);
+    setMyClub(null);
   }, [code, sym, actor]);
 
-  const refreshFeed = useCallback(async () => {
-    if (!code || !sym) return;
-    const feed = await fetchFeed(code, sym, { range });
-    setPosts(feed.posts);
-    setActivity(feed.activity);
-    setUpsEasy(feed.upsEasy);
-  }, [code, sym, range]);
-
   useEffect(() => {
-    if (!room) {
-      setPosts([]);
-      setMetrics(null);
+    if (!liveRooms.length) {
+      setClubMarks({});
       return;
     }
     let live = true;
+    void loadClubMarks(liveRooms.filter((r) => r.program !== "core")).then((marks) => {
+      if (live) setClubMarks(marks);
+    });
+    return () => {
+      live = false;
+    };
+  }, [liveRooms]);
+
+  const refresh = useCallback(async () => {
+    const [top, roomFeed] = await Promise.all([
+      fetchFeed("", "", { global: true, range: "day" }),
+      room ? fetchFeed(room.contract, room.symbol, { range }) : Promise.resolve(null),
+    ]);
+    setGlobalPosts(top.posts);
+    setActivity(top.activity);
+    setUpsEasy(top.upsEasy);
+    if (roomFeed) {
+      setRoomPosts(roomFeed.posts);
+      setActivity((a) => ({ ...a, ...roomFeed.activity }));
+      setUpsEasy((u) => ({ ...u, ...roomFeed.upsEasy }));
+    } else {
+      setRoomPosts([]);
+    }
+  }, [room, range]);
+
+  useEffect(() => {
+    let live = true;
     setBusy(true);
     setError("");
-    void Promise.all([refreshFeed(), loadTokenMetrics(room.contract, room.symbol, room.poolId)])
+    const metricsP = room
+      ? loadTokenMetrics(room.contract, room.symbol, room.poolId)
+      : Promise.resolve(null);
+    void Promise.all([refresh(), metricsP])
       .then(([, m]) => {
         if (!live) return;
         setMetrics(m);
@@ -100,32 +157,34 @@ export default function Insiders() {
     return () => {
       live = false;
     };
-  }, [refreshFeed, room]);
+  }, [refresh, room]);
 
   useEffect(() => {
-    if (!room) return;
-    const authors = [...new Set(posts.map((p) => p.author))];
+    const authors = [...new Set([...globalPosts, ...roomPosts].map((p) => p.author))];
+    if (!authors.length) return;
     let live = true;
-    void Promise.all(authors.map(async (a) => [a, await countTokenTxs24h(a, room.contract, room.symbol)] as const)).then(
-      (pairs) => {
-        if (!live) return;
-        const next: Record<string, number> = {};
-        for (const [a, n] of pairs) next[a] = n;
-        setTxByAuthor(next);
-      }
-    );
+    void Promise.all(
+      authors.map(async (a) => {
+        const c = room?.contract || "";
+        const s = room?.symbol || "";
+        return [a, c && s ? await countTokenTxs24h(a, c, s) : 0] as const;
+      })
+    ).then((pairs) => {
+      if (!live) return;
+      const next: Record<string, number> = {};
+      for (const [a, n] of pairs) next[a] = n;
+      setTxByAuthor(next);
+    });
     return () => {
       live = false;
     };
-  }, [posts, room]);
+  }, [globalPosts, roomPosts, room]);
 
   const liveScoreOf = (account: string) => {
     const owner = account.toLowerCase();
-    const rank = metrics?.ranks.get(owner) ?? null;
-    const userLiq = metrics?.lpByOwner.get(owner) ?? 0;
     return scoreParts({
-      rank,
-      userLiq,
+      rank: metrics?.ranks.get(owner) ?? null,
+      userLiq: metrics?.lpByOwner.get(owner) ?? 0,
       totalLiq: metrics?.totalLiq ?? 0,
       messages24h: activity[owner] ?? 0,
       txs24h: txByAuthor[owner] ?? 0,
@@ -133,36 +192,37 @@ export default function Insiders() {
     }).total;
   };
 
-  const sortScoreOf = (account: string, stored: number) =>
+  const totalOf = (account: string, stored: number) =>
     effectiveAuthorScore(stored, upsEasy[account.toLowerCase()] ?? 0);
+  const upsOf = (account: string) => upsEasy[account.toLowerCase()] ?? 0;
 
-  const holdOf = (account: string) => {
-    const raw = metrics?.holdByOwner.get(account.toLowerCase());
-    if (!(raw && raw > 0)) return "";
-    const rank = metrics?.ranks.get(account.toLowerCase());
-    const amt = raw.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    return rank ? `#${rank} · ${amt} ${sym}` : `${amt} ${sym}`;
-  };
-
-  const sorted = useMemo(() => {
-    return [...posts].sort(
-      (a, b) => sortScoreOf(b.author, b.authorScore) - sortScoreOf(a.author, a.authorScore) || b.createdAt - a.createdAt
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posts, upsEasy]);
+  const featured = useMemo(() => splitFeatured(globalPosts).featured, [globalPosts]);
+  const featuredIds = useMemo(() => new Set(featured.map((p) => p.id)), [featured]);
+  const rest = useMemo(() => {
+    const pool = room ? roomPosts : splitFeatured(globalPosts).rest;
+    return pool.filter((p) => !featuredIds.has(p.id));
+  }, [room, roomPosts, globalPosts, featuredIds]);
 
   const myScore = actor ? liveScoreOf(actor) : 0;
-  const canWrite = Boolean(isLoggedIn && verified && holds);
+  const clubOf = (account: string, contract: string, symbol: string): ClubMark | null =>
+    clubMarks[clubKey(contract, symbol, account)] ?? null;
+  const canWrite = Boolean(isLoggedIn && verified && (holds || myClub) && room);
 
   const verify = async () => {
     if (!room || !actor) return;
     setVerifyBusy(true);
     setError("");
     try {
-      const held = await actorHoldsToken(room.contract, room.symbol, actor);
+      const [held, rows] = await Promise.all([
+        actorHoldsToken(room.contract, room.symbol, actor),
+        readInsiders(room.contract, room.symbol).catch(() => [] as Record<string, unknown>[]),
+      ]);
+      const mine = rows.find((r) => String(r.account ?? "").toLowerCase() === actor.toLowerCase());
+      const mark = clubMarkOf(mine);
       setHolds(held);
+      setMyClub(mark);
       setVerified(true);
-      if (!held) setError("Holders only for now. Pre-launch Insiders access is next.");
+      if (!held && !mark) setError("Holders or on-chain insiders can post.");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -191,141 +251,159 @@ export default function Insiders() {
     return txid;
   };
 
-  return (
-    <div className="insiders mx-auto max-w-xl px-4 py-8 sm:px-6">
-      <h1 className="insiders-title">Insiders</h1>
-      <p className="insiders-muted mt-2">
-        Public feed. Holders post once per UTC day. Sort is mechanics score (hold 50, main LP 30, 24h activity 20) plus
-        EASY UP.
-      </p>
+  const onNeedConnect = () => {
+    void login().catch(() => addAnchorWallet());
+  };
 
+  const postProps = {
+    totalOf,
+    upsOf,
+    actor,
+    canWrite,
+    myScore,
+    refresh: () => void refresh(),
+    sendUp: async (post: InsiderPost, whole: number) => {
+      try {
+        return await sendUp(post, whole);
+      } catch (e) {
+        throw new Error(txErrorMessage(e));
+      }
+    },
+    onNeedConnect,
+    clubOf,
+  };
+
+  const verifyLabel = (() => {
+    if (verifyBusy) return "…";
+    if (!verified) return "verify";
+    if (myClub === "proven") return `verified proven ${myScore}`;
+    if (myClub === "insider") return `verified insider ${myScore}`;
+    if (holds) return `verified ${myScore}`;
+    return "not a holder";
+  })();
+
+  return (
+    <div className="insiders mx-auto max-w-xl px-4 pb-8 pt-16 sm:px-6">
       <ul className="insiders-rail">
         {liveRooms.map((r) => {
           const on = r.contract === code && r.symbol === sym;
           return (
             <li key={`${r.contract}:${r.symbol}`}>
               <Link to={`/insiders/${r.contract}/${r.symbol}`} className={on ? "is-on" : ""}>
-                <TokenIcon contract={r.contract} symbol={r.symbol} size={22} />
+                <TokenIcon contract={r.contract} symbol={r.symbol} size={16} />
                 <span className="insiders-rail-sym">${r.symbol}</span>
-                <span className="insiders-rail-meta">{r.program === "core" ? "flex" : r.contract}</span>
               </Link>
             </li>
           );
         })}
       </ul>
 
-      {!code || !sym ? (
-        <p className="insiders-muted mt-8">{rooms == null ? "Reading rooms…" : "Pick a live token."}</p>
-      ) : pending ? (
-        <div className="insiders-muted mt-8 border border-border p-6">
-          ${sym} is still in the wizard. Insiders before launch will sit here. For now the room opens at liftoff.
-        </div>
-      ) : !room && rooms ? (
-        <p className="insiders-muted mt-8">
-          No launched token at {code}/{sym}.
+      {pending ? (
+        <p className="insiders-muted mt-4">${sym} opens after lock and liftoff.</p>
+      ) : code && sym && !room && rooms ? (
+        <p className="insiders-muted mt-4">
+          No launched or club token at {code}/{sym}.
         </p>
-      ) : (
-        <>
-          <div className="mt-6 flex items-center justify-between gap-3">
-            <Link to={`/token/${code}/${sym}`} className="insiders-title text-2xl">
-              ${sym}
-            </Link>
-            <Link to="/events" className="btn btn-ghost btn-sm">
-              Events
-            </Link>
-          </div>
+      ) : null}
 
-          <div className="insiders-ranges" role="tablist" aria-label="Feed range">
-            {RANGES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                role="tab"
-                aria-selected={range === r}
-                className={range === r ? "is-on" : ""}
-                onClick={() => setRange(r)}
-              >
-                {RANGE_LABEL[r]}
+      {room ? (
+        <div className="insiders-verify">
+          {isLoggedIn && actor ? (
+            <>
+              <button type="button" className="insiders-quiet" onClick={() => void verify()} disabled={verifyBusy}>
+                {verifyLabel}
               </button>
-            ))}
-          </div>
-
-          {busy ? <p className="insiders-muted mt-4">Opening room…</p> : null}
-          {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
-
-          <div className="insiders-verify">
-            {isLoggedIn && actor ? (
-              <>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => void verify()} disabled={verifyBusy}>
-                  {verifyBusy ? "Checking…" : verified ? (holds ? `Verified · ${myScore}` : "Not a holder") : "Verify status"}
-                </button>
-                {verified && holds ? (
-                  <span className="insiders-muted">Score {myScore}. One post per UTC day.</span>
-                ) : (
-                  <span className="insiders-muted">Verify holdings before posting. Anyone can read.</span>
-                )}
-              </>
-            ) : (
-              <span className="insiders-muted">Connect to verify and post. Feed stays public.</span>
-            )}
-          </div>
-
-          {canWrite ? (
-            <div className="mt-4">
-              <Composer
-                actor={actor}
-                canPost
-                lockedReason=""
-                submitLabel="Post"
-                symbol={sym}
-                onSubmit={async (body, captchaId, captchaAnswer, giphyUrl) => {
-                  if (!actor) return;
-                  await createPost({
-                    contract: code,
-                    symbol: sym,
-                    actor,
-                    body,
-                    captchaId,
-                    captchaAnswer,
-                    giphyUrl,
-                    authorScore: myScore,
-                  });
-                  await refreshFeed();
-                }}
-              />
-            </div>
-          ) : null}
-
-          <div className="mt-4">
-            {sorted.length === 0 && !busy ? (
-              <p className="insiders-muted py-8 text-center">No posts in this range.</p>
-            ) : (
-              sorted.map((p) => (
-                <FeedPost
-                  key={p.id}
-                  post={p}
-                  scoreOf={(a, stored) => sortScoreOf(a, stored)}
-                  holdOf={holdOf}
-                  contract={code}
-                  symbol={sym}
+              {verified && myClub ? (
+                <span className="insiders-club-badge">{myClub === "proven" ? "proven" : "insider"}</span>
+              ) : null}
+              {canWrite ? (
+                <Composer
                   actor={actor}
-                  canWrite={canWrite}
-                  lockedReason="Verify as a holder to reply."
-                  authorScore={actor ? myScore : 0}
-                  onPosted={() => void refreshFeed()}
-                  onUp={async (post, whole) => {
-                    try {
-                      return await sendUp(post, whole);
-                    } catch (e) {
-                      throw new Error(txErrorMessage(e));
-                    }
+                  canPost
+                  lockedReason=""
+                  submitLabel="Post"
+                  symbol={sym}
+                  onSubmit={async (body, captchaId, captchaAnswer, giphyUrl) => {
+                    if (!actor) return;
+                    await createPost({
+                      contract: code,
+                      symbol: sym,
+                      actor,
+                      body,
+                      captchaId,
+                      captchaAnswer,
+                      giphyUrl,
+                      authorScore: myScore,
+                    });
+                    await refresh();
                   }}
                 />
-              ))
-            )}
-          </div>
-        </>
+              ) : (
+                <span className="insiders-muted">verify to post</span>
+              )}
+            </>
+          ) : (
+            <button type="button" className="insiders-quiet" onClick={onNeedConnect}>
+              connect to post
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="insiders-muted mt-4">Pick a token to post.</p>
       )}
+
+      {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
+      {busy && !featured.length && !rest.length ? <p className="insiders-muted mt-4">…</p> : null}
+
+      <div className="mt-4">
+        {listPosts(
+          featured,
+          postProps.totalOf,
+          postProps.upsOf,
+          postProps.actor,
+          postProps.canWrite,
+          postProps.myScore,
+          postProps.refresh,
+          postProps.sendUp,
+          postProps.onNeedConnect,
+          postProps.clubOf
+        )}
+      </div>
+
+      <div className="insiders-ranges" role="tablist" aria-label="Feed range">
+        {RANGES.map((r) => (
+          <button
+            key={r}
+            type="button"
+            role="tab"
+            aria-selected={range === r}
+            className={range === r ? "is-on" : ""}
+            onClick={() => setRange(r)}
+          >
+            {RANGE_LABEL[r]}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-2">
+        {listPosts(
+          rest,
+          postProps.totalOf,
+          postProps.upsOf,
+          postProps.actor,
+          postProps.canWrite,
+          postProps.myScore,
+          postProps.refresh,
+          postProps.sendUp,
+          postProps.onNeedConnect,
+          postProps.clubOf
+        )}
+      </div>
+
+      <p className="insiders-foot">
+        Public feed. Holders or on-chain insiders post once per UTC day. Sort is mechanics score (hold 50, main LP 30, 24h
+        activity 20) plus EASY UP. Gold badge is on-chain (approved, or proven after lock proof).
+      </p>
     </div>
   );
 }

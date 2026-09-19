@@ -4,6 +4,7 @@ import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
+import { PresalePanel } from "@/components/token/PresalePanel";
 import { TokenListingCard } from "@/components/token/TokenListingCard";
 import { TokenMarket } from "@/components/token/TokenMarket";
 import {
@@ -17,9 +18,12 @@ import {
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import {
+  readAccounts,
   readFlexers,
   readFlexpools,
+  readInsiders,
   readLaunch,
+  readPresale,
   readSettings,
   readStat,
 } from "@/services/flexTables";
@@ -58,6 +62,9 @@ export default function Token() {
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
   const [pools, setPools] = useState<Record<string, unknown>[]>([]);
   const [flexer, setFlexer] = useState<Record<string, unknown> | null>(null);
+  const [presale, setPresale] = useState<Record<string, unknown> | null>(null);
+  const [insider, setInsider] = useState<Record<string, unknown> | null>(null);
+  const [holderBalRaw, setHolderBalRaw] = useState(0);
   const [poking, setPoking] = useState<string | null>(null);
   const [pokeMsg, setPokeMsg] = useState<{ tx?: string; err?: string }>({});
   const [iconSrc, setIconSrc] = useState("");
@@ -67,7 +74,7 @@ export default function Token() {
     setBusy(true);
     setError("");
     try {
-      const [l, s, conf, fp, flexers] = await Promise.all([
+      const [l, s, conf, fp, flexers, ps, ins] = await Promise.all([
         readLaunch(code, sym),
         readStat(code, sym),
         readSettings(code, sym),
@@ -75,12 +82,31 @@ export default function Token() {
         actor
           ? readFlexers(code, sym, 500).catch(() => [] as Record<string, unknown>[])
           : Promise.resolve([] as Record<string, unknown>[]),
+        readPresale(code, sym).catch(() => null),
+        actor
+          ? readInsiders(code, sym, 500).catch(() => [] as Record<string, unknown>[])
+          : Promise.resolve([] as Record<string, unknown>[]),
       ]);
       setLaunch(l);
       setStat(s);
       setSettings(conf);
       setPools(fp);
+      setPresale(ps);
       setFlexer(actor ? (flexers.find((f) => String(pick(f, "owner")) === actor) ?? null) : null);
+      setInsider(actor ? (ins.find((r) => String(pick(r, "account")) === actor) ?? null) : null);
+      if (actor) {
+        try {
+          const { rows } = await readAccounts(code, actor, sym);
+          const bal = parseAsset(String(pick(rows[0], "balance") ?? ""));
+          if (bal) {
+            const [i = "0", f = ""] = bal.amount.replace("-", "").split(".");
+            const frac = (f + "0".repeat(bal.precision)).slice(0, bal.precision);
+            setHolderBalRaw(Number(bal.precision <= 0 ? i : `${i}${frac}`) || 0);
+          } else setHolderBalRaw(0);
+        } catch {
+          setHolderBalRaw(0);
+        }
+      } else setHolderBalRaw(0);
       const prec = parseAsset(String(pick(s, "supply") ?? s?.max_supply ?? ""))?.precision ?? 4;
       const [proton, stored] = await Promise.all([
         findProtonTokenRow(code, prec, sym),
@@ -129,6 +155,7 @@ export default function Token() {
   const angelPool = assetAmountNumber(String(pick(stat, "angel_numbers_pool") ?? "0"));
   const jackpotPool = assetAmountNumber(String(pick(stat, "jackpot_pool") ?? "0"));
   const launched = Boolean(pick(launch, "launched"));
+  const inPresale = Boolean(presale) && !launched && Number(pick(launch, "pure_liquid_alcor_pool_id", "pool_id") ?? 0) > 0;
 
   const poke = async (kind: "rain" | "checklock" | "pullangel" | "pulljackpot") => {
     if (!actor) return;
@@ -236,8 +263,8 @@ export default function Token() {
       ) : (
         <>
           <div className="mt-6 flex flex-wrap gap-2">
-            <span className={launched ? "chip-success" : "chip-muted"}>
-              {launched ? "launched" : "wizard in progress"}
+            <span className={launched ? "chip-success" : inPresale ? "chip-primary" : "chip-muted"}>
+              {launched ? "launched" : inPresale ? "insiders" : "wizard in progress"}
             </span>
             {quoteSymbol ? <span className="chip-muted">quote {quoteSymbol}</span> : null}
             {Boolean(pick(launch, "swap_underlying_default")) && quoteSymbol ? (
@@ -264,8 +291,30 @@ export default function Token() {
             quoteContract={quoteContract}
             quoteSymbol={quoteSymbol}
             supply={supplyAmt}
-            launched={launched}
+            launched={launched || inPresale}
           />
+
+          {presale && !launched ? (
+            <PresalePanel
+              contract={code}
+              symbol={sym}
+              precision={precision}
+              actor={actor}
+              isIssuer={isIssuer || isContractAdmin}
+              isLoggedIn={isLoggedIn}
+              busy={busy || poking != null}
+              launch={launch}
+              stat={stat}
+              presale={presale}
+              insider={insider}
+              quoteSymbol={quoteSymbol}
+              quoteContract={quoteContract}
+              holderBalanceRaw={holderBalRaw}
+              onConnect={() => void addWebAuthWallet()}
+              transact={transact}
+              onDone={() => void load()}
+            />
+          ) : null}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {isLoggedIn && actor ? (

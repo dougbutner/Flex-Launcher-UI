@@ -68,7 +68,8 @@ export default function Events() {
   const byDay = useMemo(() => eventsByDay(events), [events]);
   const cells = useMemo(() => cellsFor(year, month), [year, month]);
   const dayEvents = byDay.get(picked) ?? [];
-  const open = rooms.filter((r) => !r.launched);
+  const open = rooms.filter((r) => !r.launched && r.poolId > 0);
+  const inFlight = rooms.filter((r) => !r.launched && r.poolId <= 0);
   const today = ymd(now);
 
   const shift = (delta: number) => {
@@ -79,11 +80,7 @@ export default function Events() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      <h1 className="text-3xl font-black tracking-tight">Events</h1>
-      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Liftoff days from live Alcor pools, plus LP unlock times from each launch row. Open wizard tokens sit beside the
-        month until they lift off.
-      </p>
+      <h1 className="text-3xl font-black tracking-tight">Drop Calendar</h1>
 
       {busy ? <p className="mt-6 text-sm text-muted-foreground">Reading launches…</p> : null}
       {error ? <p className="mt-6 text-sm text-destructive">{error}</p> : null}
@@ -162,12 +159,36 @@ export default function Events() {
 
       {open.length ? (
         <section className="mt-10">
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">In flight</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Insiders club</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Started on chain, not lifted off. Pre-launch Insiders rooms land here later.
+            Pool is filled. Public transfers wait until launch. Chat is open for holders and on-chain insiders.
           </p>
           <ul className="mt-3 divide-y divide-border border border-border">
             {open.map((r) => (
+              <li key={`${r.contract}:${r.symbol}`} className="flex items-center justify-between gap-3 px-3 py-3">
+                <div className="flex items-center gap-3">
+                  <TokenIcon contract={r.contract} symbol={r.symbol} size={28} />
+                  <span className="font-mono text-sm">${r.symbol}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Link className="btn btn-outline btn-sm" to={`/token/${r.contract}/${r.symbol}`}>
+                    Token
+                  </Link>
+                  <Link className="btn btn-ghost btn-sm" to={`/insiders/${r.contract}/${r.symbol}`}>
+                    Chat
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {inFlight.length ? (
+        <section className="mt-10">
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">In flight</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Started on chain, not locked yet. Finish the wizard.</p>
+          <ul className="mt-3 divide-y divide-border border border-border">
+            {inFlight.map((r) => (
               <li key={`${r.contract}:${r.symbol}`} className="flex items-center justify-between gap-3 px-3 py-3">
                 <div className="flex items-center gap-3">
                   <TokenIcon contract={r.contract} symbol={r.symbol} size={28} />

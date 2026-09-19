@@ -38,13 +38,14 @@ Canonical C++: **`src/Project Contracts/`** (`*.hpp` / `*.cpp`). If header and c
 | Create rates | 0 until issuer `setfees` | 0 until issuer `setfees` | 0 until issuer `setfees` |
 | Liftoff EASY@`mon3y` | 5,000 × (prior+1) | 10,000 × (prior+1) | 50,000 × (prior+1) |
 
-Shared launch law: `create` → `setfees` → mint/issue 100% to issuer → `startlaunch` → issuer seeds `swap.alcor` → `liftoff`. Constants: `PROTO_BPS_HALF=25`, `PAY_NUM/PAY_DEN=382/1000`, `MIN_LOCK_SECS=7776000`, ticks ±443636.
+Shared launch law: `create` → `setfees` → mint/issue 100% to issuer → `startlaunch` → issuer seeds `swap.alcor` → optional `setpresale` after lockpos → `liftoff` (± `golive` if Insiders club). Constants: `PROTO_BPS_HALF=25`, `PAY_NUM/PAY_DEN=382/1000`, `MIN_LOCK_SECS=7776000`, ticks ±443636.
 
 ## UI coverage (honest)
 
 **In the Vite app today**
 
-- Launch wizard: two-field `create` / Flexonomics `setfees` / mint|issue / startlaunch (`swap_underlying_default` default true) / Alcor seed / lockpos / liftoff / `addpool` of the launch quote pair; for3x may sign `ratios` with setfees
+- Launch wizard: two-field `create` / Flexonomics `setfees` / mint|issue / startlaunch (`swap_underlying_default` default true) / Alcor seed / lockpos / Insiders tab (`setpresale` + optional `addinsiders` after lock) / liftoff / `addpool` of the launch quote pair; for3x may sign `ratios` with setfees
+- Insiders club: issuer `setpresale` after lockpos and before liftoff; holders `reginsider` / `provelock`; issuer `addinsiders` / `rminsider` / `golive` on token page; gold chat badge from on-chain `insiders`
 - Post-launch poke: `makeitrain`, `checklock`, flexforex `pullangel` / `pulljackpot` (+ pot chips)
 - Token manage (`/token/:contract/:symbol`): holder `choosereward` / `feeoptout` / `setangelnum` / inheritance; issuer `setfees` / `setdist` / `ratios` / `addpool` / `setmin` (easy + complex)
 - Manager (`/manager`): sqlite + chain progress for issuers after first `create`; Save tax (`setfees`) separate from metadata; for3x `ratios`. No IPFS re-upload.

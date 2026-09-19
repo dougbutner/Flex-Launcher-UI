@@ -88,6 +88,28 @@ export async function readFlexpools(code: string, symbol: string, limit = 100) {
   );
 }
 
+/** Scope = symbol code. Absent row = no gated presale. */
+export async function readPresale(code: string, symbol: string) {
+  const { rows } = await getTableRows<Record<string, unknown>>({
+    code,
+    scope: symbol,
+    table: "presales",
+    lower_bound: codeBound(symbol),
+    upper_bound: codeBound(symbol),
+    key_type: "i64",
+    limit: 1,
+  });
+  return rows[0] ?? null;
+}
+
+/** Scope = symbol code. Whitelist + lock proof rows. */
+export async function readInsiders(code: string, symbol: string, limit = 500) {
+  return getAllTableRows<Record<string, unknown>>(
+    { code, scope: symbol, table: "insiders", limit: 100 },
+    limit
+  );
+}
+
 export async function readAccounts(code: string, owner: string, symbol?: string) {
   return getTableRows<Record<string, unknown>>({
     code,

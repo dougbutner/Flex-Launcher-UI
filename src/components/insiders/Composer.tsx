@@ -75,25 +75,21 @@ export function Composer({
         className="insiders-composer-input"
       />
       <div className="insiders-composer-meta">
+        <GifPicker value={giphy} onPick={setGiphy} />
         <span className="insiders-tag">{tag}</span>
-        <span className={left < 40 ? "text-primary" : "text-muted-foreground"}>
-          {left}
-        </span>
-      </div>
-      <GifPicker value={giphy} onPick={setGiphy} />
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span className={left < 40 ? "text-primary" : ""}>{left}</span>
+        <label className="insiders-captcha">
           <span>{captcha ? captcha.prompt : "…"}</span>
           <input
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             inputMode="numeric"
-            className="w-16 border border-border bg-background px-2 py-1 text-foreground"
+            className="w-16 border border-border bg-transparent px-2 py-1"
             aria-label="Captcha answer"
           />
         </label>
-        <button type="submit" className="btn btn-primary btn-sm" disabled={busy || !text.trim() || !answer.trim()}>
-          {busy ? "Sending…" : submitLabel}
+        <button type="submit" className="insiders-quiet" disabled={busy || !text.trim() || !answer.trim()}>
+          {busy ? "…" : submitLabel}
         </button>
       </div>
       {err ? <p className="mt-2 text-xs text-destructive">{err}</p> : null}

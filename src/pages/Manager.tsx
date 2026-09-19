@@ -25,7 +25,7 @@ import {
 } from "@/services/managerStore";
 import { formatSupplyCommas, parseAsset } from "@/services/assets";
 import { readSettings } from "@/services/flexTables";
-import { payoutAction, ratiosAction, setfeesAction, type ChainAction } from "@/services/launchActions";
+import { payoutAction, ratiosAction, setfeesAction, goliveAction, type ChainAction } from "@/services/launchActions";
 import { rainFromRow, type RainDefaults } from "@/services/rainDefaults";
 import { hasProjectTax, taxFromSettings, taxRateValid, type TaxDraft } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
@@ -358,30 +358,26 @@ export default function Manager() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight">Dev's Manager</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Releases for <span className="font-mono">{actor}</span>. Progress is read from chain. Name, URL, and icon stay
-            in sqlite. Request the token.proton logo in Telegram, then fork Alcor's repos with the AI prompt.
-          </p>
-        </div>
-        <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>
-          {busy ? "Loading…" : "Refresh"}
-        </button>
-      </div>
+      <button
+        type="button"
+        className="text-left text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+        disabled={busy}
+        onClick={() => void load()}
+      >
+        {busy ? "Loading…" : "Refresh"}
+      </button>
 
-      {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+      {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
       {storeHint ? (
-        <p className="mt-4 text-xs text-warning">
+        <p className="mt-2 text-xs text-warning">
           Metadata store: {storeHint}. You can still follow on-chain next steps.
         </p>
       ) : null}
 
       {views == null || busy ? (
-        <p className="mt-8 text-sm text-muted-foreground">Reading issuer releases…</p>
+        <p className="mt-2 text-sm text-muted-foreground">Reading issuer releases…</p>
       ) : !started ? (
-        <div className="card mt-8 p-6">
+        <div className="card mt-2 p-6">
           <p className="text-sm text-muted-foreground">
             Manager shows up after your first on-chain create. Start on the Launch page, then come back from any device
             with this account.
@@ -393,7 +389,7 @@ export default function Manager() {
       ) : (
         <>
           {views.length > 1 ? (
-            <ul className="mt-6 space-y-2">
+            <ul className="mt-2 space-y-2">
               {views.map((v) => {
                 const key = managerTokenKey(v.token.contract, v.token.symbol);
                 const on = key === selected;
@@ -413,7 +409,12 @@ export default function Manager() {
                           <span className="text-muted-foreground">${v.token.symbol}</span>
                         </span>
                         <span className="block text-xs text-muted-foreground">
-                          {v.token.program} @ {v.token.contract} · {v.inProgress ? v.next.label : "live"}
+                          {v.token.program} @ {v.token.contract} ·{" "}
+                          {v.chain && !v.chain.launched && v.chain.poolId
+                            ? "insiders"
+                            : v.inProgress
+                              ? v.next.label
+                              : "live"}
                         </span>
                       </span>
                     </button>
@@ -424,7 +425,7 @@ export default function Manager() {
           ) : null}
 
           {view && meta ? (
-            <section className="card mt-6 space-y-5 p-6">
+            <section className={`card space-y-5 p-6 ${views.length > 1 ? "mt-6" : "mt-2"}`}>
               <div className="flex items-start gap-4">
                 {meta.imageUrl ? (
                   <img src={meta.imageUrl} alt="" className="h-16 w-16 rounded-2xl object-cover" />
@@ -619,6 +620,36 @@ export default function Manager() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary">Next step</p>
                 <p className="mt-1 text-sm font-semibold">{view.next.label}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{view.next.prompt}</p>
+                {view.chain && !view.chain.launched && view.chain.poolId ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link
+                      to={`/token/${view.token.contract}/${view.token.symbol}`}
+                      className="btn btn-outline btn-sm"
+                    >
+                      Open token page
+                    </Link>
+                    <button
+                      type="button"
+                      className="btn btn-accent btn-sm"
+                      disabled={busy || !actor}
+                      onClick={() => {
+                        if (!actor) return;
+                        setBusy(true);
+                        setError("");
+                        void transact([goliveAction(view.token.contract, view.token.symbol)])
+                          .then(() => load())
+                          .catch((err) => {
+                            const text = txErrorMessage(err);
+                            const hint = hintForError(text);
+                            setError(hint ? `${text} - ${hint}` : text);
+                          })
+                          .finally(() => setBusy(false));
+                      }}
+                    >
+                      Launch
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </section>
           ) : null}

@@ -16,8 +16,11 @@ flexforex `flexers` secondary index: `byangel`.
 
 `token_symbol`, `quote` (extended_asset, amount **0**), `fee`, `tick_lower`, `tick_upper`, `sqrt_price_x64`, `xtoken_proof_pool_id`, `flex_quote`, `launched`, `pure_liquid_alcor_pool_id`, `position_id`, `dev_bps`, `club_bps`, `unlock_time`, `swap_underlying_default`.
 
-- Missing / `launched == false` → wizard in progress; transfers only to `swap.alcor` (plus contract self-pays / Alcor-path list).
+- Missing row → wizard in progress; transfers only to `swap.alcor`.
+- `launched == false` with no `presales` row → same Alcor-only rule.
+- `launched == false` after liftoff with a `presales` row → gated insider window until `golive`.
 - `launched == true` → do not re-seed Alcor; `startlaunch` refuses further edits.
+- After liftoff fills `pure_liquid_alcor_pool_id`, `startlaunch` is locked even if presale left `launched` false.
 - Liftoff sets skim: `0` if `flex_quote`, else `25` each. After LP actually unlocks, `checklock` / `makeitrain` may raise both to `PROTO_BPS_HALF` extra (`0→25` or `25→50`).
 - `swap_underlying_default`: unpaid holders (`flex_reward_pool_id == 0`) swap into launch quote via `pure_liquid_alcor_pool_id` on makeitrain. Wizard default true.
 
@@ -87,14 +90,34 @@ Wallet→wallet tax is **on top of** `quantity`. Alcor inbound tax is **taken fr
 ```
 startlaunch(token_symbol, quote, fee, tick_lower, tick_upper, sqrt_price_x64, xtoken_proof_pool_id, swap_underlying_default)
 liftoff(token_symbol, pool_id, tick_lower, tick_upper)
+golive(token_symbol)
 checklock(token_symbol)
 ```
 
-- Auth: issuer for startlaunch/liftoff; **anyone** for checklock.
+- Auth: issuer for startlaunch/liftoff; **issuer or contract** for golive; **anyone** for checklock.
 - Flex quotes → proof id **0**. Non-flex → proof id **> 0**, pool active, quote vs XUSDC or XPR, inventory ≥ 10 XUSDC or 1000 XPR valued.
 - Liftoff: issuer EASY@mon3y ≥ base×(prior launched by this issuer + 1). Base raw: easy 5e9, complex 1e10, forex 5e10 (precision 6).
-- After liftoff: issuer `addpool(pure_liquid_alcor_pool_id, token_symbol, quote.quantity.symbol, quote.contract)`.
+- If a `presales` row exists, liftoff fills pool/position/`unlock_time` but leaves `launched` false; `golive` turns it on.
+- After liftoff (and golive if presale): issuer `addpool(pure_liquid_alcor_pool_id, token_symbol, quote.quantity.symbol, quote.contract)`.
 - Issuer signs Alcor (`createpool`, deposit, `addliquid`, `lockpos` ≥90d)  -  not the flex contract. Never liftoff in same tx as createpool.
+
+## Presale (`presales` / `insiders`, scope = symbol)
+
+`transfer` calls `enforce_presale` only when **not** launched. Absent `presales` row → only `to = swap.alcor`. Do not add these fields to `stat` / `settings` / `launches`.
+
+`presale`: `token_symbol`, `launch_time`, `insider_time`, `mode` (0 freeze; 1–3 same list+time rules), `insider_bps` (% of issued supply, 0–10000), `locked_insider_bps` (≥ `insider_bps` after `locked_pos`), `collection`, `schema`, `nft_min`, `min_token`, `need_kyc` (**must be false**), `lp_min`, `locked_lp_min`, `lock_secs`.
+
+`insider`: `account`, `approved`, `source` (0 issuer, 1 self), `locked_pos` (Alcor position id; 0 = not proven).
+
+```
+setpresale        issuer or contract (before launched)
+setlaunchtime     issuer (cannot pull times earlier after that window opens; contract can)
+addinsiders       issuer or contract
+reginsider        owner (must pass gates)
+rminsider         issuer or contract
+provelock         owner
+golive            issuer or contract (after liftoff filled the launch row)
+```
 
 ## Actions  -  config / holder prefs
 
@@ -126,6 +149,8 @@ Flex swap memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0
 
 ```
 create / setfees / issue|mint / startlaunch / liftoff   issuer@active
+golive / setpresale / setlaunchtime / addinsiders / rminsider   issuer or contract
+reginsider / provelock                        owner@active
 ratios                                        issuer or contract
 checklock / pullangel / pulljackpot           anyone (chain gates)
 makeitrain                                    sender|keeper@active

@@ -46,17 +46,33 @@ export function channelSum(draft: Pick<TaxDraft, "angelNumbersBps" | "jackpotBps
   return draft.angelNumbersBps + draft.jackpotBps;
 }
 
+/** Keep a percent typing string: digits, one dot, at most 2 decimal places. */
+export function sanitizePercentInput(raw: string): string {
+  const s = String(raw).replace(/[^\d.]/g, "");
+  const dot = s.indexOf(".");
+  if (dot < 0) return s;
+  const whole = s.slice(0, dot).replace(/\./g, "");
+  const frac = s
+    .slice(dot + 1)
+    .replace(/\./g, "")
+    .slice(0, 2);
+  if (!whole && !frac) return ".";
+  return `${whole || "0"}.${frac}`;
+}
+
 /** Percent string for bps (100 bps = 1%). */
-export function bpsToPercentInput(bps: number): string {
-  if (!Number.isFinite(bps) || bps <= 0) return "0";
+export function bpsToPercentInput(bps: number, emptyZero = false): string {
+  if (!Number.isFinite(bps) || bps <= 0) return emptyZero ? "" : "0";
   const pct = bps / 100;
   if (Number.isInteger(pct)) return String(pct);
-  return String(Math.round(pct * 100) / 100);
+  return (Math.round(pct * 100) / 100).toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 }
 
 /** Parse a percent field into bps. Empty / invalid → 0. */
 export function percentInputToBps(raw: string): number {
-  const n = Number(String(raw).replace(/,/g, "").trim());
+  const cleaned = sanitizePercentInput(raw);
+  if (!cleaned || cleaned === ".") return 0;
+  const n = Number(cleaned);
   if (!Number.isFinite(n) || n < 0) return 0;
   return Math.min(10000, Math.round(n * 100));
 }

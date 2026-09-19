@@ -56,7 +56,7 @@ export function TokenMarket({
   quoteContract,
   quoteSymbol,
   supply,
-  launched,
+  launched: _launched,
 }: Props) {
   const [view, setView] = useState<"line" | "alcor">("line");
   const [range, setRange] = useState<ChartRange>("all");
@@ -65,7 +65,7 @@ export function TokenMarket({
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    if (!launched || !(poolId > 0)) {
+    if (!(poolId > 0)) {
       setData(null);
       return;
     }
@@ -95,7 +95,7 @@ export function TokenMarket({
     return () => {
       live = false;
     };
-  }, [launched, poolId, contract, symbol, quoteContract, quoteSymbol, supply]);
+  }, [poolId, contract, symbol, quoteContract, quoteSymbol, supply]);
 
   const points = useMemo(() => (data ? filterPoints(data.points, range) : []), [data, range]);
   const chartSrc = quoteSymbol
@@ -103,7 +103,7 @@ export function TokenMarket({
     : "";
   const changeTone = data && data.change24 > 0 ? "up" : data && data.change24 < 0 ? "down" : undefined;
 
-  if (!launched || !(poolId > 0) || !quoteSymbol) {
+  if (!(poolId > 0) || !quoteSymbol) {
     return (
       <div className="card mt-6 p-5 text-sm text-muted-foreground">
         Price chart appears after liftoff, once the launch pair is on Alcor.

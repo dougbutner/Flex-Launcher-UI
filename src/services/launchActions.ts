@@ -396,3 +396,115 @@ export function setminAction(tokenContract: string, tokenSymbol: string, reflect
     data: { token_symbol: tokenSymbol, reflect_min: reflectMin },
   };
 }
+
+/** Modes: 0 freeze, 1–3 insider window (UI uses 0 or 1). need_kyc must stay false. */
+export type SetPresaleArgs = {
+  launchTime: number;
+  insiderTime: number;
+  mode: number;
+  insiderBps: number;
+  lockedInsiderBps: number;
+  collection?: string;
+  schema?: string;
+  nftMin?: number;
+  minTokenQuantity?: string;
+  minTokenContract?: string;
+  lpMin?: number;
+  lockedLpMin?: number;
+  lockSecs?: number;
+};
+
+export function setpresaleAction(tokenContract: string, tokenSymbol: string, args: SetPresaleArgs): ChainAction {
+  const minQty = (args.minTokenQuantity || "").trim();
+  const minContract = (args.minTokenContract || "").trim();
+  return {
+    account: tokenContract,
+    name: "setpresale",
+    data: {
+      token_symbol: tokenSymbol,
+      launch_time: Math.max(0, Math.floor(args.launchTime)),
+      insider_time: Math.max(0, Math.floor(args.insiderTime)),
+      mode: Math.max(0, Math.min(3, Math.floor(args.mode))),
+      insider_bps: Math.max(0, Math.min(10000, Math.floor(args.insiderBps))),
+      locked_insider_bps: Math.max(0, Math.min(10000, Math.floor(args.lockedInsiderBps))),
+      collection: (args.collection || "").trim() || "",
+      schema: (args.schema || "").trim() || "",
+      nft_min: Math.max(0, Math.floor(args.nftMin ?? 0)),
+      min_token: extendedAsset(minQty || "0.0000 FOO", minContract || tokenContract),
+      need_kyc: false,
+      lp_min: Math.max(0, Math.floor(args.lpMin ?? 0)),
+      locked_lp_min: Math.max(0, Math.floor(args.lockedLpMin ?? 0)),
+      lock_secs: Math.max(0, Math.floor(args.lockSecs ?? 0)),
+    },
+  };
+}
+
+export function setlaunchtimeAction(
+  tokenContract: string,
+  tokenSymbol: string,
+  launchTime?: number | null,
+  insiderTime?: number | null
+): ChainAction {
+  const data: Record<string, unknown> = { token_symbol: tokenSymbol };
+  if (launchTime != null && Number.isFinite(launchTime)) data.launch_time = Math.floor(launchTime);
+  if (insiderTime != null && Number.isFinite(insiderTime)) data.insider_time = Math.floor(insiderTime);
+  return { account: tokenContract, name: "setlaunchtime", data };
+}
+
+export function addinsidersAction(tokenContract: string, tokenSymbol: string, accounts: string): ChainAction {
+  return {
+    account: tokenContract,
+    name: "addinsiders",
+    data: { token_symbol: tokenSymbol, accounts },
+  };
+}
+
+export function reginsiderAction(tokenContract: string, owner: string, tokenSymbol: string): ChainAction {
+  return {
+    account: tokenContract,
+    name: "reginsider",
+    data: { owner, token_symbol: tokenSymbol },
+  };
+}
+
+export function rminsiderAction(tokenContract: string, account: string, tokenSymbol: string): ChainAction {
+  return {
+    account: tokenContract,
+    name: "rminsider",
+    data: { account, token_symbol: tokenSymbol },
+  };
+}
+
+export function provelockAction(
+  tokenContract: string,
+  owner: string,
+  tokenSymbol: string,
+  poolId: number,
+  positionId: number
+): ChainAction {
+  return {
+    account: tokenContract,
+    name: "provelock",
+    data: {
+      owner,
+      token_symbol: tokenSymbol,
+      pool_id: poolId,
+      position_id: positionId,
+    },
+  };
+}
+
+export function goliveAction(tokenContract: string, tokenSymbol: string): ChainAction {
+  return {
+    account: tokenContract,
+    name: "golive",
+    data: { token_symbol: tokenSymbol },
+  };
+}
+
+/** Cap in raw units: supply * bps / 10000. Uses locked_insider_bps when locked_pos is set. */
+export function presaleCapRaw(supplyRaw: number, insiderBps: number, lockedInsiderBps: number, lockedPos: number): number {
+  const bps = lockedPos > 0 && lockedInsiderBps > 0 ? lockedInsiderBps : insiderBps;
+  if (!bps || supplyRaw <= 0) return 0;
+  return Math.floor((supplyRaw * bps) / 10000);
+}
