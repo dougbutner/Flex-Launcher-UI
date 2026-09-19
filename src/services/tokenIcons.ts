@@ -33,10 +33,13 @@ export function remoteTokenIconSrc(contract: string | undefined, symbol: string)
   return remoteIconSrc[tokenIconKey(acct, code)];
 }
 
+function fallbackIconSrc(url?: string) {
+  const u = (url || "").trim();
+  if (!u) return undefined;
+  if (u.startsWith("/") && !u.startsWith("//")) return u;
+  return validImageUrl(u) ? u : undefined;
+}
+
 export function tokenIconSrc(contract: string | undefined, symbol: string, fallback?: string): string | undefined {
-  return (
-    localTokenIconSrc(contract, symbol) ||
-    (fallback && validImageUrl(fallback) ? fallback.trim() : undefined) ||
-    remoteTokenIconSrc(contract, symbol)
-  );
+  return localTokenIconSrc(contract, symbol) || fallbackIconSrc(fallback) || remoteTokenIconSrc(contract, symbol);
 }

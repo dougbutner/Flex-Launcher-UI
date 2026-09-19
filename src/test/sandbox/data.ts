@@ -67,6 +67,34 @@ export type MockSpec = {
   trades: Array<{ at: string; price: number; usd: number; side: "buy" | "sell"; sender: string }>;
 };
 
+export type MockClubLocks = {
+  collection?: string;
+  schema?: string;
+  nftMin?: number;
+  minQty?: string;
+  lpMin?: number;
+  lockedLpMin?: number;
+  lockDays?: number;
+};
+
+/** Per-token insider gates shown as lock icons on the calendar. */
+export const MOCK_CLUB_LOCKS: Record<string, MockClubLocks> = {
+  AURORA: { collection: "auroranfts", schema: "pass", nftMin: 1, lockDays: 7 },
+  PEBBLE: { minQty: "100.000000 WON", lockDays: 14 },
+  GLINT: { lpMin: 50, lockDays: 21 },
+  NYRA: { lockedLpMin: 25, lockDays: 30 },
+  VAULT: { collection: "vaultclub", schema: "key", nftMin: 1, minQty: "500.000000 EASY", lockDays: 14 },
+  SPARK: { lockDays: 7 },
+  ORBIT: { lpMin: 10, lockedLpMin: 10, lockDays: 10 },
+  QUILL: { minQty: "25.000000 EASY" },
+  HALO: { collection: "haloring", schema: "halo", nftMin: 2, lockDays: 7 },
+  ZEPHYR: { lpMin: 5, lockDays: 14 },
+};
+
+export function mockTokenLogo(symbol: string) {
+  return `/test-tokens/${symbol.trim().toUpperCase()}.svg`;
+}
+
 export const MOCK_SPECS: MockSpec[] = [
   {
     symbol: "AURORA",
@@ -758,6 +786,8 @@ function hydrate(spec: MockSpec): MockToken {
     settings.rng_kind = 0;
     settings.rng_amt = 0;
   }
+  const locks = MOCK_CLUB_LOCKS[s] ?? {};
+  const minHold = (locks.minQty ?? "").trim();
   const presale: Record<string, unknown> = {
     token_symbol: s,
     launch_time: unixSec(spec.launchAt),
@@ -765,14 +795,16 @@ function hydrate(spec: MockSpec): MockToken {
     mode: 1,
     insider_bps: 500,
     locked_insider_bps: 800,
-    collection: "",
-    schema: "",
-    nft_min: 0,
-    min_token: { quantity: qty("0", q.precision, q.symbol), contract: q.contract },
+    collection: locks.collection ?? "",
+    schema: locks.schema ?? "",
+    nft_min: locks.nftMin ?? 0,
+    min_token: minHold
+      ? { quantity: minHold, contract: q.contract }
+      : { quantity: qty("0", q.precision, q.symbol), contract: q.contract },
     need_kyc: false,
-    lp_min: 0,
-    locked_lp_min: 0,
-    lock_secs: 7 * 86400,
+    lp_min: locks.lpMin ?? 0,
+    locked_lp_min: locks.lockedLpMin ?? 0,
+    lock_secs: (locks.lockDays ?? 0) * 86400,
   };
   const flexers = spec.holders.map((h) => {
     const row: Record<string, unknown> = {

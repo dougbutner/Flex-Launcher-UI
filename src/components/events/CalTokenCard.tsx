@@ -3,6 +3,7 @@ import { TokenIcon } from "@/components/TokenIcon";
 import { ProgramDots } from "@/components/token/ProgramDots";
 import { eventKindLabel, type CalEvent } from "@/services/launchEvents";
 import type { FlexProgram } from "@/config/launch";
+import { MOCK_CLUB_LOCKS, mockTokenLogo } from "@/test/sandbox/data";
 
 function startLabel(ms: number) {
   return new Date(ms).toLocaleString(undefined, {
@@ -15,6 +16,7 @@ function startLabel(ms: number) {
 
 export function CalTokenCard({ ev, picked = false }: { ev: CalEvent; picked?: boolean }) {
   const program = ev.program === "core" ? "easyflex" : (ev.program as FlexProgram);
+  const logo = MOCK_CLUB_LOCKS[ev.symbol] ? mockTokenLogo(ev.symbol) : undefined;
   return (
     <Link
       to={`/token/${ev.contract}/${ev.symbol}`}
@@ -25,6 +27,7 @@ export function CalTokenCard({ ev, picked = false }: { ev: CalEvent; picked?: bo
       <TokenIcon
         contract={ev.contract}
         symbol={ev.symbol}
+        src={logo}
         fill
         className="pointer-events-none absolute inset-0 opacity-25 group-hover:opacity-40"
       />
@@ -39,7 +42,7 @@ export function CalTokenCard({ ev, picked = false }: { ev: CalEvent; picked?: bo
           <ProgramDots program={program} />
         </span>
         <span className="flex flex-1 flex-col items-center justify-center gap-1 px-1 text-center">
-          <TokenIcon contract={ev.contract} symbol={ev.symbol} size={40} />
+          <TokenIcon contract={ev.contract} symbol={ev.symbol} src={logo} size={40} />
           <span className="truncate font-mono text-lg font-black tracking-tight text-foreground sm:text-xl">
             ${ev.symbol}
           </span>

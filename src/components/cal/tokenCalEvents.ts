@@ -1,11 +1,19 @@
 import { flexAccount, type FlexProgram } from "@/config/launch";
 import type { CalEvent } from "@/services/launchEvents";
 import type { BoardToken } from "@/services/leaderboardStore";
-import { MOCK_SPECS, unixMs, type MockSpec } from "@/test/sandbox/data";
+import { MOCK_CLUB_LOCKS, MOCK_SPECS, mockTokenLogo, unixMs, type MockClubLocks, type MockSpec } from "@/test/sandbox/data";
 
 export type ChipColor = "green" | "blue" | "violet" | "orange" | "rose" | "cyan" | "amber" | "yellow";
 
 export type SplitPct = { label: string; pct: number; hint?: string };
+
+export type ClubLockMarks = {
+  nft: boolean;
+  hold: boolean;
+  lp: boolean;
+  provenLock: boolean;
+  lockDays: number;
+};
 
 export type TokenCalEvent = {
   id: string;
@@ -26,7 +34,18 @@ export type TokenCalEvent = {
   quoteSymbol: string;
   quoteContract: string;
   splits: SplitPct[];
+  locks: ClubLockMarks;
 };
+
+function locksFromClub(locks?: MockClubLocks): ClubLockMarks {
+  return {
+    nft: Boolean(locks?.collection && locks?.schema),
+    hold: Boolean((locks?.minQty ?? "").trim()),
+    lp: (locks?.lpMin ?? 0) > 0,
+    provenLock: (locks?.lockedLpMin ?? 0) > 0,
+    lockDays: Math.max(0, locks?.lockDays ?? 0),
+  };
+}
 
 export const CHIP_TONE: Record<ChipColor, string> = {
   green: "border-green-500 bg-green-500/10 text-green-400",
@@ -37,6 +56,17 @@ export const CHIP_TONE: Record<ChipColor, string> = {
   cyan: "border-cyan-500 bg-cyan-500/10 text-cyan-400",
   amber: "border-amber-500 bg-amber-500/10 text-amber-400",
   yellow: "border-yellow-500 bg-yellow-500/10 text-yellow-400",
+};
+
+export const CHIP_BORDER: Record<ChipColor, string> = {
+  green: "border-green-500",
+  blue: "border-blue-500",
+  violet: "border-violet-500",
+  orange: "border-orange-500",
+  rose: "border-rose-500",
+  cyan: "border-cyan-500",
+  amber: "border-amber-500",
+  yellow: "border-yellow-500",
 };
 
 const COLORS: ChipColor[] = ["green", "blue", "violet", "orange", "rose", "cyan", "amber", "yellow"];
@@ -106,6 +136,8 @@ function fromSpec(spec: MockSpec, kind: "launch" | "insider"): TokenCalEvent {
     quoteSymbol: spec.quote.symbol,
     quoteContract: spec.quote.contract,
     splits: splitsFor(spec.program, spec),
+    logo: mockTokenLogo(spec.symbol),
+    locks: locksFromClub(MOCK_CLUB_LOCKS[spec.symbol]),
   };
 }
 
@@ -145,6 +177,8 @@ export function fromCalEvents(events: CalEvent[], board: BoardToken[] = []): Tok
         quoteSymbol: ev.quoteSymbol,
         quoteContract: ev.quoteContract,
         splits: splitsFor(program),
+        logo: MOCK_CLUB_LOCKS[ev.symbol] ? mockTokenLogo(ev.symbol) : undefined,
+        locks: locksFromClub(MOCK_CLUB_LOCKS[ev.symbol]),
       } satisfies TokenCalEvent;
     });
 }

@@ -1,13 +1,42 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Ellipsis, Handshake, Rocket } from "lucide-react";
+import { Coins, Ellipsis, Handshake, Images, Layers, Lock, LockKeyhole, Rocket } from "lucide-react";
 import { format } from "date-fns";
 import { TokenIcon } from "@/components/TokenIcon";
 import { fmtUsd } from "@/services/money";
-import { CHIP_TONE, type TokenCalEvent } from "@/components/cal/tokenCalEvents";
+import { CHIP_BORDER, CHIP_TONE, type TokenCalEvent } from "@/components/cal/tokenCalEvents";
 
 function pctLabel(n: number) {
   return `${n.toFixed(2)}%`;
+}
+
+function lockMarks(event: TokenCalEvent) {
+  const l = event.locks ?? { nft: false, hold: false, lp: false, provenLock: false, lockDays: 0 };
+  const marks: { Icon: typeof Lock; label: string }[] = [];
+  if (l.nft) marks.push({ Icon: Images, label: "NFT gate" });
+  if (l.hold) marks.push({ Icon: Coins, label: "Min hold" });
+  if (l.lp) marks.push({ Icon: Layers, label: "LP min" });
+  if (l.provenLock) marks.push({ Icon: LockKeyhole, label: "Proven LP lock" });
+  if (l.lockDays > 0) marks.push({ Icon: Lock, label: `${l.lockDays}d lock` });
+  if (!marks.length && (event.insider || event.kind === "insider")) {
+    marks.push({ Icon: Handshake, label: "Insider club" });
+  }
+  return marks;
+}
+
+function InsiderLockIcons({ event, size = 12 }: { event: TokenCalEvent; size?: number }) {
+  const marks = lockMarks(event);
+  if (!marks.length) return null;
+  return (
+    <span className="flex shrink-0 items-center gap-0.5">
+      {marks.map(({ Icon, label }) => (
+        <span key={label} title={label} className="inline-flex">
+          <Icon style={{ width: size, height: size }} aria-hidden />
+          <span className="sr-only">{label}</span>
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function DotsMenu({ event, onDone }: { event: TokenCalEvent; onDone?: () => void }) {
@@ -93,51 +122,59 @@ export function TokenEventChip({
 
   if (expanded) {
     return (
-      <article className={`flex h-full min-h-0 flex-col overflow-hidden rounded-md border p-3 shadow-xl ${tone} bg-background/95 text-foreground`}>
-        <div className="flex items-start gap-3">
-          <TokenIcon contract={event.contract} symbol={event.symbol} size={48} rounded="xl" />
+      <article
+        className={`relative flex w-full flex-col rounded-xl border bg-card p-3 text-card-foreground shadow-[0_8px_30px_-12px_rgba(0,0,0,0.8)] ${CHIP_BORDER[event.color]}`}
+      >
+        <div className="flex items-start gap-2">
+          <TokenIcon contract={event.contract} symbol={event.symbol} src={event.logo} size={40} rounded="xl" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{event.name}</p>
-            <p className="font-mono text-lg font-black tracking-tight">${event.symbol}</p>
+            <p className="font-mono text-base font-black tracking-tight">${event.symbol}</p>
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{event.platform}</p>
           </div>
           <DotsMenu event={event} onDone={onClose} />
         </div>
 
-        <div className="mt-3 space-y-1.5 text-xs">
-          <p className="flex items-center gap-2">
-            <Rocket className="h-3.5 w-3.5 shrink-0" />
+        <div className="mt-2 space-y-1 text-[11px] leading-snug">
+          <p className="flex items-center gap-1.5">
+            <Rocket className="h-3 w-3 shrink-0" />
             <span>{format(event.launchAt, "MMM d, yyyy h:mm a")}</span>
           </p>
-          {event.insider ? (
-            <p className="flex items-center gap-2">
-              <Handshake className="h-3.5 w-3.5 shrink-0" />
-              <span>Insider</span>
+          {lockMarks(event).length ? (
+            <p className="flex flex-wrap items-center gap-2">
+              {lockMarks(event).map(({ Icon, label }) => (
+                <span key={label} className="inline-flex items-center gap-1" title={label}>
+                  <Icon className="h-3 w-3 shrink-0" aria-hidden />
+                  <span>{label}</span>
+                </span>
+              ))}
             </p>
           ) : null}
-          <p>
-            Market cap <span className="font-mono font-semibold">{cap}</span>
-          </p>
-          <p>
-            Start <span className="font-mono font-semibold">{fmtUsd(event.startMcap)}</span>
-          </p>
-          <p>
-            End <span className="font-mono font-semibold">{fmtUsd(event.endMcap)}</span>
-          </p>
-          <p>
-            Backing liquidity <span className="font-mono font-semibold">{fmtUsd(event.liquidity)}</span>
-          </p>
+          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 font-mono">
+            <p>
+              Cap <span className="font-semibold">{cap}</span>
+            </p>
+            <p>
+              Liq <span className="font-semibold">{fmtUsd(event.liquidity)}</span>
+            </p>
+            <p>
+              Start <span className="font-semibold">{fmtUsd(event.startMcap)}</span>
+            </p>
+            <p>
+              End <span className="font-semibold">{fmtUsd(event.endMcap)}</span>
+            </p>
+          </div>
         </div>
 
         {event.splits.length ? (
-          <div className={`mt-3 grid min-h-0 flex-1 gap-1.5 ${event.splits.length > 3 ? "grid-cols-2" : "grid-cols-1"}`}>
+          <div className="mt-2 grid grid-cols-2 gap-1">
             {event.splits.map((s) => (
-              <div key={s.label} className="border border-border/80 bg-background/40 px-2 py-1.5">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <div key={s.label} className="border border-border bg-secondary px-1.5 py-1">
+                <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">
                   {s.label}
                   {s.hint ? ` ${s.hint}` : ""}
                 </p>
-                <p className="font-mono text-sm font-bold">{pctLabel(s.pct)}</p>
+                <p className="font-mono text-xs font-bold">{pctLabel(s.pct)}</p>
               </div>
             ))}
           </div>
@@ -163,11 +200,11 @@ export function TokenEventChip({
         onToggle?.(e.currentTarget);
       }}
     >
-      <TokenIcon contract={event.contract} symbol={event.symbol} size={16} rounded="xl" />
+      <TokenIcon contract={event.contract} symbol={event.symbol} src={event.logo} size={16} rounded="xl" />
       <span className="truncate font-mono text-[10px] font-bold leading-none sm:text-xs">{event.symbol}</span>
       <span className="hidden truncate text-[9px] opacity-80 sm:inline">{cap}</span>
       <span className="ml-auto flex shrink-0 items-center gap-0.5">
-        {event.kind === "insider" || event.insider ? <Handshake className="h-3 w-3" /> : null}
+        <InsiderLockIcons event={event} size={12} />
         {event.kind === "launch" ? <Rocket className="h-3 w-3" /> : null}
         <span
           onClick={(e) => e.stopPropagation()}

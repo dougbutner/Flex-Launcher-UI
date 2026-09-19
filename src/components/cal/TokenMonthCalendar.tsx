@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { format, isSameDay, isSameMonth } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { TokenEventChip } from "@/components/cal/TokenEventChip";
@@ -29,7 +29,7 @@ export function TokenMonthCalendar({
   const bodyRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [anchor, setAnchor] = useState<{ left: number; width: number } | null>(null);
+  const [anchor, setAnchor] = useState<{ left: number; top: number; width: number } | null>(null);
 
   const expanded = events.find((e) => e.id === expandedId) ?? null;
 
@@ -62,6 +62,23 @@ export function TokenMonthCalendar({
     };
   }, [expandedId]);
 
+  useLayoutEffect(() => {
+    if (!expandedId || !anchor) return;
+    const body = bodyRef.current;
+    const box = body?.querySelector("[data-cal-expanded]") as HTMLElement | null;
+    if (!body || !box) return;
+    const pad = 8;
+    const h = box.offsetHeight;
+    const w = box.offsetWidth || anchor.width;
+    const bh = body.clientHeight;
+    const bw = body.clientWidth;
+    const maxTop = Math.max(pad, bh - h - pad);
+    const maxLeft = Math.max(pad, bw - w - pad);
+    const top = Math.min(anchor.top, maxTop);
+    const left = Math.min(anchor.left, maxLeft);
+    if (top !== anchor.top || left !== anchor.left) setAnchor({ ...anchor, top, left });
+  }, [expandedId, anchor]);
+
   const openChip = (event: TokenCalEvent, el: HTMLElement) => {
     if (expandedId === event.id) {
       close();
@@ -71,11 +88,15 @@ export function TokenMonthCalendar({
     if (!body) return;
     const b = body.getBoundingClientRect();
     const c = el.getBoundingClientRect();
-    const width = Math.min(288, Math.max(240, b.width * 0.28));
-    const rel = Math.max(0, c.left - b.left);
-    const roomRight = b.width - rel;
-    const left = roomRight >= width + 8 ? rel : Math.max(8, b.width - width - 8);
-    setAnchor({ left, width });
+    const pad = 8;
+    const bw = body.clientWidth;
+    const bh = body.clientHeight;
+    const width = Math.min(300, Math.max(248, bw * 0.28), bw - pad * 2);
+    const relX = Math.max(0, c.left - b.left);
+    const relY = Math.max(0, c.top - b.top);
+    const left = Math.min(Math.max(pad, relX), Math.max(pad, bw - width - pad));
+    const top = Math.min(Math.max(pad, relY), Math.max(pad, bh - 120));
+    setAnchor({ left, top, width });
     setExpandedId(event.id);
   };
 
@@ -111,7 +132,7 @@ export function TokenMonthCalendar({
         ))}
       </div>
 
-      <div ref={bodyRef} className="relative min-h-0 flex-1">
+      <div ref={bodyRef} className="relative min-h-0 flex-1 overflow-hidden">
         <div
           key={`${year}-${month}`}
           className="token-cal-month grid h-full grid-cols-7"
@@ -152,9 +173,14 @@ export function TokenMonthCalendar({
 
         {expanded && anchor ? (
           <div
-            className="absolute top-0 z-30 h-full"
+            className="absolute z-30 overflow-y-auto"
             data-cal-expanded
-            style={{ left: anchor.left, width: anchor.width }}
+            style={{
+              left: anchor.left,
+              top: anchor.top,
+              width: anchor.width,
+              maxHeight: `calc(100% - 16px)`,
+            }}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <TokenEventChip event={expanded} expanded onClose={close} onToggle={close} />
