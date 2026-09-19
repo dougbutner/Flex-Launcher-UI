@@ -17,7 +17,7 @@ export const JARGON_ENTRIES: { term: string; def: string }[] = [
   { term: "Skim", def: "protocol cut to Dev and Club." },
   { term: "Burn", def: "part of the tax is destroyed." },
   { term: "Project", def: "part of the tax goes to the project account." },
-  { term: "Angel / Jackpot", def: "lottery pots in flexforex." },
+  { term: "Angel / Jackpot", def: "lottery pots on for3x." },
   { term: "Heir", def: "an account that receives a cut of your rain." },
   { term: "Opt-out", def: "turn off tax and reflections for yourself (you can only turn it on)." },
   { term: "Keeper", def: "who signs the payout and may take a tip." },

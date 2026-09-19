@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { hasAngelChannels, hasInheritance, type FlexProgram } from "@/config/launch";
-import { Field, TxLink } from "@/components/launch/ui";
+import { TxLink } from "@/components/launch/ui";
 import { validAccount } from "@/services/assets";
 import {
   abiSymbol,
@@ -25,8 +25,10 @@ function poolLabel(row: Record<string, unknown>): string {
   const out = parseProtonSymbol(pick(row, "output_symbol"));
   const contract = String(pick(row, "output_contract") ?? "");
   const code = out?.code || "?";
-  return contract ? `${code} @ ${contract}` : code;
+  return contract ? `${code}@${contract}` : code;
 }
+
+type Slot = "flex" | "optout" | "angel" | "heir" | "memo";
 
 type Props = {
   program: FlexProgram;
@@ -66,6 +68,7 @@ export function HolderPrefs({
   const currentMemo = String(pick(flexer, "custom_memo") ?? "");
   const currentPool = Number(pick(flexer, "flex_reward_pool_id") ?? 0);
 
+  const [open, setOpen] = useState<Slot | null>(null);
   const [angel, setAngel] = useState(currentAngel === 1000 ? "0" : String(currentAngel));
   const [rewardKey, setRewardKey] = useState(currentPool ? String(currentPool) : "native");
   const [bene, setBene] = useState(currentBene && currentBene !== actor ? currentBene : "");
@@ -80,6 +83,7 @@ export function HolderPrefs({
     try {
       const res = await transact([action]);
       setMsg({ tx: txIdFromResult(res) || "ok" });
+      setOpen(null);
       onDone();
     } catch (err) {
       const text = txErrorMessage(err);
@@ -92,190 +96,155 @@ export function HolderPrefs({
 
   const disabled = busy || signing;
 
+  const sendFlex = () => {
+    if (rewardKey === "native") {
+      void run(chooserewardAction(contract, actor, symbol, abiSymbol(precision, symbol), ""));
+      return;
+    }
+    const pool = pools.find((p) => String(pick(p, "id")) === rewardKey);
+    if (!pool) return;
+    const out = parseProtonSymbol(pick(pool, "output_symbol"));
+    const outContract = String(pick(pool, "output_contract") ?? "");
+    if (!out || !outContract) return;
+    void run(chooserewardAction(contract, actor, symbol, abiSymbol(out.precision, out.code), outContract));
+  };
+
+  const sendHeir = () => {
+    const bps = percentInputToBps(ratePct);
+    if (ratePct !== "" && (bps < 0 || bps > 10000 || Number(sanitizePercentInput(ratePct)) > 100)) {
+      setMsg({ err: "Rate must be 0-100%." });
+      return;
+    }
+    if (bene !== "" && !validAccount(bene)) {
+      setMsg({ err: "Heir must be a valid account." });
+      return;
+    }
+    void run(inheritanceAction(contract, actor, bene, bps, symbol));
+  };
+
+  const chip = (slot: Slot, label: string, extraDisabled = false) => (
+    <button
+      type="button"
+      className={`btn btn-sm ${open === slot ? "btn-primary" : "btn-outline"}`}
+      disabled={disabled || extraDisabled}
+      onClick={() => {
+        setMsg({});
+        setOpen((cur) => (cur === slot ? null : slot));
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  const sendBtn = (onSend: () => void, extraDisabled = false) => (
+    <button type="button" className="btn btn-primary btn-sm" disabled={disabled || extraDisabled} onClick={onSend}>
+      {signing ? "Signing…" : "Send"}
+    </button>
+  );
+
   return (
-    <section className="space-y-5 rounded-xl border border-border/60 bg-background/40 p-4">
-      <div>
-        <h3 className="text-sm font-bold tracking-tight">Holder Options</h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Reward route, fee opt-out{angelEnabled ? ", angel number" : ""}
-          {inheritOk ? ", inheritance" : ""}.
-        </p>
-      </div>
-
-      <Field
-        sentence
-        label="Flex reward"
-        hint="Flex into a different reward token. Ask project owner to add one if you don't see what you want."
-      >
-        <div className="flex flex-wrap gap-2">
-          <select
-            className="input max-w-md"
-            value={rewardKey}
-            disabled={disabled}
-            onChange={(e) => setRewardKey(e.target.value)}
-          >
-            <option value="native">Default rain</option>
-            {pools.map((p) => {
-              const id = String(pick(p, "id") ?? "");
-              return (
-                <option key={id} value={id}>
-                  {poolLabel(p)}
-                </option>
-              );
-            })}
-          </select>
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            disabled={disabled}
-            onClick={() => {
-              if (rewardKey === "native") {
-                void run(chooserewardAction(contract, actor, symbol, abiSymbol(precision, symbol), ""));
-                return;
-              }
-              const pool = pools.find((p) => String(pick(p, "id")) === rewardKey);
-              if (!pool) return;
-              const out = parseProtonSymbol(pick(pool, "output_symbol"));
-              const outContract = String(pick(pool, "output_contract") ?? "");
-              if (!out || !outContract) return;
-              void run(
-                chooserewardAction(contract, actor, symbol, abiSymbol(out.precision, out.code), outContract)
-              );
-            }}
-          >
-            {signing ? "Signing…" : "Save reward"}
-          </button>
-        </div>
-      </Field>
-
-      <Field
-        sentence
-        label="Transfer fees"
-        hint={
-          optedOut
-            ? "Already opted out. Rewards are forfeited forever."
-            : "Opt out to avoid tax, but forfeit rewards, forever."
-        }
-      >
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          disabled={disabled || optedOut}
-          onClick={() => {
-            if (
-              !window.confirm(
-                `Opt out of transfer fees on $${symbol}? You avoid tax but forfeit rewards forever.`
-              )
-            )
-              return;
-            void run(feeoptoutAction(contract, actor, true, symbol));
-          }}
-        >
-          {optedOut ? "Fees opted out" : signing ? "Signing…" : "Opt out of fees"}
-        </button>
-      </Field>
-
-      {angelEnabled ? (
-        <Field label="Angel number" sentence hint="0-999. Required for angel pot draws.">
-          <div className="flex flex-wrap gap-2">
-            <input
-              className="input w-28"
-              inputMode="numeric"
-              value={angel}
+    <section className="border border-border bg-background/40 p-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {open === "flex" ? (
+          <>
+            <select
+              className="input h-9 max-w-md py-0 text-sm"
+              value={rewardKey}
               disabled={disabled}
-              onChange={(e) => setAngel(e.target.value.replace(/\D/g, "").slice(0, 3))}
-            />
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              disabled={disabled || angel === "" || Number(angel) > 999}
-              onClick={() => void run(setangelnumAction(contract, actor, symbol, Number(angel)))}
+              onChange={(e) => setRewardKey(e.target.value)}
             >
-              {signing ? "Signing…" : "Set number"}
-            </button>
-          </div>
-        </Field>
-      ) : hasAngelChannels(program) ? (
-        <p className="text-xs text-muted-foreground">
-          Angel numbers are off until the issuer enables them with setdist / ratios.
-        </p>
-      ) : null}
+              <option value="native">Native rain</option>
+              {pools.map((p) => {
+                const id = String(pick(p, "id") ?? "");
+                return (
+                  <option key={id} value={id}>
+                    {poolLabel(p)}
+                  </option>
+                );
+              })}
+            </select>
+            {sendBtn(sendFlex)}
+          </>
+        ) : (
+          chip("flex", "Flex")
+        )}
 
-      {inheritOk ? (
-        <>
-          <Field
-            sentence
-            label="Inheritance"
-            hint="Percent of your splash paid to any account (0-100). Leave blank for self."
-            aside={
-              ratePct !== "" ? (
-                <span className="font-mono text-[11px] font-medium text-muted-foreground">
-                  {percentInputToBps(ratePct)} bps
-                </span>
-              ) : null
-            }
-          >
-            <div className="flex flex-wrap gap-2">
+        {open === "optout" ? (
+          <>
+            <span className="text-xs text-muted-foreground">Avoid tax. Forfeit rain forever.</span>
+            {sendBtn(() => void run(feeoptoutAction(contract, actor, true, symbol)), optedOut)}
+          </>
+        ) : (
+          chip("optout", optedOut ? "Opted out" : "Opt out", optedOut)
+        )}
+
+        {angelEnabled ? (
+          open === "angel" ? (
+            <>
               <input
-                className="input w-40"
-                placeholder="beneficiary"
+                className="input h-9 w-24 py-0"
+                inputMode="numeric"
+                placeholder="0-999"
+                value={angel}
+                disabled={disabled}
+                onChange={(e) => setAngel(e.target.value.replace(/\D/g, "").slice(0, 3))}
+              />
+              {sendBtn(() => void run(setangelnumAction(contract, actor, symbol, Number(angel))), angel === "" || Number(angel) > 999)}
+            </>
+          ) : (
+            chip("angel", "Angel")
+          )
+        ) : null}
+
+        {inheritOk ? (
+          open === "heir" ? (
+            <>
+              <input
+                className="input h-9 w-40 py-0"
+                placeholder="heir account"
                 value={bene}
                 disabled={disabled}
                 onChange={(e) => setBene(e.target.value.trim().toLowerCase())}
               />
               <input
-                className="input w-24"
+                className="input h-9 w-20 py-0"
                 inputMode="decimal"
-                placeholder="% to bene"
+                placeholder="%"
                 value={ratePct}
                 disabled={disabled}
                 onChange={(e) => setRatePct(sanitizePercentInput(e.target.value))}
               />
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                disabled={disabled || (bene !== "" && !validAccount(bene))}
-                onClick={() => {
-                  const bps = percentInputToBps(ratePct);
-                  if (ratePct !== "" && (bps < 0 || bps > 10000 || Number(sanitizePercentInput(ratePct)) > 100)) {
-                    setMsg({ err: "Rate must be 0-100%." });
-                    return;
-                  }
-                  void run(inheritanceAction(contract, actor, bene, bps, symbol));
-                }}
-              >
-                {signing ? "Signing…" : "Save inheritance"}
-              </button>
-            </div>
-          </Field>
-          <Field
-            sentence
-            label="Inherit memo (advanced, not recommended)"
-            hint="Optional · ≤200 chars · @@ = recipient, $$ = amount, ** = symbol"
-          >
-            <div className="flex flex-wrap gap-2">
+              {sendBtn(sendHeir)}
+            </>
+          ) : (
+            chip("heir", "Heir")
+          )
+        ) : null}
+
+        {inheritOk ? (
+          open === "memo" ? (
+            <>
               <input
-                className="input min-w-[12rem] flex-1"
+                className="input h-9 min-w-[10rem] flex-1 py-0"
+                placeholder="memo"
                 value={memo}
                 maxLength={200}
                 disabled={disabled}
                 onChange={(e) => setMemo(e.target.value)}
               />
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                disabled={disabled || memo.length > 200}
-                onClick={() => void run(inheritmemoAction(contract, actor, memo, symbol))}
-              >
-                {signing ? "Signing…" : "Save memo"}
-              </button>
-            </div>
-          </Field>
-        </>
+              {sendBtn(() => void run(inheritmemoAction(contract, actor, memo, symbol)), memo.length > 200)}
+            </>
+          ) : (
+            chip("memo", "Memo")
+          )
+        ) : null}
+      </div>
+      {msg.tx ? (
+        <p className="mt-2">
+          <TxLink tx={msg.tx} prefix="tx " />
+        </p>
       ) : null}
-
-      {msg.tx ? <p><TxLink tx={msg.tx} prefix="tx " /></p> : null}
-      {msg.err ? <p className="text-xs text-destructive">{msg.err}</p> : null}
+      {msg.err ? <p className="mt-2 text-xs text-destructive">{msg.err}</p> : null}
     </section>
   );
 }

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ClubFeed } from "@/components/insiders/ClubFeed";
 import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
+import { AlcorSwapEmbed } from "@/components/token/AlcorSwapEmbed";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
 import { PresalePanel } from "@/components/token/PresalePanel";
 import { TokenListingCard } from "@/components/token/TokenListingCard";
 import { TokenMarket } from "@/components/token/TokenMarket";
 import {
-  alcorSwapUrl,
   explorerAccount,
   flexMeta,
   hasAngelChannels,
@@ -156,6 +157,8 @@ export default function Token() {
   const jackpotPool = assetAmountNumber(String(pick(stat, "jackpot_pool") ?? "0"));
   const launched = Boolean(pick(launch, "launched"));
   const inPresale = Boolean(presale) && !launched && Number(pick(launch, "pure_liquid_alcor_pool_id", "pool_id") ?? 0) > 0;
+  const supplyAmt = assetAmountNumber(String(pick(stat, "supply") ?? "0"));
+  const launchPoolId = Number(pick(launch, "pure_liquid_alcor_pool_id", "pool_id") ?? 0);
 
   const poke = async (kind: "rain" | "checklock" | "pullangel" | "pulljackpot") => {
     if (!actor) return;
@@ -182,11 +185,8 @@ export default function Token() {
     }
   };
 
-  const supplyAmt = assetAmountNumber(String(pick(stat, "supply") ?? "0"));
-  const launchPoolId = Number(pick(launch, "pure_liquid_alcor_pool_id", "pool_id") ?? 0);
-
   return (
-    <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -198,12 +198,12 @@ export default function Token() {
               Winners
             </Link>
             {" · "}
-            <Link to={`/insiders/${code}/${sym}`} className="link">
-              Insiders
+            <Link to="/events" className="link">
+              Events
             </Link>
           </p>
           <div className="mt-1 flex items-center gap-3">
-            <TokenIcon contract={code} symbol={sym} src={iconSrc} size={48} rounded="xl" />
+            <TokenIcon contract={code} symbol={sym} src={iconSrc} size={48} />
             <h1 className="font-mono text-3xl font-black tracking-tight">${sym}</h1>
             {isLoggedIn && actor ? (
               <button
@@ -220,9 +220,7 @@ export default function Token() {
               </button>
             )}
             {pokeMsg.tx ? <TxLink tx={pokeMsg.tx} prefix="tx " /> : null}
-            {quoteSymbol ? (
-              <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={28} />
-            ) : null}
+            {quoteSymbol ? <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={28} /> : null}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {program} @{" "}
@@ -246,6 +244,120 @@ export default function Token() {
 
       {error ? <p className="mt-6 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">{error}</p> : null}
 
+      <div className="mt-6 flex flex-wrap gap-2">
+        <span className={launched ? "chip-success" : inPresale ? "chip-primary" : "chip-muted"}>
+          {launched ? "launched" : inPresale ? "insiders" : "wizard in progress"}
+        </span>
+        {quoteSymbol ? <span className="chip-muted">quote {quoteSymbol}</span> : null}
+        {Boolean(pick(launch, "swap_underlying_default")) && quoteSymbol ? (
+          <span className="chip-muted">→ {quoteSymbol} default</span>
+        ) : null}
+        <span className="chip-muted">pool {fmt(reflectionPool, precision)}</span>
+        {hasAngelChannels(program) ? (
+          <>
+            <span className={angelPool > 0 ? "chip-primary" : "chip-muted"}>
+              angel {fmt(angelPool, precision)}
+            </span>
+            <span className={jackpotPool > 0 ? "chip-primary" : "chip-muted"}>
+              jackpot {fmt(jackpotPool, precision)}
+            </span>
+          </>
+        ) : null}
+        {Boolean(pick(settings, "dist_locked")) ? <span className="chip-muted">dist locked</span> : null}
+      </div>
+
+      {!launch && !busy ? (
+        <p className="mt-6 text-sm text-muted-foreground">No launches row for this symbol on {code}.</p>
+      ) : (
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(280px,360px)]">
+          <div className="min-h-0 border border-border bg-background/40 p-3">
+            <ClubFeed contract={code} symbol={sym} poolId={launchPoolId} />
+          </div>
+          <div className="min-w-0">
+            <TokenMarket
+              poolId={launchPoolId}
+              contract={code}
+              symbol={sym}
+              quoteContract={quoteContract}
+              quoteSymbol={quoteSymbol}
+              supply={supplyAmt}
+              launched={launched || inPresale}
+              compact
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {isLoggedIn && actor ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    disabled={poking != null}
+                    onClick={() => void poke("checklock")}
+                  >
+                    {poking === "checklock" ? "Signing…" : "Check lock"}
+                  </button>
+                  {hasAngelChannels(program) ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        disabled={poking != null || angelPool <= 0}
+                        onClick={() => void poke("pullangel")}
+                      >
+                        {poking === "pullangel" ? "Signing…" : "Pull angel"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        disabled={poking != null || jackpotPool <= 0}
+                        onClick={() => void poke("pulljackpot")}
+                      >
+                        {poking === "pulljackpot" ? "Signing…" : "Pull jackpot"}
+                      </button>
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => void addWebAuthWallet()}>
+                  Connect to manage your bags
+                </button>
+              )}
+              {pokeMsg.tx ? <TxLink tx={pokeMsg.tx} prefix="tx " /> : null}
+              {pokeMsg.err ? <span className="text-xs text-destructive">{pokeMsg.err}</span> : null}
+            </div>
+          </div>
+          <div className="min-w-0">
+            <AlcorSwapEmbed
+              quoteSymbol={quoteSymbol}
+              quoteContract={quoteContract}
+              symbol={sym}
+              contract={code}
+            />
+          </div>
+        </div>
+      )}
+
+      {presale && !launched ? (
+        <PresalePanel
+          contract={code}
+          symbol={sym}
+          precision={precision}
+          actor={actor}
+          isIssuer={isIssuer || isContractAdmin}
+          isLoggedIn={isLoggedIn}
+          busy={busy || poking != null}
+          launch={launch}
+          stat={stat}
+          presale={presale}
+          insider={insider}
+          quoteSymbol={quoteSymbol}
+          quoteContract={quoteContract}
+          holderBalanceRaw={holderBalRaw}
+          onConnect={() => void addWebAuthWallet()}
+          transact={transact}
+          onDone={() => void load()}
+        />
+      ) : null}
+
       {isLoggedIn && actor && (isIssuer || isContractAdmin) ? (
         <div className="mt-6">
           <TokenListingCard
@@ -258,151 +370,43 @@ export default function Token() {
         </div>
       ) : null}
 
-      {!launch && !busy ? (
-        <p className="mt-6 text-sm text-muted-foreground">No launches row for this symbol on {code}.</p>
-      ) : (
-        <>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <span className={launched ? "chip-success" : inPresale ? "chip-primary" : "chip-muted"}>
-              {launched ? "launched" : inPresale ? "insiders" : "wizard in progress"}
-            </span>
-            {quoteSymbol ? <span className="chip-muted">quote {quoteSymbol}</span> : null}
-            {Boolean(pick(launch, "swap_underlying_default")) && quoteSymbol ? (
-              <span className="chip-muted">→ {quoteSymbol} default</span>
-            ) : null}
-            <span className="chip-muted">pool {fmt(reflectionPool, precision)}</span>
-            {hasAngelChannels(program) ? (
-              <>
-                <span className={angelPool > 0 ? "chip-primary" : "chip-muted"}>
-                  angel {fmt(angelPool, precision)}
-                </span>
-                <span className={jackpotPool > 0 ? "chip-primary" : "chip-muted"}>
-                  jackpot {fmt(jackpotPool, precision)}
-                </span>
-              </>
-            ) : null}
-            {Boolean(pick(settings, "dist_locked")) ? <span className="chip-muted">dist locked</span> : null}
-          </div>
-
-          <TokenMarket
-            poolId={launchPoolId}
+      {isLoggedIn && actor ? (
+        <div className="mt-6">
+          <HolderPrefs
+            program={program}
             contract={code}
             symbol={sym}
-            quoteContract={quoteContract}
+            precision={precision}
+            actor={actor}
+            flexer={flexer}
+            settings={settings}
+            pools={pools}
+            swapUnderlyingDefault={Boolean(pick(launch, "swap_underlying_default"))}
             quoteSymbol={quoteSymbol}
-            supply={supplyAmt}
-            launched={launched || inPresale}
+            busy={busy || poking != null}
+            transact={transact}
+            onDone={() => void load()}
           />
+        </div>
+      ) : null}
 
-          {presale && !launched ? (
-            <PresalePanel
-              contract={code}
-              symbol={sym}
-              precision={precision}
-              actor={actor}
-              isIssuer={isIssuer || isContractAdmin}
-              isLoggedIn={isLoggedIn}
-              busy={busy || poking != null}
-              launch={launch}
-              stat={stat}
-              presale={presale}
-              insider={insider}
-              quoteSymbol={quoteSymbol}
-              quoteContract={quoteContract}
-              holderBalanceRaw={holderBalRaw}
-              onConnect={() => void addWebAuthWallet()}
-              transact={transact}
-              onDone={() => void load()}
-            />
-          ) : null}
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {isLoggedIn && actor ? (
-              <>
-                <button
-                  type="button"
-                  className="btn btn-outline btn-sm"
-                  disabled={poking != null}
-                  onClick={() => void poke("checklock")}
-                >
-                  {poking === "checklock" ? "Signing…" : "Check lock"}
-                </button>
-                {hasAngelChannels(program) ? (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-outline btn-sm"
-                      disabled={poking != null || angelPool <= 0}
-                      onClick={() => void poke("pullangel")}
-                    >
-                      {poking === "pullangel" ? "Signing…" : "Pull angel"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline btn-sm"
-                      disabled={poking != null || jackpotPool <= 0}
-                      onClick={() => void poke("pulljackpot")}
-                    >
-                      {poking === "pulljackpot" ? "Signing…" : "Pull jackpot"}
-                    </button>
-                  </>
-                ) : null}
-              </>
-            ) : (
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => void addWebAuthWallet()}>
-                Connect to manage your bags
-              </button>
-            )}
-            {quoteSymbol ? (
-              <a
-                href={alcorSwapUrl(quoteSymbol, quoteContract, sym, code)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-outline btn-sm"
-              >
-                Swap
-              </a>
-            ) : null}
-            {pokeMsg.tx ? <TxLink tx={pokeMsg.tx} prefix="tx " /> : null}
-            {pokeMsg.err ? <span className="text-xs text-destructive">{pokeMsg.err}</span> : null}
-          </div>
-
-          {isLoggedIn && actor ? (
-            <div className="mt-6 max-w-3xl space-y-4">
-              <HolderPrefs
-                program={program}
-                contract={code}
-                symbol={sym}
-                precision={precision}
-                actor={actor}
-                flexer={flexer}
-                settings={settings}
-                pools={pools}
-                swapUnderlyingDefault={Boolean(pick(launch, "swap_underlying_default"))}
-                quoteSymbol={quoteSymbol}
-                busy={busy || poking != null}
-                transact={transact}
-                onDone={() => void load()}
-              />
-              {isIssuer ? (
-                <IssuerTools
-                  program={program}
-                  contract={code}
-                  symbol={sym}
-                  precision={precision}
-                  actor={actor ?? ""}
-                  settings={settings}
-                  launch={launch}
-                  pools={pools}
-                  busy={busy || poking != null}
-                  transact={transact}
-                  onDone={() => void load()}
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </>
-      )}
+      {isLoggedIn && actor && isIssuer ? (
+        <div className="mt-6 max-w-3xl">
+          <IssuerTools
+            program={program}
+            contract={code}
+            symbol={sym}
+            precision={precision}
+            actor={actor ?? ""}
+            settings={settings}
+            launch={launch}
+            pools={pools}
+            busy={busy || poking != null}
+            transact={transact}
+            onDone={() => void load()}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

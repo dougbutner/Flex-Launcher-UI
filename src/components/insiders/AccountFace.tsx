@@ -3,15 +3,9 @@ import { readProtonProfile } from "@/services/protonProfile";
 
 export function AccountFace({
   account,
-  total,
-  stored,
-  ups,
   clubMark = null,
 }: {
   account: string;
-  total: number;
-  stored: number;
-  ups: number;
   clubMark?: "insider" | "proven" | null;
 }) {
   const [src, setSrc] = useState("");
@@ -30,7 +24,6 @@ export function AccountFace({
   }, [account]);
 
   const letter = (account || "?").slice(0, 1).toUpperCase();
-  const boost = ups > 0 ? ups : 0;
 
   return (
     <div className="insiders-face">
@@ -48,16 +41,6 @@ export function AccountFace({
           {clubMark === "proven" ? "proven" : "insider"}
         </span>
       ) : null}
-      <div className="insiders-score" title={`Mechanics ${stored}, UP +${boost}`}>
-        <span className="insiders-score-total">{total}</span>
-        {boost > 0 ? (
-          <span className="insiders-score-split">
-            {stored}+{boost}
-          </span>
-        ) : (
-          <span className="insiders-score-split">{stored}</span>
-        )}
-      </div>
     </div>
   );
 }

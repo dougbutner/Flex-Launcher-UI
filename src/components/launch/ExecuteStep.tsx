@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EASY_SYMBOL,
   EOSIO_TOKEN,
-  FLEX_PROGRAMS,
   LOCK_MIN_DAYS,
   MON3Y,
   QUOTE_PRESETS,
@@ -474,7 +473,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
   return (
     <StepShell
       title="Execute"
-      desc={`Signing as ${actor ?? "…"}. ${FLEX_PROGRAMS.find((p) => p.id === draft.program)?.title} on ${code}. Order matters.`}
+      desc={`Signing as ${actor ?? "…"}. ${draft.symbol || "-"}@${code}. Order matters.`}
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>

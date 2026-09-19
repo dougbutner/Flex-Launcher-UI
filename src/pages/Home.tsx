@@ -73,7 +73,7 @@ const BENEFITS = [
   {
     id: "rock",
     title: "Choose Your Tech",
-    body: "Reflect with easyflex. Project fees and inheritance with complexflex. Jackpots and angel numbers with flexforex. Choose your backing token to serve as your rock.",
+    body: "Reflect on 3asy. Project fees and inheritance on fl3x. Jackpots and angel numbers on for3x. Choose your backing token to serve as your rock.",
     image: "/home/choose-your-tech.jpg",
   },
 ] as const;

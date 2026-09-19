@@ -98,3 +98,41 @@ export const previewFlexers: Record<string, unknown>[] = [
   { owner: PREVIEW_ACTOR, balance: "12500.000000 DEMO" },
   { owner: "charlie", balance: "3200.000000 DEMO" },
 ];
+
+const previewDay = (day: number, hour = 12) => new Date(2026, 8, day, hour, 0, 0).getTime();
+
+export const previewCalEvents = [
+  {
+    id: "presale:for3x:DEMO",
+    kind: "presale" as const,
+    at: previewDay(20),
+    contract: PREVIEW_CONTRACT,
+    symbol: PREVIEW_SYMBOL,
+    program: PREVIEW_PROGRAM,
+    quoteSymbol: "EASY",
+    quoteContract: "mon3y",
+    poolId: 2142,
+  },
+  {
+    id: "launch:for3x:DEMO",
+    kind: "launch" as const,
+    at: previewDay(27),
+    contract: PREVIEW_CONTRACT,
+    symbol: PREVIEW_SYMBOL,
+    program: PREVIEW_PROGRAM,
+    quoteSymbol: "EASY",
+    quoteContract: "mon3y",
+    poolId: 2142,
+  },
+  {
+    id: "presale:fl3x:GEASY",
+    kind: "presale" as const,
+    at: previewDay(22, 9),
+    contract: "fl3x",
+    symbol: "GEASY",
+    program: "complexflex" as const,
+    quoteSymbol: "EASY",
+    quoteContract: "mon3y",
+    poolId: 11525,
+  },
+];

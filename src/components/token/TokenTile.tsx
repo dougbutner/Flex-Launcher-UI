@@ -30,7 +30,7 @@ export function TokenTile({
   return (
     <Link
       to={href}
-      className="group relative block aspect-square overflow-hidden rounded-xl border border-border bg-card shadow-[0_8px_30px_-12px_rgba(0,0,0,0.8)] transition-colors hover:border-primary/50"
+      className="tetra-shimmer group relative block aspect-square overflow-hidden rounded-xl border border-border bg-card shadow-[0_8px_30px_-12px_rgba(0,0,0,0.8)] transition-colors hover:border-primary/50"
     >
       <TokenIcon
         contract={contract}
@@ -42,7 +42,7 @@ export function TokenTile({
       <span className="relative flex h-full flex-col p-2.5">
         <span className="flex items-start justify-between gap-2">
           {quoteSymbol ? (
-            <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={22} rounded="full" />
+            <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={22} rounded="xl" />
           ) : (
             <span />
           )}

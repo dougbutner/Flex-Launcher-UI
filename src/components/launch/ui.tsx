@@ -51,9 +51,10 @@ export function StepShell(props: {
   desc: string;
   children: ReactNode;
   footer?: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="card p-6 sm:p-8">
+    <section className={`card p-6 sm:p-8 ${props.className ?? ""}`}>
       <h2 className="text-xl font-bold tracking-tight">{props.title}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{props.desc}</p>
       <div className="mt-6 space-y-5">{props.children}</div>

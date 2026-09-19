@@ -1,11 +1,10 @@
-import type { FlexProgram } from "@/config/launch";
+import { flexAccount, type FlexProgram } from "@/config/launch";
 
 const DOT = "h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.8)]";
 
-/** One / two / triangle dots for easyflex, complexflex, flexforex. */
+/** One / two / triangle dots for 3asy, fl3x, for3x. */
 export function ProgramDots({ program }: { program: FlexProgram }) {
-  const label =
-    program === "easyflex" ? "easyflex" : program === "complexflex" ? "complexflex" : "flexforex";
+  const label = flexAccount(program);
   if (program === "easyflex") {
     return (
       <span className="inline-flex" title={label} aria-label={label}>

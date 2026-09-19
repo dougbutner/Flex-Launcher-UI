@@ -53,7 +53,7 @@ export default function Launch() {
       {
         id: "token",
         title: "Token",
-        desc: "Name, ticker, supply, logo",
+        desc: "Name, symbol, supply, logo",
         done: tokenOk,
         locked: false,
       },
@@ -127,7 +127,6 @@ export default function Launch() {
 
       {!isLoggedIn ? (
         <div className="card mb-6 flex flex-wrap items-center gap-3 border-primary/30 bg-primary/5 p-4 text-sm">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
           <span>Connect Wallet (top right).</span>
         </div>
       ) : null}

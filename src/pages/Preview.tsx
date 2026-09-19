@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import { isFlexContractActor } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { TokenIcon } from "@/components/TokenIcon";
+import { TokenGlyph } from "@/components/TokenGlyph";
+import { CalTokenCard } from "@/components/events/CalTokenCard";
+import { DropCalendar } from "@/components/events/DropCalendar";
 import { GoldPriceChart } from "@/components/token/GoldPriceChart";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { IssuerTools } from "@/components/token/IssuerTools";
@@ -21,6 +24,7 @@ import {
   previewLaunch,
   previewPools,
   previewSettings,
+  previewCalEvents,
 } from "@/demo/fixtures";
 import type { ChainAction } from "@/services/launchActions";
 
@@ -88,7 +92,7 @@ export default function Preview() {
   const flexPool = Number(h.flexer.flex_reward_pool_id);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6">
       <div className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
         Preview mode. Faux-loaded fixtures only. Nothing signs or hits RPC.
       </div>
@@ -97,7 +101,7 @@ export default function Preview() {
         <div>
           <h1 className="text-3xl font-black tracking-tight">UI shapes</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Skeleton pulse, then filled portfolio, leaderboard, and token manage for flexforex.
+            Skeleton pulse, then filled portfolio, leaderboard, drop calendar, and token stats for for3x.
           </p>
         </div>
         <Link to="/portfolio" className="btn btn-outline btn-sm">
@@ -159,6 +163,86 @@ export default function Preview() {
         </div>
       </section>
 
+      <section className="mt-10">
+        <h2 className="text-sm font-bold tracking-tight">Drop calendar</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          One month grid with token marks, then shimmer tiles in date order. Full ticker always sits next to the icon.
+        </p>
+        <div className="mt-4">
+          <DropCalendar
+            year={2026}
+            month={8}
+            events={previewCalEvents}
+            picked="2026-09-20"
+            onPick={() => undefined}
+            onShift={() => undefined}
+          />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          {previewCalEvents.map((ev) => (
+            <CalTokenCard key={ev.id} ev={ev} picked={ev.kind === "presale" && ev.symbol === PREVIEW_SYMBOL} />
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-sm font-bold tracking-tight">Token stats layout</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Daily feed left, gold chart center, Alcor swap on the right. Small width stacks and uses a Swap link.
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(280px,360px)]">
+          <div className="space-y-3 border border-border bg-background/40 p-3">
+            <article className="insiders-post !border-0 !px-0 !py-2">
+              <div className="insiders-face">
+                <span className="insiders-avatar insiders-avatar-fallback">A</span>
+                <div className="insiders-name">{PREVIEW_ACTOR}</div>
+              </div>
+              <button type="button" className="holding-chip pointer-events-none">
+                <TokenGlyph contract={PREVIEW_CONTRACT} symbol={PREVIEW_SYMBOL} size={22} />
+                <span className="holding-chip__amt">
+                  12,500
+                  <span className="holding-chip__lbl">held</span>
+                </span>
+              </button>
+              <p className="insiders-body mt-2">First day in the club. Chart is the gold line.</p>
+            </article>
+          </div>
+          <div className="card overflow-hidden">
+            <div className="grid grid-cols-2 gap-3 border-b border-border px-4 py-3 sm:grid-cols-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</div>
+                <div className="font-mono text-sm font-semibold text-primary">0.002681 EASY</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">24h</div>
+                <div className="font-mono text-sm font-semibold text-success">+0.43%</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Vol 24h</div>
+                <div className="font-mono text-sm font-semibold">$98</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Mcap</div>
+                <div className="font-mono text-sm font-semibold">$12.3k</div>
+              </div>
+            </div>
+            <GoldPriceChart
+              quoteSymbol="EASY"
+              points={Array.from({ length: 24 }, (_, i) => ({
+                t: Date.now() - (23 - i) * 3600_000,
+                price: 0.0024 + Math.sin(i / 3) * 0.0002 + i * 0.000012,
+              }))}
+            />
+          </div>
+          <div className="border border-border bg-background/40 p-4 text-sm text-muted-foreground">
+            Alcor swap iframe on desktop. Swap on Alcor button when the layout is stacked.
+          </div>
+        </div>
+        <button type="button" className="btn btn-outline mt-6 pointer-events-none">
+          Launch History
+        </button>
+      </section>
+
       {/* Portfolio shapes */}
       <section className="mt-10">
         <h2 className="text-sm font-bold tracking-tight">Portfolio (filled)</h2>
@@ -192,6 +276,25 @@ export default function Preview() {
                 </div>
               </div>
               <span className="btn btn-outline btn-sm pointer-events-none">Manage</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-6">
+          <h3 className="text-sm font-bold tracking-tight">Your drops</h3>
+          <ul className="mt-2 space-y-2">
+            <li className="card flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="flex items-center gap-3">
+                <TokenIcon contract={PREVIEW_CONTRACT} symbol={PREVIEW_SYMBOL} size={36} />
+                <div>
+                  <div className="font-mono font-bold">${previewIssued.symbol}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {previewIssued.symbol}@{PREVIEW_CONTRACT} · live
+                  </div>
+                </div>
+                <span className="insiders-club-badge">proven</span>
+              </div>
+              <span className="btn btn-outline btn-sm pointer-events-none">Token</span>
             </li>
           </ul>
         </div>

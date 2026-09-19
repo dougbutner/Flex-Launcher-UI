@@ -1,15 +1,12 @@
 import { useRef, useState } from "react";
-import {
-  FLEX_PROGRAMS,
-  easyHoldFull,
-  easyHoldNeed,
-  flexAccount,
-  holdEasyToLaunch,
-  type FlexProgram,
-} from "@/config/launch";
+import { FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { tokenStepValid } from "@/components/launch/draftPlan";
+import { ContractPickModal } from "@/components/launch/ContractPickModal";
+import { ProgramDots } from "@/components/token/ProgramDots";
+import { TokenIcon } from "@/components/TokenIcon";
 import { Field, StepShell, SupplyShortcuts } from "@/components/launch/ui";
+import { CONTRACT_DOCS } from "@/content/flexContractDocs";
 import { formatSupplyCommas, parseSupplyInput, validSymbol } from "@/services/assets";
 import { pinLogoFile } from "@/services/ipfsPin";
 import { defaultTaxDraft } from "@/services/taxRates";
@@ -28,6 +25,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   const invalid = tokenStepValid(draft);
   const [pinning, setPinning] = useState(false);
   const [logoErr, setLogoErr] = useState("");
+  const [docsFor, setDocsFor] = useState<FlexProgram | null>(null);
   const [urlOpen, setUrlOpen] = useState(Boolean(draft.pinFailed || (draft.imageUrl && !draft.imageCid)));
   const urlReady = validImageUrl(draft.imageUrl);
   const preview = (urlReady ? draft.imageUrl : "") || draft.imageDataUrl;
@@ -63,7 +61,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   return (
     <StepShell
       title="Create a token"
-      desc="Pick a program, then name and ticker. Precision and ticker are permanent once created."
+      desc="Pick where it lives, then name and symbol. Decimal places and symbol are permanent once created."
       footer={
         <>
           <span />
@@ -78,46 +76,108 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           Token is already on-chain. Token fields are static so execute preflight cannot drift.
         </p>
       ) : null}
-      <div className="grid grid-cols-1 gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Program</p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {FLEX_PROGRAMS.map((p) => {
-            const selected = draft.program === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                disabled={programLocked}
-                onClick={() => {
-                  const tax = defaultTaxDraft(p.id as FlexProgram);
-                  patch({
-                    program: p.id as FlexProgram,
-                    reflectionRate: tax.reflectionRate,
-                    burnRate: tax.burnRate,
-                    projectRate: tax.projectRate,
-                    projectAccount: tax.projectAccount,
-                    angelNumbersBps: tax.angelNumbersBps,
-                    jackpotBps: tax.jackpotBps,
-                  });
-                }}
-                className={`rounded-xl border px-3 py-3 text-left transition-colors ${
-                  selected ? "border-primary bg-primary/10" : "border-border bg-background/40 hover:border-primary/40"
-                } ${programLocked ? "opacity-60" : ""}`}
-              >
-                <div className="font-mono text-sm font-bold">{p.title}</div>
-                <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{flexAccount(p.id)}</div>
-                <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">{p.blurb}</p>
-                <p className="mt-1 font-mono text-[10px] text-muted-foreground">
-                  Flex pairs: {holdEasyToLaunch(easyHoldNeed(p.launchEasyMin))}
-                </p>
-                <p className="font-mono text-[10px] text-muted-foreground">
-                  Other pairs: {holdEasyToLaunch(easyHoldFull(p.launchEasyMin))}
-                </p>
-              </button>
-            );
-          })}
-        </div>
+      <div
+        className={`grid grid-cols-1 items-end gap-3 ${
+          draft.program === "easyflex"
+            ? "sm:grid-cols-[minmax(0,1.62fr)_minmax(0,0.62fr)_minmax(0,0.62fr)]"
+            : draft.program === "complexflex"
+              ? "sm:grid-cols-[minmax(0,0.62fr)_minmax(0,1.62fr)_minmax(0,0.62fr)]"
+              : "sm:grid-cols-[minmax(0,0.62fr)_minmax(0,0.62fr)_minmax(0,1.62fr)]"
+        }`}
+      >
+        {FLEX_PROGRAMS.map((p) => {
+          const selected = draft.program === p.id;
+          const account = flexAccount(p.id);
+          const traits = CONTRACT_DOCS[p.id].traits;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                if (programLocked) return;
+                const tax = defaultTaxDraft(p.id);
+                patch({
+                  program: p.id,
+                  reflectionRate: tax.reflectionRate,
+                  burnRate: tax.burnRate,
+                  projectRate: tax.projectRate,
+                  projectAccount: tax.projectAccount,
+                  angelNumbersBps: tax.angelNumbersBps,
+                  jackpotBps: tax.jackpotBps,
+                });
+              }}
+              className={`tetra-shimmer group relative aspect-square overflow-hidden rounded-xl border bg-card text-left shadow-[0_8px_30px_-12px_rgba(0,0,0,0.8)] transition-[flex,border-color] hover:border-primary/50 ${
+                selected ? "border-primary/70" : "border-border"
+              } ${programLocked && !selected ? "opacity-60" : ""}`}
+            >
+              <TokenIcon
+                contract={account}
+                symbol={draft.symbol || "F"}
+                src={preview || undefined}
+                fill
+                className="pointer-events-none absolute inset-0 opacity-25 group-hover:opacity-40"
+              />
+              <span className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/35 to-black/70" />
+              <span className="relative flex h-full flex-col p-2">
+                <span className="flex items-start justify-between gap-1">
+                  <span
+                    className={`min-w-0 leading-tight text-primary ${
+                      selected ? "text-[10px] font-semibold" : "text-[8px] font-medium"
+                    }`}
+                  >
+                    {CONTRACT_DOCS[p.id].tag}
+                  </span>
+                  <ProgramDots program={p.id} />
+                </span>
+                <span className="flex flex-1 flex-col items-center justify-center px-1 text-center">
+                  <span
+                    className={`truncate font-mono font-black tracking-tight ${
+                      selected ? "text-3xl sm:text-5xl" : "text-xs sm:text-sm"
+                    } ${draft.symbol ? "text-foreground" : "text-muted-foreground"}`}
+                  >
+                    {draft.symbol || "-"}
+                  </span>
+                  <span className={`font-mono font-bold text-primary ${selected ? "text-sm" : "text-[9px]"}`}>
+                    @{account}
+                  </span>
+                </span>
+                {selected ? (
+                  <span className="flex items-end justify-between gap-2">
+                    <span className="grid grid-cols-2 gap-x-1.5 gap-y-0 font-mono leading-tight">
+                      {traits.map((t) => (
+                        <span key={t.k}>
+                          <span className="block text-[7px] uppercase tracking-wide text-muted-foreground">{t.k}</span>
+                          <span className="text-[9px] font-semibold text-foreground">{t.v}</span>
+                        </span>
+                      ))}
+                    </span>
+                    <span
+                      role="link"
+                      tabIndex={0}
+                      className="link shrink-0 text-[10px] font-semibold uppercase tracking-wider"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDocsFor(p.id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter" && e.key !== " ") return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDocsFor(p.id);
+                      }}
+                    >
+                      info
+                    </span>
+                  </span>
+                ) : null}
+              </span>
+            </button>
+          );
+        })}
       </div>
+      {docsFor ? (
+        <ContractPickModal program={docsFor} symbol={draft.symbol} onClose={() => setDocsFor(null)} />
+      ) : null}
 
       <div className="flex items-start gap-5">
         <button
@@ -154,7 +214,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
               onChange={(e) => patch({ name: e.target.value.slice(0, TOKEN_PROTON_TNAME_MAX) })}
             />
           </Field>
-          <Field label="Ticker" hint="1-7 uppercase letters. Fixed forever.">
+          <Field label="Symbol" hint="1-7 uppercase letters. Fixed forever.">
             <input
               className="input font-mono uppercase"
               placeholder="BARS"
@@ -164,7 +224,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
               onChange={(e) => patch({ symbol: e.target.value.toUpperCase().replace(/[^A-Z]/g, "") })}
             />
             {draft.symbol && !validSymbol(draft.symbol) ? (
-              <p className="mt-1.5 text-xs font-medium text-destructive">Invalid ticker.</p>
+              <p className="mt-1.5 text-xs font-medium text-destructive">Invalid symbol.</p>
             ) : null}
           </Field>
         </div>
@@ -234,7 +294,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
             onChange={(e) => patch({ maxSupply: parseSupplyInput(e.target.value) })}
           />
         </Field>
-        <Field label="Precision" hint="Decimal places (0-8). Flex tokens default to 6.">
+        <Field label="Decimal places" hint="0-8. Flex tokens default to 6.">
           <input
             className="input font-mono"
             inputMode="numeric"

@@ -3,6 +3,7 @@ import { emptyDraft } from "@/hooks/useLaunchDraft";
 import {
   clubMarkOf,
   clubSignActions,
+  actorClubMark,
   insidersStepValid,
   parseInviteAccounts,
 } from "@/services/insidersClub";
@@ -55,5 +56,14 @@ describe("insidersClub", () => {
     expect(clubMarkOf({ approved: false, locked_pos: 9 })).toBeNull();
     expect(clubMarkOf({ approved: true, locked_pos: 0 })).toBe("insider");
     expect(clubMarkOf({ approved: true, locked_pos: 42 })).toBe("proven");
+  });
+
+  it("finds an insider row by account", () => {
+    const rows = [
+      { account: "bob", approved: true, locked_pos: 0 },
+      { account: "alice", approved: true, locked_pos: 7 },
+    ];
+    expect(actorClubMark(rows, "ALICE")).toBe("proven");
+    expect(actorClubMark(rows, "nobody")).toBeNull();
   });
 });

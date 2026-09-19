@@ -109,6 +109,16 @@ export function clubMarkOf(row: Record<string, unknown> | null | undefined): Clu
   return Number(row.locked_pos ?? 0) > 0 ? "proven" : "insider";
 }
 
+export function rowForAccount(rows: Record<string, unknown>[], actor: string) {
+  const want = actor.trim().toLowerCase();
+  if (!want) return null;
+  return rows.find((r) => String(r.account ?? "").toLowerCase() === want) ?? null;
+}
+
+export function actorClubMark(rows: Record<string, unknown>[], actor: string): ClubMark | null {
+  return clubMarkOf(rowForAccount(rows, actor));
+}
+
 export function clubKey(contract: string, symbol: string, account: string): string {
   return `${contract.toLowerCase()}:${symbol.toUpperCase()}:${account.toLowerCase()}`;
 }

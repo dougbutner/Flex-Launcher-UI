@@ -355,6 +355,7 @@ html {
 .tetra-cal__cell {
   appearance: none;
   width: 100%;
+  min-height: 4.5rem;
   color: inherit;
   border: 0;
   cursor: pointer;
@@ -390,6 +391,69 @@ html {
 
 .tetra-cal__dot.is-unlock {
   background: var(--tetra-gold-line);
+}
+
+.tetra-cal__icons {
+  display: flex;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.tetra-cal__icons > * {
+  margin-left: -4px;
+  box-shadow: 0 0 0 1px var(--tetra-void);
+}
+
+.tetra-cal__icons > *:first-child {
+  margin-left: 0;
+}
+
+.tetra-cal__more {
+  margin-left: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  color: hsl(var(--muted-foreground));
+}
+
+.tetra-shimmer {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.tetra-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    transparent calc(50% - 5px),
+    rgba(255, 229, 102, 0.22) calc(50% - 1.6px),
+    var(--tetra-gold-line) 50%,
+    rgba(255, 229, 102, 0.22) calc(50% + 1.6px),
+    transparent calc(50% + 5px),
+    transparent 100%
+  );
+  opacity: 0;
+  transform: translate3d(120%, 120%, 0);
+}
+
+.tetra-shimmer:hover::after,
+.tetra-shimmer:focus-visible::after {
+  opacity: 0.8;
+  transform: translate3d(-120%, -120%, 0);
+  transition:
+    transform 0.75s var(--tetra-ease-shimmer),
+    opacity 0s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tetra-shimmer::after {
+    transition: none;
+  }
 }
 
 .tetra-nav {
@@ -478,6 +542,162 @@ body > [id*="anchor-link"] {
   .btn::before {
     transition: none;
   }
+}
+
+.launch-review {
+  font-family: "Open Sans", sans-serif;
+}
+
+.launch-review h2 {
+  font-family: "Open Sans", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.launch-review > p:first-of-type {
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.launch-review__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.launch-review__group {
+  padding: 0.85rem 1rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--group-tone) 36%, hsl(var(--border)));
+  border-left: 3px solid var(--group-tone);
+  background: color-mix(in srgb, var(--group-tone) 9%, hsl(var(--background) / 0.55));
+}
+
+.launch-review__group--token {
+  --group-tone: #ffe566;
+}
+
+.launch-review__group--tax {
+  --group-tone: #22c55e;
+}
+
+.launch-review__group--quote {
+  --group-tone: #60a5fa;
+}
+
+.launch-review__group--range {
+  --group-tone: #a78bfa;
+}
+
+.launch-review__group--club {
+  --group-tone: #f97316;
+}
+
+.launch-review__group--hold {
+  --group-tone: #2dd4bf;
+}
+
+.launch-review__head {
+  margin: 0 0 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--group-tone);
+}
+
+.launch-review__head + .launch-review__row {
+  border-top: 0;
+  padding-top: 0.12rem;
+}
+
+.launch-review__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.42rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--group-tone) 14%, transparent);
+}
+
+.launch-review__row--stack {
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.launch-review__k {
+  flex-shrink: 0;
+  max-width: 42%;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: hsl(var(--muted-foreground));
+}
+
+.launch-review__row--stack .launch-review__k {
+  max-width: none;
+}
+
+.launch-review__v {
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: right;
+  overflow-wrap: anywhere;
+  color: hsl(var(--foreground));
+}
+
+.launch-review__row--stack .launch-review__v {
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .launch-review__row {
+    flex-direction: column;
+    gap: 0.18rem;
+  }
+
+  .launch-review__k {
+    max-width: none;
+  }
+
+  .launch-review__v {
+    text-align: left;
+  }
+}
+
+.launch-review__v--mono {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.launch-review__note {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: hsl(var(--muted-foreground));
+}
+
+.launch-review__warn {
+  padding: 1rem 1.05rem;
+  border: 1px solid hsl(var(--warning) / 0.3);
+  background: hsl(var(--warning) / 0.06);
+  color: hsl(var(--warning));
+  font-size: 0.92rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.launch-review__warn p + p {
+  margin-top: 0.55rem;
+  color: hsl(var(--warning) / 0.82);
+}
+
+.launch-review__warn-title {
+  font-weight: 700;
 }
 
 .insiders {
@@ -657,15 +877,18 @@ body > [id*="anchor-link"] {
   height: 2rem;
   flex-shrink: 0;
   object-fit: cover;
+  border-radius: 9999px;
 }
 
 .insiders-avatar-fallback {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: 9999px;
   background: hsl(var(--secondary));
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-family: var(--tetra-font);
+  font-size: 0.85rem;
+  font-weight: 800;
   color: hsl(var(--muted-foreground));
 }
 
@@ -706,6 +929,73 @@ body > [id*="anchor-link"] {
   display: block;
   font-size: 0.7rem;
   font-weight: 300;
+  color: hsl(var(--muted-foreground));
+}
+
+.holding-chip {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--secondary) / 0.35);
+  cursor: pointer;
+}
+
+.holding-chip:hover {
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+.holding-chip__amt {
+  margin-left: auto;
+  flex-shrink: 0;
+  text-align: right;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.holding-chip__lbl {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.holder-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: auto;
+  background: var(--tetra-void);
+}
+
+.holder-sheet__inner {
+  margin: 0 auto;
+  max-width: 32rem;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+.holder-sheet__avatar {
+  width: 6rem;
+  height: 6rem;
+  object-fit: cover;
+  border-radius: 9999px;
+}
+
+.holder-sheet__fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--secondary));
+  font-family: var(--tetra-font);
+  font-size: 2.4rem;
+  font-weight: 800;
   color: hsl(var(--muted-foreground));
 }
 

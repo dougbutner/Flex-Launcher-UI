@@ -23,7 +23,7 @@ export const FLEX_PROGRAMS: Array<{
 }> = [
   {
     id: "easyflex",
-    title: "easyflex",
+    title: EASYFLEX_CONTRACT,
     blurb: "Simple reflections (rains) + burn. No inheritance, jackpot or luck.",
     supply: "issue",
     payoutSigner: "sender",
@@ -33,7 +33,7 @@ export const FLEX_PROGRAMS: Array<{
   },
   {
     id: "complexflex",
-    title: "complexflex",
+    title: COMPLEXFLEX_CONTRACT,
     blurb: "Reflections + project tax + inheritance of rain to others.",
     supply: "mint",
     payoutSigner: "sender",
@@ -42,7 +42,7 @@ export const FLEX_PROGRAMS: Array<{
   },
   {
     id: "flexforex",
-    title: "flexforex",
+    title: FLEXFOREX_CONTRACT,
     blurb: "Full stack: inheritance, angel numbers, jackpot, optionally pay whoever sends out reflections.",
     supply: "mint",
     payoutSigner: "keeper",

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AccountFace } from "@/components/insiders/AccountFace";
 import { Composer } from "@/components/insiders/Composer";
+import { HoldingChip } from "@/components/insiders/HolderCard";
 import { UpButton } from "@/components/insiders/UpButton";
 import { createPost, fetchFeed, type InsiderPost } from "@/services/insidersApi";
 
@@ -16,8 +17,7 @@ function ago(ms: number) {
 
 export function FeedPost({
   post,
-  totalOf,
-  upsOf,
+  holdOf,
   actor,
   canWrite,
   lockedReason,
@@ -25,12 +25,12 @@ export function FeedPost({
   onPosted,
   onUp,
   onNeedConnect,
+  onOpenProfile,
   clubOf,
   depth = 0,
 }: {
   post: InsiderPost;
-  totalOf: (account: string, stored: number) => number;
-  upsOf: (account: string) => number;
+  holdOf: (account: string) => number;
   actor: string | null;
   canWrite: boolean;
   lockedReason: string;
@@ -38,6 +38,7 @@ export function FeedPost({
   onPosted: () => void;
   onUp: (post: InsiderPost, whole: number) => Promise<string>;
   onNeedConnect?: () => void;
+  onOpenProfile?: (account: string) => void;
   clubOf?: (account: string, contract: string, symbol: string) => "insider" | "proven" | null;
   depth?: number;
 }) {
@@ -45,8 +46,6 @@ export function FeedPost({
   const [replying, setReplying] = useState(false);
   const [replies, setReplies] = useState<InsiderPost[] | null>(null);
   const [txid, setTxid] = useState("");
-  const ups = upsOf(post.author);
-  const total = totalOf(post.author, post.authorScore);
   const roomContract = post.contract;
   const roomSymbol = post.symbol;
 
@@ -60,10 +59,13 @@ export function FeedPost({
     <article className={depth ? "insiders-reply" : "insiders-post"}>
       <AccountFace
         account={post.author}
-        total={total}
-        stored={post.authorScore}
-        ups={ups}
         clubMark={clubOf?.(post.author, roomContract, roomSymbol) ?? null}
+      />
+      <HoldingChip
+        contract={roomContract}
+        symbol={roomSymbol}
+        amount={holdOf(post.author)}
+        onOpen={() => onOpenProfile?.(post.author)}
       />
       <p className="insiders-body">{post.body}</p>
       {post.giphyUrl ? <img src={post.giphyUrl} alt="" className="insiders-post-gif" /> : null}
@@ -132,8 +134,7 @@ export function FeedPost({
             <FeedPost
               key={r.id}
               post={r}
-              totalOf={totalOf}
-              upsOf={upsOf}
+              holdOf={holdOf}
               actor={actor}
               canWrite={canWrite}
               lockedReason={lockedReason}
@@ -141,6 +142,7 @@ export function FeedPost({
               onPosted={onPosted}
               onUp={onUp}
               onNeedConnect={onNeedConnect}
+              onOpenProfile={onOpenProfile}
               clubOf={clubOf}
               depth={depth + 1}
             />

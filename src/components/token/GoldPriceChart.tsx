@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from "react";
+import { useId, useMemo, useState, type MouseEvent } from "react";
 import type { ChartPoint } from "@/services/alcorMarket";
 import { numberParts } from "@/services/money";
 
@@ -18,6 +18,7 @@ function fmtAxisTime(t: number): string {
 
 export function GoldPriceChart({ points, quoteSymbol }: Props) {
   const [hover, setHover] = useState<number | null>(null);
+  const fillId = `goldFill${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
   const geom = useMemo(() => {
     if (points.length < 2) return null;
@@ -80,7 +81,7 @@ export function GoldPriceChart({ points, quoteSymbol }: Props) {
         onMouseLeave={() => setHover(null)}
       >
         <defs>
-          <linearGradient id="goldFill" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.28" />
             <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
           </linearGradient>
@@ -132,7 +133,7 @@ export function GoldPriceChart({ points, quoteSymbol }: Props) {
         >
           {fmtAxisTime(geom.maxX)}
         </text>
-        <path d={geom.area} fill="url(#goldFill)" />
+        <path d={geom.area} fill={`url(#${fillId})`} />
         <path
           d={geom.d}
           fill="none"

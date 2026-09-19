@@ -24,6 +24,7 @@ type Props = {
   quoteSymbol: string;
   supply: number;
   launched: boolean;
+  compact?: boolean;
 };
 
 function Stat({
@@ -57,6 +58,7 @@ export function TokenMarket({
   quoteSymbol,
   supply,
   launched: _launched,
+  compact = false,
 }: Props) {
   const [view, setView] = useState<"line" | "alcor">("line");
   const [range, setRange] = useState<ChartRange>("all");
@@ -105,14 +107,14 @@ export function TokenMarket({
 
   if (!(poolId > 0) || !quoteSymbol) {
     return (
-      <div className="card mt-6 p-5 text-sm text-muted-foreground">
+      <div className={`card p-5 text-sm text-muted-foreground ${compact ? "" : "mt-6"}`}>
         Price chart appears after liftoff, once the launch pair is on Alcor.
       </div>
     );
   }
 
   return (
-    <section className="mt-6 w-full">
+    <section className={`w-full ${compact ? "" : "mt-6"}`}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Market</p>

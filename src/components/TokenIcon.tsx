@@ -39,15 +39,18 @@ export function TokenIcon({
     if (fill) {
       return (
         <span
-          className={`block bg-secondary ${className}`}
+          className={`flex h-full w-full items-center justify-center bg-secondary font-black leading-none text-muted-foreground/50 ${className}`}
+          style={{ fontFamily: 'Jost, "Segoe UI", sans-serif', fontSize: "4.5rem" }}
           aria-hidden
-        />
+        >
+          {letter}
+        </span>
       );
     }
     return (
       <span
         className={`inline-flex shrink-0 items-center justify-center bg-secondary font-black text-muted-foreground ${shape} ${className}`}
-        style={box}
+        style={{ ...box, fontFamily: 'Jost, "Segoe UI", sans-serif' }}
         role="img"
         aria-label={symbol || "token"}
       >
