@@ -1,0 +1,28 @@
+export const JARGON_TITLE = "Words for people";
+
+export const JARGON_ENTRIES: { term: string; def: string }[] = [
+  { term: "Hold", def: "you hold the token." },
+  { term: "Rain", def: "payout from the tax. You get paid for holding." },
+  { term: "Flex", def: "that payout is swapped on Alcor into another token." },
+  { term: "Native", def: "the payout stays in this token." },
+  { term: "Unflex", def: "switch back to native." },
+  { term: "Tax", def: "a slice of each transfer goes into the pool." },
+  { term: "Pool", def: "funds waiting to be paid out as rain." },
+  { term: "Lock", def: "liquidity frozen for at least 90 days. It can't leave." },
+  { term: "Liftoff", def: "launch. The 90-day lock is stamped and transfers unlock." },
+  { term: "Quote", def: "the other side of the pool (for GEASY that's EASY)." },
+  { term: "Issuer", def: "the account that created the ticker." },
+  { term: "Presale / Insider", def: "entry before liftoff, with a supply cap." },
+  { term: "Seed", def: "tokens sent to Alcor before launch." },
+  { term: "Skim", def: "protocol cut to Dev and Club." },
+  { term: "Burn", def: "part of the tax is destroyed." },
+  { term: "Project", def: "part of the tax goes to the project account." },
+  { term: "Angel / Jackpot", def: "lottery pots in flexforex." },
+  { term: "Heir", def: "an account that receives a cut of your rain." },
+  { term: "Opt-out", def: "turn off tax and reflections for yourself (you can only turn it on)." },
+  { term: "Keeper", def: "who signs the payout and may take a tip." },
+  { term: "Route", def: "a listed Alcor pool from this token to a reward coin." },
+  { term: "Reward", def: "the token you flex your rain into." },
+  { term: "Floor", def: "minimum payout size." },
+  { term: "Bps", def: "hundredths of a percent (100 = 1%)." },
+];

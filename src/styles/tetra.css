@@ -278,6 +278,34 @@
   text-transform: uppercase;
 }
 
+.tetra-jargon {
+  margin: 0;
+}
+
+.tetra-jargon__row {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, max-content) minmax(0, 1fr);
+  gap: 10px 16px;
+  align-items: baseline;
+  margin: 0 0 10px;
+}
+
+.tetra-jargon dt {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--tetra-ink);
+}
+
+.tetra-jargon dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.55;
+  color: var(--tetra-ink);
+}
+
 .tetra-footer a {
   font-family: var(--tetra-font);
   font-size: 12px;

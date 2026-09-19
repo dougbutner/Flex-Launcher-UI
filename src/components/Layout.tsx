@@ -4,6 +4,7 @@ import { FlexLogo } from "@/components/FlexLogo";
 import { Header } from "@/components/Header";
 import { TokenIcon } from "@/components/TokenIcon";
 import { DISCLAIMER_PARAS, LEGAL_TERMS_URL } from "@/content/disclaimer";
+import { JARGON_ENTRIES, JARGON_TITLE } from "@/content/jargon";
 import { useTetraChrome } from "@/hooks/useTetraChrome";
 import {
   EOSIO_TOKEN,
@@ -47,6 +48,7 @@ export function Layout() {
   const { topOpen, footerOpen, expandTop, toggleFooter, sync } = useTetraChrome();
   const location = useLocation();
   const [termsOpen, setTermsOpen] = useState(false);
+  const [jargonOpen, setJargonOpen] = useState(false);
   const footerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -70,16 +72,19 @@ export function Layout() {
   }, []);
 
   useEffect(() => {
-    if (!termsOpen) return;
+    if (!termsOpen && !jargonOpen) return;
     let last = window.scrollY;
     const onScroll = () => {
       const y = window.scrollY;
-      if (last - y > 8) setTermsOpen(false);
+      if (last - y > 8) {
+        setTermsOpen(false);
+        setJargonOpen(false);
+      }
       last = y;
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [termsOpen]);
+  }, [termsOpen, jargonOpen]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -132,8 +137,25 @@ export function Layout() {
           <a href={TELEGRAM} target="_blank" rel="noopener noreferrer" className="link">
             support
           </a>
-          <button type="button" className="link" onClick={() => setTermsOpen(true)}>
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              setJargonOpen(false);
+              setTermsOpen(true);
+            }}
+          >
             terms
+          </button>
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              setTermsOpen(false);
+              setJargonOpen(true);
+            }}
+          >
+            jargon
           </button>
         </nav>
         <p className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[11px] text-muted-foreground/70">
@@ -172,6 +194,34 @@ export function Layout() {
             full terms and privacy policy
           </a>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => setTermsOpen(false)}>
+            Close
+          </button>
+        </div>
+      </div>
+      <div
+        className={`tetra-terms ${jargonOpen ? "is-open" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tetra-jargon-title"
+        aria-hidden={!jargonOpen}
+      >
+        <div className="tetra-terms__body">
+          <h2 id="tetra-jargon-title" className="tetra-terms__title">
+            {JARGON_TITLE}{" "}
+            <span aria-hidden>🙋‍♂️</span>
+          </h2>
+          <dl className="tetra-jargon">
+            {JARGON_ENTRIES.map((row) => (
+              <div key={row.term} className="tetra-jargon__row">
+                <dt>{row.term}</dt>
+                <dd>{row.def}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <div className="tetra-terms__actions">
+          <span />
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => setJargonOpen(false)}>
             Close
           </button>
         </div>
