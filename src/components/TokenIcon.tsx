@@ -7,7 +7,7 @@ type Props = {
   src?: string;
   size?: number;
   className?: string;
-  rounded?: "full" | "xl";
+  rounded?: "full" | "xl" | "md";
   /** Stretch to the parent box (tile backgrounds). */
   fill?: boolean;
 };
@@ -24,7 +24,8 @@ export function TokenIcon({
   const src = tokenIconSrc(contract, symbol, srcProp);
   const [broken, setBroken] = useState(false);
   const letter = (symbol || "?").slice(0, 1).toUpperCase();
-  const shape = rounded === "full" ? "rounded-full" : fill ? "rounded-none" : "rounded-2xl";
+  const shape =
+    rounded === "full" ? "rounded-full" : rounded === "md" ? "rounded-md" : fill ? "rounded-none" : "rounded-2xl";
   const box = fill ? undefined : { width: size, height: size, fontSize: Math.max(10, size * 0.4) };
 
   useEffect(() => {

@@ -15,6 +15,7 @@ import {
   type ChartRange,
 } from "@/services/alcorMarket";
 import { usdParts } from "@/services/money";
+import { Pulse } from "@/components/ui/Pulse";
 
 type Props = {
   poolId: number;
@@ -63,7 +64,7 @@ export function TokenMarket({
   const [view, setView] = useState<"line" | "alcor">("line");
   const [range, setRange] = useState<ChartRange>("all");
   const [data, setData] = useState<AlcorMarketView | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(poolId > 0);
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -178,9 +179,7 @@ export function TokenMarket({
             />
           </div>
           {busy && !data ? (
-            <div className="flex min-h-[220px] w-full items-center justify-center text-xs text-muted-foreground">
-              Loading Alcor…
-            </div>
+            <Pulse className="h-[220px] w-full" />
           ) : err && !data ? (
             <div className="flex min-h-[220px] w-full items-center justify-center px-4 text-center text-xs text-destructive">{err}</div>
           ) : view === "alcor" && chartSrc ? (

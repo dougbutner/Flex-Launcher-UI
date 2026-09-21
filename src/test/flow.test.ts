@@ -82,7 +82,6 @@ const ABI_FIELDS: Record<string, string[]> = {
     "schema",
     "nft_min",
     "min_token",
-    "need_kyc",
     "lp_min",
     "locked_lp_min",
     "lock_secs",
@@ -259,7 +258,6 @@ describe("mainnet launch flow simulation", () => {
     expect(names).not.toContain("setconfig");
     expect(names).not.toContain("receiverand");
     const setps = actions.find((a) => a.name === "setpresale")!;
-    expect(setps.data.need_kyc).toBe(false);
     expect(setps.data.mode).toBe(1);
     expect(Number(setps.data.insider_time)).toBeLessThan(Number(setps.data.launch_time));
     assertMatchesAbi("setpresale", setps.data);

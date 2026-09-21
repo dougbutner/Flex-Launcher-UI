@@ -970,8 +970,6 @@ bool complexflex::presale_gates_ok(const name& account, const presale& cfg, cons
             return true;
     }
 
-    if(cfg.need_kyc) any = true;
-
     if(cfg.lp_min > 0) {
         any = true;
         launches_table launches(get_self(), get_self().value);
@@ -1046,7 +1044,7 @@ void complexflex::enforce_presale(const name& from, const name& to, const asset&
 ACTION complexflex::setpresale(const string& token_symbol, uint32_t launch_time, uint32_t insider_time,
                                uint8_t mode, uint16_t insider_bps, uint16_t locked_insider_bps,
                                const name& collection, const name& schema, uint32_t nft_min,
-                               const extended_asset& min_token, bool need_kyc,
+                               const extended_asset& min_token,
                                int64_t lp_min, int64_t locked_lp_min, uint32_t lock_secs) {
     check(!token_symbol.empty(), "⟁ Token symbol is required");
     symbol_code code(token_symbol);
@@ -1062,7 +1060,6 @@ ACTION complexflex::setpresale(const string& token_symbol, uint32_t launch_time,
     check(insider_bps <= 10000 && locked_insider_bps <= 10000, "⟁ bps > 100%");
     if(locked_insider_bps)
         check(locked_insider_bps >= insider_bps, "⟁ locked_insider_bps must be ≥ insider_bps");
-    check(!need_kyc, "⟁ KYC gate not wired");
     if(collection.value || schema.value)
         check(collection.value && schema.value, "⟁ NFT gate needs collection and schema");
     if(locked_lp_min > 0 || lock_secs > 0)
@@ -1088,7 +1085,6 @@ ACTION complexflex::setpresale(const string& token_symbol, uint32_t launch_time,
         r.schema = schema;
         r.nft_min = collection.value && !nft_min ? 1 : nft_min;
         r.min_token = mt;
-        r.need_kyc = false;
         r.lp_min = lp_min;
         r.locked_lp_min = locked_lp_min;
         r.lock_secs = lock_secs;

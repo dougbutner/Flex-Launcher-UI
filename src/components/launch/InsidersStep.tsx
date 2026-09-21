@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { PctBpsField } from "@/components/launch/PctBpsField";
-import { Field, StepShell } from "@/components/launch/ui";
+import { Field, InfoBody, InfoLink, StepShell } from "@/components/launch/ui";
+import { INSIDERS_GUIDE_PARAS } from "@/content/launchGuide";
 import { defaultClubTimes, insidersStepValid } from "@/services/insidersClub";
 
 type Props = {
@@ -42,6 +43,7 @@ export function InsidersStep({ draft, patch, onNext, onBack }: Props) {
   const on = draft.presaleEnabled;
   const signed = Boolean(draft.presaleTx);
   const lockDays = draft.presaleLockSecs > 0 ? Math.round(draft.presaleLockSecs / 86400) : 0;
+  const [infoOpen, setInfoOpen] = useState(false);
   const [open, setOpen] = useState<Record<Feat, boolean>>({
     invites: featOn(draft, "invites"),
     nft: featOn(draft, "nft"),
@@ -79,6 +81,7 @@ export function InsidersStep({ draft, patch, onNext, onBack }: Props) {
     <StepShell
       title="Insiders"
       desc="Buy & LP early"
+      titleAside={<InfoLink open={infoOpen} onToggle={() => setInfoOpen((v) => !v)} />}
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -90,6 +93,7 @@ export function InsidersStep({ draft, patch, onNext, onBack }: Props) {
         </>
       }
     >
+      <InfoBody open={infoOpen} paras={INSIDERS_GUIDE_PARAS} />
       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background/40 p-3">
         <input type="checkbox" className="mt-1" checked={on} disabled={signed} onChange={(e) => enable(e.target.checked)} />
         <span>

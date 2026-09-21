@@ -10,3 +10,33 @@ export const LAUNCH_GUIDE_PARAS = [
   "Pick a market cap that makes sense for how much % you want early holders to have, or hack the system with a super short and cheap liquidity range you can buy out and re-pool or distribute how you like.",
   "After you set up your launch, dev tools will appear so you can manage your token.",
 ];
+
+export const FLEXONOMICS_GUIDE_PARAS = [
+  "This is the small fee on each transfer. Part of it can rain on people who hold, part can burn, and on fl3x and for3x a part can fund the project.",
+  "Rain is how you thank diamond hands. The more you share, the more your community has a reason to stay.",
+  "for3x can also split some of that rain into lucky numbers and a jackpot, so holding feels like a club, not a spreadsheet.",
+];
+
+export const QUOTE_GUIDE_PARAS = [
+  "This is what people pay with when they buy your token. Pick a coin your community already knows.",
+  "EASY, WON, GRAMS, and MEME keep the house cut at zero, so more of every trade stays with you and your holders.",
+  "Other coins work too if you want a bigger market. A tiny cut on those pairs helps keep the network running.",
+];
+
+export const RANGE_GUIDE_PARAS = [
+  "You set the prices your token can be bought at, and lock the pool so nobody can yank the money out for at least three months.",
+  "That lock is a promise to your community: their liquidity stays put while people discover you.",
+  "Pick a range that feels fair for early buyers, or a tight cheap one if you plan to refill later. You will be buying your own token here, same as everyone else.",
+];
+
+export const INSIDERS_GUIDE_PARAS = [
+  "Optional. Let friends, NFT holders, or people who add liquidity buy before the public open.",
+  "They show up on the drops calendar, so your community can see the launch coming and get excited with you.",
+  "Skip this if you want everyone to start at the same time. A public start is still a fair, proud launch.",
+];
+
+export const REVIEW_GUIDE_PARAS = [
+  "This is your last look before you sign. Names, fees, prices, and the lock cannot drift after create.",
+  "Read it like you are showing a friend. If it still feels fair to your community, you are ready.",
+];
+

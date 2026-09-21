@@ -801,7 +801,6 @@ function hydrate(spec: MockSpec): MockToken {
     min_token: minHold
       ? { quantity: minHold, contract: q.contract }
       : { quantity: qty("0", q.precision, q.symbol), contract: q.contract },
-    need_kyc: false,
     lp_min: locks.lpMin ?? 0,
     locked_lp_min: locks.lockedLpMin ?? 0,
     lock_secs: (locks.lockDays ?? 0) * 86400,

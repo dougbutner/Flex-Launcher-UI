@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   FEE_TIERS,
   SWAP_ALCOR,
@@ -11,7 +11,8 @@ import {
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, presetFromDraft, quoteFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
 import { FlexPairHoldTip } from "@/components/launch/FlexPairHoldTip";
-import { StepShell } from "@/components/launch/ui";
+import { InfoBody, InfoLink, StepShell } from "@/components/launch/ui";
+import { REVIEW_GUIDE_PARAS } from "@/content/launchGuide";
 import { formatSupplyCommas } from "@/services/assets";
 import { formatRainAsset } from "@/services/rainDefaults";
 import { unlockTimeUnix } from "@/services/launchMath";
@@ -78,12 +79,14 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
   const nftOn = Boolean(draft.presaleCollection.trim() || draft.presaleSchema.trim() || draft.presaleNftMin);
   const holdGateOn = Boolean(draft.presaleMinTokenQty.trim() || draft.presaleMinTokenContract.trim());
   const lockDays = draft.presaleLockSecs > 0 ? Math.round(draft.presaleLockSecs / 86400) : 0;
+  const [infoOpen, setInfoOpen] = useState(false);
 
   return (
     <StepShell
       className="launch-review"
       title="Review launch"
       desc="Everything the contract will check. Read it twice. Ticks and precision cannot change after create."
+      titleAside={<InfoLink open={infoOpen} onToggle={() => setInfoOpen((v) => !v)} />}
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -95,6 +98,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
         </>
       }
     >
+      <InfoBody open={infoOpen} paras={REVIEW_GUIDE_PARAS} />
       <div className="launch-review__groups">
         <Group tone="token" title="Token">
           <Row k="Contract" v={`${draft.symbol || "-"}@${flexAccount(draft.program)}`} mono />

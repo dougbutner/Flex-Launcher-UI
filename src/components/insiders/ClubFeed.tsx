@@ -10,6 +10,7 @@ import { easyQuantity, type FeedRange } from "@/services/insidersRules";
 import { actorHoldsToken, loadTokenMetrics, type TokenMetrics } from "@/services/mechanicsLive";
 import { readInsiders } from "@/services/flexTables";
 import { txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { FeedSkeleton } from "@/components/ui/PageSkeletons";
 
 const RANGES: FeedRange[] = ["day", "week", "month", "year", "all"];
 const RANGE_LABEL: Record<FeedRange, string> = {
@@ -40,7 +41,7 @@ export function ClubFeed({
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [range, setRange] = useState<FeedRange>("day");
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [profile, setProfile] = useState<string | null>(null);
 
   useEffect(() => {
@@ -194,7 +195,7 @@ export function ClubFeed({
       </div>
 
       {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
-      {busy && !posts.length ? <p className="insiders-muted mt-4">…</p> : null}
+      {busy && !posts.length ? <FeedSkeleton /> : null}
 
       <div className="insiders-ranges" role="tablist" aria-label="Feed range">
         {RANGES.map((r) => (

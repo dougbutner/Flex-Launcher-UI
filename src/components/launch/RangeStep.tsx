@@ -11,7 +11,8 @@ import {
   rangeStepValid,
 } from "@/components/launch/draftPlan";
 import { RangeMoreInfo } from "@/components/launch/RangeMoreInfo";
-import { Field, StepShell } from "@/components/launch/ui";
+import { Field, InfoBody, InfoLink, StepShell } from "@/components/launch/ui";
+import { RANGE_GUIDE_PARAS } from "@/content/launchGuide";
 import { maxLockDays, rangeImpact, USD_BUY_PROBE, type RangeImpact } from "@/services/launchMath";
 import { formatPlainNumber, fmtUsd } from "@/services/money";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
@@ -65,6 +66,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const days = Math.min(sliderMax, Math.max(LOCK_MIN_DAYS, draft.lockDays));
   const [moreMcap, setMoreMcap] = useState(false);
   const [moreInfo, setMoreInfo] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [editLock, setEditLock] = useState(false);
   const [lockText, setLockText] = useState("");
   const lockInputRef = useRef<HTMLInputElement>(null);
@@ -119,6 +121,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
     <StepShell
       title="Price Range & lock"
       desc={`One-sided: buyers walk the range paying ${quote.symbol} as your token sells out. The pool starts below (or above) the range so 100% of supply is deposited.`}
+      titleAside={<InfoLink open={infoOpen} onToggle={() => setInfoOpen((v) => !v)} />}
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -130,6 +133,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
         </>
       }
     >
+      <InfoBody open={infoOpen} paras={RANGE_GUIDE_PARAS} />
       {locked ? (
         <p className="text-xs text-warning">
           Create already landed. Range and lock are frozen so execute preflight cannot drift.

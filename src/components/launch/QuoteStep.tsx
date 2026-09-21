@@ -13,7 +13,8 @@ import {
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { presetFromDraft, quoteFromDraft, quoteStepValid } from "@/components/launch/draftPlan";
 import { useEasyHoldStanding } from "@/components/launch/FlexPairHoldTip";
-import { Field, StepShell } from "@/components/launch/ui";
+import { Field, InfoBody, InfoLink, StepShell } from "@/components/launch/ui";
+import { QUOTE_GUIDE_PARAS } from "@/content/launchGuide";
 import { quoteProofOk } from "@/services/flexTables";
 import { fmtUsd } from "@/services/money";
 import { getAccount } from "@/services/rpc";
@@ -35,6 +36,18 @@ type Props = {
 
 const FLEX_IDS = new Set(["easy", "won", "grams", "meme"]);
 const CHAIN_IDS = new Set(["xpr", "xmd", "loan"]);
+
+function SkimChip({ flex }: { flex: boolean }) {
+  return (
+    <span
+      className={`rounded-full border px-1.5 py-px text-[9px] font-medium leading-none ${
+        flex ? "border-success/40 text-success" : "border-warning/40 text-warning"
+      }`}
+    >
+      {flex ? "0% skim" : "0.5% skim"}
+    </span>
+  );
+}
 
 function QuoteCard({
   preset,
@@ -66,11 +79,9 @@ function QuoteCard({
           <span className="font-mono text-base font-bold">{preset.label}</span>
         </span>
         {unavailable ? (
-          <span className="chip-muted">not on chain</span>
-        ) : preset.flexQuote ? (
-          <span className="chip-success">0% skim</span>
+          <span className="text-[9px] uppercase tracking-wide text-muted-foreground">not on chain</span>
         ) : (
-          <span className="chip-warn">0.5% skim</span>
+          <SkimChip flex={preset.flexQuote} />
         )}
       </div>
       <div className="mt-1 font-mono text-xs text-muted-foreground">@{preset.contract}</div>
@@ -92,6 +103,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const [xtokenPickerOpen, setXtokenPickerOpen] = useState(false);
   /** Show all rows vs top N. */
   const [xtokenShowAll, setXtokenShowAll] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [proofHint, setProofHint] = useState("");
   const [proofBusy, setProofBusy] = useState(false);
   const standing = useEasyHoldStanding(draft.program);
@@ -241,6 +253,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
     <StepShell
       title="Pick the quote"
       desc="What buyers pay in. Flex quotes need no proof pool. XPR, XMD, LOAN, and xtokens need a non-zero Alcor proof pool vs XUSDC or XPR."
+      titleAside={<InfoLink open={infoOpen} onToggle={() => setInfoOpen((v) => !v)} />}
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -252,6 +265,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
         </>
       }
     >
+      <InfoBody open={infoOpen} paras={QUOTE_GUIDE_PARAS} />
       {locked ? (
         <p className="text-xs text-warning">
           Create already landed. Quote is frozen so execute preflight cannot drift.
@@ -343,7 +357,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-base font-bold">xtokens</span>
-                  <span className="chip-warn">0.5% skim</span>
+                  <SkimChip flex={false} />
                 </div>
                 <div className="mt-1 font-mono text-xs text-muted-foreground">@{xtokenPreset.contract}</div>
                 <div className="mt-2 text-xs text-muted-foreground">

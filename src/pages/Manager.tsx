@@ -30,6 +30,7 @@ import { rainFromRow, type RainDefaults } from "@/services/rainDefaults";
 import { hasProjectTax, taxFromSettings, taxRateValid, type TaxDraft } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { TOKEN_PROTON_TNAME_MAX } from "@/services/tokenProton";
+import { FormPanelSkeleton, ManagerSkeleton } from "@/components/ui/PageSkeletons";
 
 function formatManagerSupply(raw: string): string {
   const parsed = parseAsset(raw);
@@ -374,8 +375,8 @@ export default function Manager() {
         </p>
       ) : null}
 
-      {views == null || busy ? (
-        <p className="mt-2 text-sm text-muted-foreground">Reading issuer releases…</p>
+      {views == null ? (
+        <ManagerSkeleton />
       ) : !started ? (
         <div className="card mt-2 p-6">
           <p className="text-sm text-muted-foreground">
@@ -595,7 +596,7 @@ export default function Manager() {
                   ) : null}
                 </div>
               ) : view.progress.create ? (
-                <p className="text-xs text-muted-foreground">Reading on-chain tax settings…</p>
+                <FormPanelSkeleton />
               ) : null}
 
               <div>

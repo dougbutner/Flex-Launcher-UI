@@ -107,7 +107,7 @@ flexforex: + `angel_numbers_pool`, `jackpot_pool` (live pots - `pullangel` / `pu
 
 Optional. Missing `presales` row → no gated window (legacy Alcor-only until liftoff).
 
-`presale`: `token_symbol`, `launch_time`, `insider_time` (unix; insider must precede launch), `mode` (0 freeze, 1–3 insider window), `insider_bps` / `locked_insider_bps` (0–10000, % of issued supply), `collection`, `schema`, `nft_min`, `min_token`, `need_kyc` (**must be false**), `lp_min`, `locked_lp_min`, `lock_secs`.
+`presale`: `token_symbol`, `launch_time`, `insider_time` (unix; insider must precede launch), `mode` (0 freeze, 1-3 insider window), `insider_bps` / `locked_insider_bps` (0-10000, % of issued supply), `collection`, `schema`, `nft_min`, `min_token`, `lp_min`, `locked_lp_min`, `lock_secs`.
 
 `insider`: `account`, `approved`, `source` (0 issuer, 1 self), `locked_pos` (Alcor position id; 0 = not proven).
 
@@ -242,6 +242,9 @@ Check strings start with `⟁`. Surface them verbatim.
 9. Admin (`/admin`): nav only when connected as `3asy` / `fl3x` / `for3x`. Live-check `token.proton` by contract + ticker, then sign `reg` / `update` / `remove`. Check alcor-ui + eos-airdrops on GitHub. With `GITHUB_TOKEN` (dougbutner forks), sync upstream and open listing PRs. Sqlite caches listing + PR URLs.
 10. Manager (`/manager`): nav for logged-in issuers after the first successful `create`. SQLite stores metadata + step txs keyed by account; chain fills progress so a new device can resume. Save metadata is separate from Save tax (`setfees`). No IPFS re-upload (URL paste only). Admin later pushes to `token.proton`.
 11. Chat (`/insiders`): social feed. Gold badge = on-chain `insiders` row (`approved`; `proven` if `locked_pos` > 0). Rooms include launched tokens and pool-filled club windows. Verify as holder or club member.
+12. Make it rain (`/reflections`): dryland cards for unpaid `reflection_pool`. Anyone who connects can poke.
+
+**Loading:** every data screen shows a pulse skeleton that matches the layout (Winners tiles / bubbles / board, Make it rain cards, My Bags, Events calendar, Insiders feed, token market, Manager, Admin lists). Do not leave a lone "Reading…" line.
 
 ---
 

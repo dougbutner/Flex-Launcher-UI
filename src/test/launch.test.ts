@@ -296,7 +296,6 @@ describe("launch plan", () => {
       lockedInsiderBps: 250,
     });
     expect(ps.name).toBe("setpresale");
-    expect(ps.data.need_kyc).toBe(false);
     expect(ps.data.mode).toBe(1);
     expect(ps.data.insider_bps).toBe(100);
     expect(ps.data.locked_insider_bps).toBe(250);

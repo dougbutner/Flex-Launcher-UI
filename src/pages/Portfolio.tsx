@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
+import { BagsSkeleton } from "@/components/ui/PageSkeletons";
 import { FLEX_PROGRAMS, alcorSwapUrl, flexAccount, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
@@ -251,6 +252,12 @@ export default function Portfolio() {
         </button>
       </div>
 
+      {error ? <p className="mt-6 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">{error}</p> : null}
+
+      {holdings == null ? (
+        <BagsSkeleton />
+      ) : (
+        <>
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="stat-box">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">XPR balance</div>
@@ -260,21 +267,19 @@ export default function Portfolio() {
         </div>
         <div className="stat-box">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">Flex tokens held</div>
-          <div className="mt-1 font-mono text-lg font-bold">{holdings?.length ?? "…"}</div>
+          <div className="mt-1 font-mono text-lg font-bold">{holdings.length}</div>
         </div>
         <div className="stat-box">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">Earning reflections</div>
           <div className="mt-1 font-mono text-lg font-bold">
-            {holdings?.filter((h) => h.flexer && !h.flexer.fee_opted_out).length ?? "…"}
+            {holdings.filter((h) => h.flexer && !h.flexer.fee_opted_out).length}
           </div>
         </div>
         <div className="stat-box">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">Pools pending</div>
-          <div className="mt-1 font-mono text-lg font-bold text-primary">{holdings ? pendingCount : "…"}</div>
+          <div className="mt-1 font-mono text-lg font-bold text-primary">{pendingCount}</div>
         </div>
       </div>
-
-      {error ? <p className="mt-6 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">{error}</p> : null}
 
       {issued.length > 0 ? (
         <section className="mt-6">
@@ -332,9 +337,7 @@ export default function Portfolio() {
         </section>
       ) : null}
 
-      {holdings == null ? (
-        <p className="mt-6 text-sm text-muted-foreground">Reading your flex positions…</p>
-      ) : holdings.length === 0 ? (
+      {holdings.length === 0 ? (
         <div className="card mt-6 p-8 text-center text-sm text-muted-foreground">
           No flex token balances for {actor}. Grab one on Alcor after a launch liftoff.
         </div>
@@ -470,6 +473,8 @@ export default function Portfolio() {
             );
           })}
         </div>
+      )}
+        </>
       )}
     </div>
   );

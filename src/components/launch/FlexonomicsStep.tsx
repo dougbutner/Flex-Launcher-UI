@@ -1,8 +1,10 @@
+import { useState } from "react";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { taxFromDraft, taxStepValid } from "@/components/launch/draftPlan";
 import { RainDefaultsFields } from "@/components/launch/RainDefaultsFields";
 import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
-import { StepShell } from "@/components/launch/ui";
+import { InfoBody, InfoLink, StepShell } from "@/components/launch/ui";
+import { FLEXONOMICS_GUIDE_PARAS } from "@/content/launchGuide";
 
 type Props = {
   draft: LaunchDraft;
@@ -15,11 +17,13 @@ type Props = {
 export function FlexonomicsStep({ draft, patch, onNext, onBack, locked = false }: Props) {
   const tax = taxFromDraft(draft);
   const invalid = taxStepValid(draft);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   return (
     <StepShell
       title="Flexonomics"
       desc="Pick the transfer tax. for3x can also split the reflection slice into angel / jackpot. Set reflection minimums here."
+      titleAside={<InfoLink open={infoOpen} onToggle={() => setInfoOpen((v) => !v)} />}
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>
@@ -31,6 +35,7 @@ export function FlexonomicsStep({ draft, patch, onNext, onBack, locked = false }
         </>
       }
     >
+      <InfoBody open={infoOpen} paras={FLEXONOMICS_GUIDE_PARAS} />
       {locked ? (
         <p className="text-xs text-warning">
           Create already landed. Tax, ticker, and rain defaults are frozen here so execute preflight stays honest.

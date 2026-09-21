@@ -8,6 +8,7 @@ import { clubDateEvents, dayKey, loadCalendarEvents, type CalEvent } from "@/ser
 import { loadBoardTokens, type BoardToken } from "@/services/leaderboardStore";
 import { alcorAnalyticsUrl } from "@/config/launch";
 import type { LaunchRoom } from "@/services/mechanicsLive";
+import { EventsSkeleton, TilesRowSkeleton } from "@/components/ui/PageSkeletons";
 import {
   fromCalEvents,
   mergeTokenEvents,
@@ -116,9 +117,12 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
   return (
     <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-6">
       <h1 className="text-3xl font-black tracking-tight">{title}</h1>
-      {busy ? <p className="mt-6 text-sm text-muted-foreground">Reading launches…</p> : null}
       {error ? <p className="mt-6 text-sm text-destructive">{error}</p> : null}
 
+      {busy ? (
+        <EventsSkeleton />
+      ) : (
+        <>
       <div className="mt-8">
         <TokenMonthCalendar
           year={year}
@@ -188,9 +192,13 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
 
       <section className="mt-12 border-t border-border pt-8">
         {history == null ? (
+          histBusy ? (
+            <TilesRowSkeleton />
+          ) : (
           <button type="button" className="btn btn-outline" disabled={histBusy} onClick={loadHistory}>
-            {histBusy ? "Reading Alcor…" : "Launch History"}
+            Launch History
           </button>
+          )
         ) : (
           <>
             <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Launch History</h2>
@@ -235,6 +243,8 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
           </>
         )}
       </section>
+        </>
+      )}
     </div>
   );
 }

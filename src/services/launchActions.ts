@@ -397,7 +397,7 @@ export function setminAction(tokenContract: string, tokenSymbol: string, reflect
   };
 }
 
-/** Modes: 0 freeze, 1–3 insider window (UI uses 0 or 1). need_kyc must stay false. */
+/** Modes: 0 freeze, 1-3 insider window (UI uses 0 or 1). */
 export type SetPresaleArgs = {
   launchTime: number;
   insiderTime: number;
@@ -431,7 +431,6 @@ export function setpresaleAction(tokenContract: string, tokenSymbol: string, arg
       schema: (args.schema || "").trim() || "",
       nft_min: Math.max(0, Math.floor(args.nftMin ?? 0)),
       min_token: extendedAsset(minQty || "0.0000 FOO", minContract || tokenContract),
-      need_kyc: false,
       lp_min: Math.max(0, Math.floor(args.lpMin ?? 0)),
       locked_lp_min: Math.max(0, Math.floor(args.lockedLpMin ?? 0)),
       lock_secs: Math.max(0, Math.floor(args.lockSecs ?? 0)),

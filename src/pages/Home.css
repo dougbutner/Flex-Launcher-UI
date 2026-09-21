@@ -255,6 +255,14 @@
   color: var(--home-dim);
 }
 
+.home-spread__body p {
+  margin: 0;
+}
+
+.home-spread__cta {
+  margin-top: 1rem;
+}
+
 .home-spread--a .home-spread__body {
   grid-column: 1 / 6;
   grid-row: 2 / 3;

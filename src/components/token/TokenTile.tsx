@@ -12,6 +12,7 @@ type Props = {
   quoteSymbol?: string;
   mcapUsd?: number;
   liqUsd?: number;
+  src?: string;
   to?: string;
 };
 
@@ -24,6 +25,7 @@ export function TokenTile({
   quoteSymbol = "",
   mcapUsd,
   liqUsd,
+  src,
   to,
 }: Props) {
   const href = to ?? `/token/${contract}/${symbol}`;
@@ -35,6 +37,7 @@ export function TokenTile({
       <TokenIcon
         contract={contract}
         symbol={symbol}
+        src={src}
         fill
         className="pointer-events-none absolute inset-0 opacity-25 group-hover:opacity-40"
       />
@@ -48,7 +51,8 @@ export function TokenTile({
           )}
           <ProgramDots program={program} />
         </span>
-        <span className="flex flex-1 items-center justify-center px-1">
+        <span className="flex flex-1 flex-col items-center justify-center gap-1.5 px-1">
+          <TokenIcon contract={contract} symbol={symbol} src={src} size={40} rounded="xl" />
           <span className="truncate font-mono text-xl font-black tracking-tight text-foreground sm:text-2xl">
             {symbol}
           </span>

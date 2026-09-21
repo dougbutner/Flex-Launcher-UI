@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Amount } from "@/components/Amount";
 import { TokenIcon } from "@/components/TokenIcon";
+import { RainSkeleton } from "@/components/ui/PageSkeletons";
 import { TxLink } from "@/components/launch/ui";
 import {
   FLEX_PROGRAMS,
@@ -194,7 +195,7 @@ export default function Reflections() {
           Unpaid <span className="font-mono">reflection_pool</span> sitting on each launched token.
         </p>
         {drylands == null && busy ? (
-          <p className="mt-4 text-sm text-muted-foreground">Reading pools…</p>
+          <RainSkeleton />
         ) : !drylands?.length ? (
           <div className="card mt-4 p-8 text-center text-sm text-muted-foreground">
             No pending reflection pools. After tax accrues, unpaid rain shows here.

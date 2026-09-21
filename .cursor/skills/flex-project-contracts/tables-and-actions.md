@@ -105,7 +105,7 @@ checklock(token_symbol)
 
 `transfer` calls `enforce_presale` only when **not** launched. Absent `presales` row → only `to = swap.alcor`. Do not add these fields to `stat` / `settings` / `launches`.
 
-`presale`: `token_symbol`, `launch_time`, `insider_time`, `mode` (0 freeze; 1–3 same list+time rules), `insider_bps` (% of issued supply, 0–10000), `locked_insider_bps` (≥ `insider_bps` after `locked_pos`), `collection`, `schema`, `nft_min`, `min_token`, `need_kyc` (**must be false**), `lp_min`, `locked_lp_min`, `lock_secs`.
+`presale`: `token_symbol`, `launch_time`, `insider_time`, `mode` (0 freeze; 1-3 same list+time rules), `insider_bps` (% of issued supply, 0-10000), `locked_insider_bps` (≥ `insider_bps` after `locked_pos`), `collection`, `schema`, `nft_min`, `min_token`, `lp_min`, `locked_lp_min`, `lock_secs`.
 
 `insider`: `account`, `approved`, `source` (0 issuer, 1 self), `locked_pos` (Alcor position id; 0 = not proven).
 

@@ -46,6 +46,25 @@ export function Field(props: {
   );
 }
 
+export function InfoLink({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" className="link text-[11px] font-semibold uppercase tracking-wider" onClick={onToggle}>
+      info
+    </button>
+  );
+}
+
+export function InfoBody({ open, paras }: { open: boolean; paras: readonly string[] }) {
+  if (!open) return null;
+  return (
+    <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+      {paras.map((para) => (
+        <p key={para.slice(0, 56)}>{para}</p>
+      ))}
+    </div>
+  );
+}
+
 export function StepShell(props: {
   title: string;
   desc: string;

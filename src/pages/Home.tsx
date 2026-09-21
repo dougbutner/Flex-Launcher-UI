@@ -33,6 +33,8 @@ const BENEFITS = [
     title: "Sane economics",
     body: "You go live on a real market with a price range, no unplanned curve snipers love to pump and dump. Tokens start on Alcor with a fee you earn 100% of, and a price range you choose.",
     image: "/home/pure-liquid-tokenomics.jpg",
+    href: "https://flex.report",
+    hrefLabel: "Dive deep",
   },
   {
     id: "mining",
@@ -171,7 +173,14 @@ export default function Home() {
               <img className="home-art" src={item.image} alt="" />
             </div>
             <h2 className="home-spread__title">{item.title}</h2>
-            <p className="home-spread__body">{item.body}</p>
+            <div className="home-spread__body">
+              <p>{item.body}</p>
+              {"href" in item && item.href ? (
+                <a className="home-cta home-spread__cta" href={item.href} target="_blank" rel="noreferrer">
+                  {item.hrefLabel}
+                </a>
+              ) : null}
+            </div>
           </article>
         );
       })}

@@ -71,7 +71,7 @@ namespace eosio {
          ACTION setpresale(const string& token_symbol, uint32_t launch_time, uint32_t insider_time,
                            uint8_t mode, uint16_t insider_bps, uint16_t locked_insider_bps,
                            const name& collection, const name& schema, uint32_t nft_min,
-                           const extended_asset& min_token, bool need_kyc,
+                           const extended_asset& min_token,
                            int64_t lp_min, int64_t locked_lp_min, uint32_t lock_secs);
          ACTION setlaunchtime(const string& token_symbol,
                               const std::optional<uint32_t>& launch_time,
@@ -249,7 +249,6 @@ namespace eosio {
             name            schema;
             uint32_t        nft_min = 0;              // collection+schema count
             extended_asset  min_token;
-            bool            need_kyc = false;
             int64_t         lp_min = 0;
             int64_t         locked_lp_min = 0;
             uint32_t        lock_secs = 0;

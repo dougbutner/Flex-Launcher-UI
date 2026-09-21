@@ -45,7 +45,6 @@ describe("insidersClub", () => {
     };
     const actions = clubSignActions("3asy", "FOO", draft);
     expect(actions.map((a) => a.name)).toEqual(["setpresale", "addinsiders"]);
-    expect(actions[0].data.need_kyc).toBe(false);
     expect(actions[0].data.mode).toBe(1);
     expect(clubSignActions("3asy", "FOO", { ...draft, presaleMode: 0 })[0].data.mode).toBe(1);
     expect(actions[1].data.accounts).toBe("alice,bob");

@@ -9,6 +9,7 @@ import { IssuerTools } from "@/components/token/IssuerTools";
 import { PresalePanel } from "@/components/token/PresalePanel";
 import { TokenListingCard } from "@/components/token/TokenListingCard";
 import { TokenMarket } from "@/components/token/TokenMarket";
+import { TokenPageSkeleton } from "@/components/ui/PageSkeletons";
 import {
   explorerAccount,
   flexMeta,
@@ -244,6 +245,10 @@ export default function Token() {
 
       {error ? <p className="mt-6 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">{error}</p> : null}
 
+      {busy && !stat ? (
+        <TokenPageSkeleton />
+      ) : (
+        <>
       <div className="mt-6 flex flex-wrap gap-2">
         <span className={launched ? "chip-success" : inPresale ? "chip-primary" : "chip-muted"}>
           {launched ? "launched" : inPresale ? "insiders" : "wizard in progress"}
@@ -407,6 +412,8 @@ export default function Token() {
           />
         </div>
       ) : null}
+        </>
+      )}
     </div>
   );
 }

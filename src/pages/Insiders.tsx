@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { CalendarPanel } from "@/components/events/CalendarPanel";
 import { ClubFeed } from "@/components/insiders/ClubFeed";
 import { TokenIcon } from "@/components/TokenIcon";
+import { InsidersSkeleton } from "@/components/ui/PageSkeletons";
 import { useEffect, useMemo, useState } from "react";
 import { loadLaunchRooms, type LaunchRoom } from "@/services/mechanicsLive";
 
@@ -19,7 +20,10 @@ export default function Insiders() {
         if (live) setRooms(rows);
       })
       .catch((e) => {
-        if (live) setError(e instanceof Error ? e.message : String(e));
+        if (live) {
+          setError(e instanceof Error ? e.message : String(e));
+          setRooms([]);
+        }
       });
     return () => {
       live = false;
@@ -36,6 +40,10 @@ export default function Insiders() {
 
   return (
     <div className="insiders mx-auto max-w-[1200px] px-4 pb-8 pt-16 sm:px-6">
+      {rooms == null && !error ? (
+        <InsidersSkeleton />
+      ) : (
+        <>
       <ul className="insiders-rail">
         {liveRooms.map((r) => {
           const on = r.contract === code && r.symbol === sym;
@@ -72,6 +80,8 @@ export default function Insiders() {
           </p>
         </div>
       ) : null}
+        </>
+      )}
     </div>
   );
 }

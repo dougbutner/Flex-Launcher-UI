@@ -91,7 +91,7 @@ const HINTS: Array<[string, string]> = [
   ["presale gates", "Pass an NFT, Min Hold, or LP gate, then join."],
   ["not an insider", "Join the list, or ask the issuer to invite you."],
   ["insider cap", "Buy would exceed this account's Insider Max."],
-  ["KYC gate not wired", "need_kyc must stay false."],
+  ["KYC gate not wired", "KYC is not an option on this launch."],
   ["sells locked", "Alcor cannot send out until public launch; wallet sells stay locked until launch."],
   ["flex quotes do not use xtoken_proof_pool_id", "Flex quotes take proof pool 0."],
   ["quote must be a zero-amount", "Quote quantity must be zero in startlaunch."],

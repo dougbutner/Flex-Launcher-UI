@@ -5,7 +5,7 @@ import { tokenStepValid } from "@/components/launch/draftPlan";
 import { ContractPickModal } from "@/components/launch/ContractPickModal";
 import { ProgramDots } from "@/components/token/ProgramDots";
 import { TokenIcon } from "@/components/TokenIcon";
-import { Field, StepShell, SupplyShortcuts } from "@/components/launch/ui";
+import { Field, InfoBody, InfoLink, StepShell, SupplyShortcuts } from "@/components/launch/ui";
 import { CONTRACT_DOCS } from "@/content/flexContractDocs";
 import { LAUNCH_GUIDE_PARAS } from "@/content/launchGuide";
 import { formatSupplyCommas, parseSupplyInput, validSymbol } from "@/services/assets";
@@ -64,11 +64,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
     <StepShell
       title="Launch your token"
       desc="Choose from three options, name and symbol."
-      titleAside={
-        <button type="button" className="link text-[11px] font-semibold uppercase tracking-wider" onClick={() => setGuideOpen((v) => !v)}>
-          info
-        </button>
-      }
+      titleAside={<InfoLink open={guideOpen} onToggle={() => setGuideOpen((v) => !v)} />}
       footer={
         <>
           <span />
@@ -78,13 +74,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         </>
       }
     >
-      {guideOpen ? (
-        <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-          {LAUNCH_GUIDE_PARAS.map((para) => (
-            <p key={para.slice(0, 48)}>{para}</p>
-          ))}
-        </div>
-      ) : null}
+      <InfoBody open={guideOpen} paras={LAUNCH_GUIDE_PARAS} />
       {programLocked ? (
         <p className="text-xs text-warning">
           Token is already on-chain. Token fields are static so execute preflight cannot drift.

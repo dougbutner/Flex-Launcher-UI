@@ -36,13 +36,14 @@ import {
 } from "@/services/tokenProton";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { AdminSandboxToggle } from "@/test/sandbox/AdminSandboxToggle";
+import { AdminListSkeleton } from "@/components/ui/PageSkeletons";
 
 type TokenRef = { symbol: string; precision: number };
 
 export default function Admin() {
   const { actor, transact } = useWallet();
   const allowed = isFlexContractActor(actor);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [checking, setChecking] = useState<string | null>(null);
   const [checkNote, setCheckNote] = useState("");
   const [error, setError] = useState("");
@@ -605,6 +606,8 @@ export default function Admin() {
       </div>
       {unchecked.length === 0 && !busy ? (
         <p className="mt-2 text-sm text-muted-foreground">Every known token is marked listed, or the list is empty.</p>
+      ) : busy && tokens.length === 0 ? (
+        <AdminListSkeleton />
       ) : (
         <ul className="mt-3 space-y-3">{unchecked.map((t) => checkRow(t))}</ul>
       )}
@@ -612,6 +615,8 @@ export default function Admin() {
       <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-muted-foreground">Already on token.proton</h2>
       {synced.length === 0 && !busy ? (
         <p className="mt-2 text-sm text-muted-foreground">None cached yet. Run a check first.</p>
+      ) : busy && tokens.length === 0 ? (
+        <AdminListSkeleton />
       ) : (
         <ul className="mt-3 space-y-3">{synced.map((t) => listedCard(t))}</ul>
       )}
