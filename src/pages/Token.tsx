@@ -1,22 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ClubFeed } from "@/components/insiders/ClubFeed";
+import { ClubFeed, WeekTopPost } from "@/components/insiders/ClubFeed";
 import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
-import { AlcorSwapEmbed } from "@/components/token/AlcorSwapEmbed";
-import { HolderPrefs } from "@/components/token/HolderPrefs";
+import { SanitySection } from "@/components/token/SanitySection";
 import { IssuerTools } from "@/components/token/IssuerTools";
 import { PresalePanel } from "@/components/token/PresalePanel";
 import { TokenListingCard } from "@/components/token/TokenListingCard";
-import { TokenMarket } from "@/components/token/TokenMarket";
+import { TokenTitleStats } from "@/components/token/TokenMarket";
+import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { TokenPageSkeleton } from "@/components/ui/PageSkeletons";
-import {
-  explorerAccount,
-  flexMeta,
-  hasAngelChannels,
-  isFlexContractActor,
-  programFromAccount,
-} from "@/config/launch";
+import { alcorAnalyticsUrl, explorerAccount, flexMeta, hasAngelChannels, isFlexContractActor, programFromAccount } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import {
@@ -70,6 +64,7 @@ export default function Token() {
   const [poking, setPoking] = useState<string | null>(null);
   const [pokeMsg, setPokeMsg] = useState<{ tx?: string; err?: string }>({});
   const [iconSrc, setIconSrc] = useState("");
+  const [sanityEpoch, setSanityEpoch] = useState(0);
 
   const load = useCallback(async () => {
     if (!code || !sym || !program) return;
@@ -124,6 +119,7 @@ export default function Token() {
       setError(txErrorMessage(err));
     } finally {
       setBusy(false);
+      setSanityEpoch((n) => n + 1);
     }
   }, [actor, code, program, sym]);
 
@@ -159,7 +155,9 @@ export default function Token() {
   const launched = Boolean(pick(launch, "launched"));
   const inPresale = Boolean(presale) && !launched && Number(pick(launch, "pure_liquid_alcor_pool_id", "pool_id") ?? 0) > 0;
   const supplyAmt = assetAmountNumber(String(pick(stat, "supply") ?? "0"));
+  const maxSupplyAmt = assetAmountNumber(String(pick(stat, "max_supply") ?? "")) || supplyAmt;
   const launchPoolId = Number(pick(launch, "pure_liquid_alcor_pool_id", "pool_id") ?? 0);
+  const positionId = Number(pick(launch, "position_id") ?? 0);
 
   const poke = async (kind: "rain" | "checklock" | "pullangel" | "pulljackpot") => {
     if (!actor) return;
@@ -237,6 +235,14 @@ export default function Token() {
               </>
             ) : null}
           </p>
+          <TokenTitleStats
+            poolId={launchPoolId}
+            contract={code}
+            symbol={sym}
+            quoteContract={quoteContract}
+            quoteSymbol={quoteSymbol}
+            supply={supplyAmt}
+          />
         </div>
         <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>
           {busy ? "Refreshing…" : "Refresh"}
@@ -274,20 +280,13 @@ export default function Token() {
       {!launch && !busy ? (
         <p className="mt-6 text-sm text-muted-foreground">No launches row for this symbol on {code}.</p>
       ) : (
-        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(280px,360px)]">
-          <div className="min-h-0 border border-border bg-background/40 p-3">
-            <ClubFeed contract={code} symbol={sym} poolId={launchPoolId} />
-          </div>
-          <div className="min-w-0">
-            <TokenMarket
-              poolId={launchPoolId}
-              contract={code}
-              symbol={sym}
-              quoteContract={quoteContract}
-              quoteSymbol={quoteSymbol}
-              supply={supplyAmt}
-              launched={launched || inPresale}
-              compact
+        <div className="mt-6 grid items-start gap-4 md:grid-cols-3">
+          <div className="min-w-0 md:col-span-2">
+            <iframe
+              title={`${sym} Alcor analytics`}
+              src={alcorAnalyticsUrl(sym, code)}
+              className="h-[100dvh] max-h-[100dvh] w-full border border-border bg-background"
+              allow="clipboard-write"
             />
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {isLoggedIn && actor ? (
@@ -330,16 +329,29 @@ export default function Token() {
               {pokeMsg.err ? <span className="text-xs text-destructive">{pokeMsg.err}</span> : null}
             </div>
           </div>
-          <div className="min-w-0">
-            <AlcorSwapEmbed
-              quoteSymbol={quoteSymbol}
-              quoteContract={quoteContract}
-              symbol={sym}
-              contract={code}
-            />
+          <div className="max-h-[100dvh] min-h-0 overflow-y-auto border border-border bg-background/40 p-3 md:col-span-1">
+            <ClubFeed contract={code} symbol={sym} poolId={launchPoolId} initialRange="all" />
+            <WeekTopPost />
           </div>
         </div>
       )}
+
+      {launch ? (
+        <SanitySection
+          contract={code}
+          symbol={sym}
+          quoteContract={quoteContract}
+          quoteSymbol={quoteSymbol}
+          poolId={launchPoolId}
+          positionId={positionId}
+          tickLower={Number(pick(launch, "tick_lower") ?? 0)}
+          tickUpper={Number(pick(launch, "tick_upper") ?? 0)}
+          sqrtStart={String(pick(launch, "sqrt_price_x64") ?? "0")}
+          maxSupply={maxSupplyAmt}
+          tokenPrecision={precision}
+          reloadKey={sanityEpoch}
+        />
+      ) : null}
 
       {presale && !launched ? (
         <PresalePanel

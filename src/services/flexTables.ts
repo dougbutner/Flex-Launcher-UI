@@ -205,6 +205,22 @@ export async function readPositions(poolId: number) {
   return withSiteSandbox(rows, (mod, live) => mod.mergePositions(poolId, live));
 }
 
+export async function readPosition(poolId: number, positionId: number) {
+  const { rows } = await getTableRows<Record<string, unknown>>({
+    code: SWAP_ALCOR,
+    scope: String(poolId),
+    table: "positions",
+    lower_bound: positionId,
+    upper_bound: positionId,
+    limit: 1,
+  });
+  const live = rows[0] ?? null;
+  return withSiteSandbox(live, (mod, row) => {
+    if (row) return row;
+    return mod.mergePositions(poolId, []).find((p) => Number(p.id) === positionId) ?? null;
+  });
+}
+
 export async function readLock(posId: number) {
   const { rows } = await getTableRows<Record<string, unknown>>({
     code: SWAP_ALCOR,

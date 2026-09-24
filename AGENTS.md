@@ -107,7 +107,7 @@ flexforex: + `angel_numbers_pool`, `jackpot_pool` (live pots - `pullangel` / `pu
 
 Optional. Missing `presales` row → no gated window (legacy Alcor-only until liftoff).
 
-`presale`: `token_symbol`, `launch_time`, `insider_time` (unix; insider must precede launch), `mode` (0 freeze, 1-3 insider window), `insider_bps` / `locked_insider_bps` (0-10000, % of issued supply), `collection`, `schema`, `nft_min`, `min_token`, `lp_min`, `locked_lp_min`, `lock_secs`.
+`presale`: `token_symbol`, `launch_time`, `insider_time` (unix; insider must precede launch), `mode` (0 freeze, 1-3 insider window), `insider_bps` / `locked_insider_bps` (0-10000, % of issued supply), `collection`, `schema`, `nft_min`, `min_token`, `lp_min`, `locked_lp_min`, `lock_secs`, `need_kyc` (`eosio.proton` `usersinfo.verified`), `gates_all` (false = any set gate, true = every set gate). Invites and the LP-lock bonus are not buy gates.
 
 `insider`: `account`, `approved`, `source` (0 issuer, 1 self), `locked_pos` (Alcor position id; 0 = not proven).
 

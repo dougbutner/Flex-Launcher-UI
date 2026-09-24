@@ -48,7 +48,7 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
   }, [actor, asContract, contract, precision, symbol]);
 
   const sign = async () => {
-    if (!asContract) return;
+    if (!actor) return;
     setSigning(true);
     setMsg({});
     try {
@@ -103,8 +103,9 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
       <div>
         <h3 className="text-sm font-bold tracking-tight">Wallet and Alcor listing</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Wallets read token.proton, which {contract}@active has to sign. Ask in Telegram to add the logo. Alcor logos
-          are a pull request from your fork, not a commit to Alcor's GitHub.
+          Submit opens token.proton::{row ? "update" : "reg"} for your wallet. That action needs {contract}@active. Ask
+          in Telegram if the wallet rejects it. Alcor logos are a pull request from your fork, not a commit to Alcor's
+          GitHub.
         </p>
       </div>
       <ListingPacket
@@ -115,11 +116,12 @@ export function TokenListingCard({ contract, symbol, precision, actor, transact 
         draft={draft}
         onChange={(p) => setDraft((d) => ({ ...d, ...p }))}
         protonOn={Boolean(row)}
-        canSign={asContract}
+        canSign
         missing={!row}
         signing={signing}
         removing={removing}
-        onSign={asContract ? () => void sign() : undefined}
+        submitLabel="Submit to proton.token"
+        onSign={() => void sign()}
         onRemove={asContract && row ? () => void remove() : undefined}
         msg={msg}
       />

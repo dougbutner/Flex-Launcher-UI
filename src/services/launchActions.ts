@@ -412,6 +412,9 @@ export type SetPresaleArgs = {
   lpMin?: number;
   lockedLpMin?: number;
   lockSecs?: number;
+  needKyc?: boolean;
+  /** false = any set gate passes. true = every set gate must pass. */
+  gatesAll?: boolean;
 };
 
 export function setpresaleAction(tokenContract: string, tokenSymbol: string, args: SetPresaleArgs): ChainAction {
@@ -434,6 +437,8 @@ export function setpresaleAction(tokenContract: string, tokenSymbol: string, arg
       lp_min: Math.max(0, Math.floor(args.lpMin ?? 0)),
       locked_lp_min: Math.max(0, Math.floor(args.lockedLpMin ?? 0)),
       lock_secs: Math.max(0, Math.floor(args.lockSecs ?? 0)),
+      need_kyc: Boolean(args.needKyc),
+      gates_all: Boolean(args.gatesAll),
     },
   };
 }

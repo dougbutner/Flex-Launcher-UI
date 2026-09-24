@@ -5,10 +5,19 @@ import {
   clubSignActions,
   actorClubMark,
   insidersStepValid,
+  localToUnix,
   parseInviteAccounts,
+  unixToLocal,
 } from "@/services/insidersClub";
 
 describe("insidersClub", () => {
+  it("round-trips unix through local time and accepts a raw timestamp", () => {
+    const unix = 1_800_000_000;
+    expect(localToUnix(unixToLocal(unix))).toBe(unix);
+    expect(localToUnix(String(unix))).toBe(unix);
+    expect(localToUnix("")).toBe(0);
+  });
+
   it("parses invite names and skips dupes", () => {
     expect(parseInviteAccounts("Alice, bob bob\ncarol")).toEqual(["alice", "bob", "carol"]);
     expect(parseInviteAccounts("")).toEqual([]);

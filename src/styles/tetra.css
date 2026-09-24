@@ -1016,6 +1016,16 @@ body > [id*="anchor-link"] {
   position: relative;
 }
 
+.insiders-gif-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+}
+
 .insiders-gif-pop {
   position: absolute;
   left: 0;
@@ -1069,6 +1079,48 @@ body > [id*="anchor-link"] {
 
 .insiders-err {
   color: hsl(var(--destructive));
+}
+
+.gate-anyall {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #ffe566;
+  color: #1a1400;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.gate-anyall.is-all {
+  background: #000;
+  color: #ffe566;
+  box-shadow: inset 0 0 0 1px #ffe566;
+}
+
+.gate-anyall:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.club-time {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  font-size: 16px;
+}
+
+.feat-bonus-on {
+  border-color: #22c55e;
+  background: rgb(34 197 94 / 0.12);
+  color: #22c55e;
 }
 
 @keyframes insiders-up-pop {

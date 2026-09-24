@@ -10,15 +10,23 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
+/** Local wall time, including seconds, so a unix value round-trips in this timezone. */
 export function unixToLocal(unix: number): string {
   if (!unix) return "";
   const d = new Date(unix * 1000);
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
 }
 
+/** Datetime-local is parsed as this browser's timezone. A digit string is unix seconds. */
 export function localToUnix(value: string): number {
-  if (!value.trim()) return 0;
-  const t = Date.parse(value);
+  const raw = value.trim();
+  if (!raw) return 0;
+  if (/^\d+$/.test(raw)) {
+    const n = Number(raw);
+    return Number.isSafeInteger(n) && n > 0 ? n : 0;
+  }
+  const t = Date.parse(raw);
   return Number.isFinite(t) ? Math.floor(t / 1000) : 0;
 }
 
@@ -90,6 +98,8 @@ export function setpresaleArgsFromDraft(draft: LaunchDraft): SetPresaleArgs {
     lpMin: draft.presaleLpMin,
     lockedLpMin: draft.presaleLockedLpMin,
     lockSecs: draft.presaleLockSecs,
+    needKyc: draft.presaleNeedKyc,
+    gatesAll: draft.presaleGatesAll,
   };
 }
 

@@ -1,6 +1,7 @@
 #include "complexflex.hpp"
 #include "include/alcorswap_interface.hpp"
 #include <cstdint>
+#include <tuple>
 #include <vector>
 #include <eosio/system.hpp>
 
@@ -952,9 +953,12 @@ bool complexflex::presale_gates_ok(const name& account, const presale& cfg, cons
         multi_index<"assets"_n, aa_asset> assets("atomicassets"_n, account.value);
         uint32_t need = cfg.nft_min ? cfg.nft_min : 1;
         uint32_t n = 0;
-        for(auto i = assets.begin(); i != assets.end(); ++i)
+        bool hit = false;
+        for(auto i = assets.begin(); i != assets.end() && !hit; ++i)
             if(i->collection_name == cfg.collection && i->schema_name == cfg.schema)
-                if(++n >= need) return true;
+                hit = ++n >= need;
+        if(cfg.gates_all) { if(!hit) return false; }
+        else if(hit) return true;
     }
 
     if(cfg.min_token.quantity.amount > 0) {
@@ -965,28 +969,61 @@ bool complexflex::presale_gates_ok(const name& account, const presale& cfg, cons
         };
         multi_index<"accounts"_n, token_account> ac(cfg.min_token.contract, account.value);
         auto bit = ac.find(cfg.min_token.quantity.symbol.code().raw());
-        if(bit != ac.end() && bit->balance.symbol == cfg.min_token.quantity.symbol &&
-           bit->balance.amount >= cfg.min_token.quantity.amount)
-            return true;
+        bool hit = bit != ac.end() && bit->balance.symbol == cfg.min_token.quantity.symbol &&
+                   bit->balance.amount >= cfg.min_token.quantity.amount;
+        if(cfg.gates_all) { if(!hit) return false; }
+        else if(hit) return true;
     }
 
     if(cfg.lp_min > 0) {
         any = true;
+        bool hit = false;
         launches_table launches(get_self(), get_self().value);
         auto lit = launches.find(sym.raw());
         if(lit != launches.end() && lit->pure_liquid_alcor_pool_id) {
             alcor::positions_t pos(SWAP_ALCOR, lit->pure_liquid_alcor_pool_id);
             auto byown = pos.get_index<"buyowner"_n>();
             int64_t liq = 0;
-            for(auto i = byown.lower_bound(account.value); i != byown.end() && i->owner == account; ++i)
-                liq += (int64_t)i->liquidity;
-            if(liq >= cfg.lp_min) return true;
+            for(auto i = byown.lower_bound(account.value); i != byown.end() && i->owner == account && !hit; ++i)
+                hit = (liq += (int64_t)i->liquidity) >= cfg.lp_min;
         }
+        if(cfg.gates_all) { if(!hit) return false; }
+        else if(hit) return true;
+    }
+
+    if(cfg.need_kyc) {
+        any = true;
+        // Same row easyinvite reads: eosio.proton usersinfo.verified.
+        struct kyc_prov {
+            name     kyc_provider;
+            string   kyc_level;
+            uint64_t kyc_date;
+        };
+        struct proton_userinfo {
+            name        acc;
+            std::string name;
+            std::string avatar;
+            bool        verified;
+            uint64_t    date;
+            uint64_t    verifiedon;
+            eosio::name verifier;
+            std::vector<eosio::name> raccs;
+            std::vector<std::tuple<eosio::name, eosio::name>> aacts;
+            std::vector<std::tuple<eosio::name, string>> ac;
+            std::vector<kyc_prov> kyc;
+            uint64_t primary_key() const { return acc.value; }
+        };
+        multi_index<"usersinfo"_n, proton_userinfo> proton_users("eosio.proton"_n, "eosio.proton"_n.value);
+        bool hit = false;
+        if(auto user_itr = proton_users.find(account.value); user_itr != proton_users.end())
+            hit = user_itr->verified;
+        if(cfg.gates_all) { if(!hit) return false; }
+        else if(hit) return true;
     }
 
     // locked_lp_min / locked_pos are provelock proof only — not a buy gate.
     (void)row;
-    return !any;
+    return cfg.gates_all || !any;
 }//END presale_gates_ok()
 
 int64_t complexflex::presale_cap(const name& account, const presale& cfg, const insider* row, int64_t supply) {
@@ -1045,7 +1082,7 @@ ACTION complexflex::setpresale(const string& token_symbol, uint32_t launch_time,
                                uint8_t mode, uint16_t insider_bps, uint16_t locked_insider_bps,
                                const name& collection, const name& schema, uint32_t nft_min,
                                const extended_asset& min_token,
-                               int64_t lp_min, int64_t locked_lp_min, uint32_t lock_secs) {
+                               int64_t lp_min, int64_t locked_lp_min, uint32_t lock_secs, bool need_kyc, bool gates_all) {
     check(!token_symbol.empty(), "⟁ Token symbol is required");
     symbol_code code(token_symbol);
     stats statstable(get_self(), code.raw());
@@ -1088,6 +1125,8 @@ ACTION complexflex::setpresale(const string& token_symbol, uint32_t launch_time,
         r.lp_min = lp_min;
         r.locked_lp_min = locked_lp_min;
         r.lock_secs = lock_secs;
+        r.need_kyc = need_kyc;
+        r.gates_all = gates_all;
     };
     if(it == p.end()) p.emplace(ram_payer, write);
     else p.modify(it, same_payer, write);

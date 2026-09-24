@@ -233,6 +233,26 @@ function getAmountBDelta(sqrtA: bigint, sqrtB: bigint, liquidity: bigint, roundU
   return roundUp ? mulDivRoundingUp(liquidity, diff, Q64) : mulDiv(liquidity, diff, Q64);
 }
 
+/** Token amounts a position holds at `sqrtPrice` (Alcor tokenA / tokenB, raw units). */
+export function amountsAtSqrt(args: {
+  liquidity: bigint;
+  sqrtLower: bigint;
+  sqrtUpper: bigint;
+  sqrtPrice: bigint;
+}): { amountA: bigint; amountB: bigint } {
+  const L = args.liquidity;
+  const lo = args.sqrtLower;
+  const hi = args.sqrtUpper;
+  const p = args.sqrtPrice;
+  if (L <= 0n || lo <= 0n || hi <= lo || p <= 0n) return { amountA: 0n, amountB: 0n };
+  if (p <= lo) return { amountA: getAmountADelta(lo, hi, L, false), amountB: 0n };
+  if (p >= hi) return { amountA: 0n, amountB: getAmountBDelta(lo, hi, L, false) };
+  return {
+    amountA: getAmountADelta(p, hi, L, false),
+    amountB: getAmountBDelta(lo, p, L, false),
+  };
+}
+
 function getNextSqrtPriceFromAmountARoundingUp(sqrtP: bigint, liquidity: bigint, amount: bigint, add: boolean): bigint {
   if (amount === 0n || liquidity === 0n || sqrtP <= 0n) return sqrtP;
   const numerator1 = liquidity << 64n;

@@ -56,6 +56,10 @@ function PreviewListing() {
       draft={draft}
       onChange={(p) => setDraft((d) => ({ ...d, ...p }))}
       protonOn={false}
+      canSign
+      missing
+      submitLabel="Submit to proton.token"
+      onSign={() => undefined}
     />
   );
 }
@@ -77,7 +81,7 @@ export default function Preview() {
         <section className="card mt-8 space-y-3 p-6">
           <h2 className="text-sm font-bold tracking-tight">Wallet and Alcor listing</h2>
           <p className="text-xs text-muted-foreground">
-            Faux draft. Request the logo in Telegram and copy the Alcor AI prompt the same way Manager does.
+            Faux draft. Submit to token.proton or request help in Telegram, then copy the Alcor AI prompt the same way Manager does.
           </p>
           <PreviewListing />
         </section>
@@ -449,7 +453,7 @@ export default function Preview() {
           <TokenIcon contract="xtokens" symbol="XBTC" size={64} />
           <div className="min-w-0 flex-1">
             <div className="font-mono text-lg font-bold">XBTC</div>
-            <div className="text-xs text-muted-foreground">@xtokens · 8 decimals · 0.5% skim · collapsed pick</div>
+            <div className="text-xs text-muted-foreground">@xtokens · 8 decimals · 0.5-1% skim · collapsed pick</div>
           </div>
           <span className="link text-sm">expand</span>
         </div>

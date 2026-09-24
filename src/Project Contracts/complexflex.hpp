@@ -53,7 +53,7 @@ namespace eosio {
                            uint8_t mode, uint16_t insider_bps, uint16_t locked_insider_bps,
                            const name& collection, const name& schema, uint32_t nft_min,
                            const extended_asset& min_token,
-                           int64_t lp_min, int64_t locked_lp_min, uint32_t lock_secs);
+                           int64_t lp_min, int64_t locked_lp_min, uint32_t lock_secs, bool need_kyc, bool gates_all);
          ACTION setlaunchtime(const string& token_symbol,
                               const std::optional<uint32_t>& launch_time,
                               const std::optional<uint32_t>& insider_time);
@@ -205,6 +205,8 @@ namespace eosio {
             int64_t         lp_min = 0;
             int64_t         locked_lp_min = 0;
             uint32_t        lock_secs = 0;
+            bool            need_kyc = false;         // eosio.proton usersinfo.verified
+            bool            gates_all = false;        // false = any set gate; true = every set gate
             uint64_t primary_key() const { return token_symbol.code().raw(); }
          };
 

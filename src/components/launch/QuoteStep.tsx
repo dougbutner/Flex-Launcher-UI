@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { TokenIcon } from "@/components/TokenIcon";
 import {
-  easyHoldFull,
   easyHoldNeed,
   flexMeta,
   holdEasyToLaunch,
@@ -37,18 +36,6 @@ type Props = {
 const FLEX_IDS = new Set(["easy", "won", "grams", "meme"]);
 const CHAIN_IDS = new Set(["xpr", "xmd", "loan"]);
 
-function SkimChip({ flex }: { flex: boolean }) {
-  return (
-    <span
-      className={`rounded-full border px-1.5 py-px text-[9px] font-medium leading-none ${
-        flex ? "border-success/40 text-success" : "border-warning/40 text-warning"
-      }`}
-    >
-      {flex ? "0% skim" : "0.5% skim"}
-    </span>
-  );
-}
-
 function QuoteCard({
   preset,
   selected,
@@ -80,14 +67,13 @@ function QuoteCard({
         </span>
         {unavailable ? (
           <span className="text-[9px] uppercase tracking-wide text-muted-foreground">not on chain</span>
-        ) : (
-          <SkimChip flex={preset.flexQuote} />
-        )}
+        ) : null}
       </div>
       <div className="mt-1 font-mono text-xs text-muted-foreground">@{preset.contract}</div>
       <div className="mt-2 text-xs text-muted-foreground">
         Cap: {preset.priceLower} - {preset.priceUpper} {preset.symbol} / token
       </div>
+      <p className="mt-2 text-[10px] text-muted-foreground">{preset.flexQuote ? "0% skim" : "0.5-1% skim"}</p>
     </button>
   );
 }
@@ -109,7 +95,6 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const standing = useEasyHoldStanding(draft.program);
   const launchMin = flexMeta(draft.program).launchEasyMin;
   const flexHold = standing.flexNeed ?? easyHoldNeed(launchMin);
-  const fullHold = standing.fullNeed ?? easyHoldFull(launchMin);
 
   const invalid = quoteStepValid(draft);
   const preset = presetFromDraft(draft);
@@ -274,7 +259,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       <div>
         <p className="label">Flex quotes</p>
         <p className="mb-2 text-xs text-muted-foreground">
-          EASY hold promo applies here: {holdEasyToLaunch(flexHold)} this month.
+          EASY hold promo applies to every backing, including xtokens: {holdEasyToLaunch(flexHold)} this month.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {flexPresets.map((p) => (
@@ -292,8 +277,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       <div>
         <p className="label">Chain quotes</p>
         <div className="mb-2 text-xs text-muted-foreground">
-          <p>Full hold: {holdEasyToLaunch(fullHold)}.</p>
-          {standing.tip ? <p className="mt-1 text-[11px] leading-snug">{standing.tip}</p> : null}
+          <p>Same EASY hold: {holdEasyToLaunch(flexHold)}.</p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {chainPresets.map((p) => (
@@ -312,11 +296,10 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
         <p className="label">xtokens</p>
         <div className="mb-2 text-xs text-muted-foreground">
           <p>
-            Bridged majors on xtokens (XBTC, XXRP, and friends). Same full EASY hold as chain quotes. Top {XTOKEN_TOP_N}{" "}
-            by Alcor market activity; expand for the full list. Logos are the on-chain token.proton icons, served from
-            this app.
+            Bridged majors on xtokens (XBTC, XXRP, and friends). Same EASY hold as every other backing:{" "}
+            {holdEasyToLaunch(flexHold)}. Top {XTOKEN_TOP_N} by Alcor market activity; expand for the full list. Logos
+            are the on-chain token.proton icons, served from this app.
           </p>
-          {standing.tip ? <p className="mt-1 text-[11px] leading-snug">{standing.tip}</p> : null}
         </div>
 
         {/* Collapsed selection or category entry */}
@@ -328,7 +311,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
                 <div className="min-w-0 flex-1">
                   <div className="font-mono text-lg font-bold">{draft.xtokenSymbol}</div>
                   <div className="text-xs text-muted-foreground">
-                    @{xtokenPreset.contract} · {draft.xtokenPrecision} decimals · 0.5% skim
+                    @{xtokenPreset.contract} · {draft.xtokenPrecision} decimals · 0.5-1% skim
                     {selectedRow?.usdPrice ? ` · ${fmtUsd(selectedRow.usdPrice)}` : ""}
                   </div>
                 </div>
@@ -357,12 +340,12 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-base font-bold">xtokens</span>
-                  <SkimChip flex={false} />
                 </div>
                 <div className="mt-1 font-mono text-xs text-muted-foreground">@{xtokenPreset.contract}</div>
                 <div className="mt-2 text-xs text-muted-foreground">
                   Click to load XBTC, XXRP, XETH, and the rest.
                 </div>
+                <p className="mt-2 text-[10px] text-muted-foreground">0.5-1% skim</p>
               </button>
             )}
           </div>
@@ -484,8 +467,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Skim chips are the liftoff starting rates. After the Alcor lock expires, checklock (or makeitrain) can add
-        +0.25% each to dev and club.
+        0% is a flex quote. 0.5-1% starts at 0.25% dev + 0.25% club, then can rise once after the Alcor lock expires.
       </p>
 
       <label className="flex cursor-pointer items-start gap-3 rounded-2xl border p-4">

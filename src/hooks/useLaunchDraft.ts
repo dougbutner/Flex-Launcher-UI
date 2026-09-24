@@ -77,6 +77,10 @@ export type LaunchDraft = {
   presaleLockedLpMin: number;
   /** Seconds remaining on proven Alcor lock for higher cap. */
   presaleLockSecs: number;
+  /** eosio.proton usersinfo.verified. */
+  presaleNeedKyc: boolean;
+  /** true = every set gate; false = any one gate. */
+  presaleGatesAll: boolean;
   /** Issuer addinsiders comma/space list, signed with setpresale after lock. */
   presaleInviteList: string;
   presaleTx: string;
@@ -164,6 +168,8 @@ export const emptyDraft = (): LaunchDraft => {
     presaleLpMin: 0,
     presaleLockedLpMin: 0,
     presaleLockSecs: 0,
+    presaleNeedKyc: false,
+    presaleGatesAll: false,
     presaleInviteList: "",
     presaleTx: "",
   };

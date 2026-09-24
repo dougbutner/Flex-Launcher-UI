@@ -146,12 +146,12 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
                   </span>
                 </span>
                 {selected ? (
-                  <span className="flex items-end justify-between gap-2">
-                    <span className="grid grid-cols-3 gap-x-1.5 gap-y-0 font-mono leading-tight">
+                  <span className="mt-auto flex shrink-0 items-end justify-between gap-2">
+                    <span className="grid grid-cols-3 items-start gap-x-2 gap-y-2 font-mono">
                       {traits.map((t) => (
-                        <span key={t.k}>
-                          <span className="block text-[7px] uppercase tracking-wide text-muted-foreground">{t.k}</span>
-                          <span className="text-[9px] font-semibold text-foreground">{t.v}</span>
+                        <span key={t.k} className="flex flex-col leading-none">
+                          <span className="text-[7px] uppercase tracking-wide text-muted-foreground">{t.k}</span>
+                          <span className="mt-px text-[9px] font-semibold leading-none text-foreground">{t.v}</span>
                         </span>
                       ))}
                     </span>

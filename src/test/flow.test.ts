@@ -85,6 +85,8 @@ const ABI_FIELDS: Record<string, string[]> = {
     "lp_min",
     "locked_lp_min",
     "lock_secs",
+    "need_kyc",
+    "gates_all",
   ],
   setlaunchtime: ["token_symbol", "launch_time", "insider_time"],
   addinsiders: ["token_symbol", "accounts"],

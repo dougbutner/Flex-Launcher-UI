@@ -1,3 +1,4 @@
+import { alcorTokenId } from "@/config/launch";
 import { formatNiceNumber } from "@/services/money";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
 import { loadSiteSandbox, siteSandboxFlag } from "@/services/siteSandbox";
@@ -173,6 +174,33 @@ function buildTrades(swaps: AlcorSwapRow[], tokenIsA: boolean, limit = 12): Mark
     if (out.length >= limit) break;
   }
   return out;
+}
+
+export async function fetchSwapPool(poolId: number): Promise<AlcorPoolRow | null> {
+  if (!(poolId > 0)) return null;
+  const res = await fetch(`${ALCOR_POOL}/${poolId}`, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) return null;
+  return (await res.json()) as AlcorPoolRow;
+}
+
+/** Every Alcor AMM pool that lists this token on either side. */
+export async function fetchSwapPoolsForToken(symbol: string, contract: string): Promise<AlcorPoolRow[]> {
+  const id = alcorTokenId(symbol, contract);
+  const load = async (side: "tokenA" | "tokenB") => {
+    const res = await fetch(`${ALCOR_POOL}?${side}=${encodeURIComponent(id)}`, {
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!res.ok) return [] as AlcorPoolRow[];
+    const data = (await res.json()) as AlcorPoolRow[];
+    return Array.isArray(data) ? data : [];
+  };
+  const [asA, asB] = await Promise.all([load("tokenA"), load("tokenB")]);
+  const byId = new Map<number, AlcorPoolRow>();
+  for (const row of [...asA, ...asB]) {
+    const poolId = Number(row.id);
+    if (poolId > 0) byId.set(poolId, row);
+  }
+  return [...byId.values()];
 }
 
 export async function loadAlcorMarket(args: {

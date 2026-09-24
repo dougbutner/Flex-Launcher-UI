@@ -3,8 +3,12 @@ import { Grid, SearchBar, SearchContext, SearchContextManager, SuggestionBar } f
 import type { IGif } from "@giphy/js-types";
 import { validGiphyUrl } from "@/services/insidersRules";
 
-/** Giphy's published Web SDK demo key; override with VITE_GIPHY_API_KEY. */
-const KEY = import.meta.env.VITE_GIPHY_API_KEY?.trim() || "sXpGFDGAd0syZp9YaS3szp2L42VIuHTz";
+/**
+ * Giphy publishes this as GIPHY_FE_WEB_API_KEY on giphy.com.
+ * The old SDK demo key now returns 401. Override with VITE_GIPHY_API_KEY.
+ */
+const KEY = import.meta.env.VITE_GIPHY_API_KEY?.trim() || "Gc7131jiJuvI7IdN0HZ1D7nh0ow5BU6g";
+const SEARCH = { limit: 12, rating: "g" as const };
 
 function gifUrl(gif: IGif) {
   const images = gif.images as { downsized?: { url?: string }; original?: { url?: string } };
@@ -62,14 +66,17 @@ export function GifPicker({
         gif
       </button>
       {open ? (
-        <SearchContextManager apiKey={KEY} theme={{ mode: "dark", searchbarHeight: 36 }} shouldDefaultToTrending>
-          <PickerBody
-            onPick={(url) => {
-              onPick(url);
-              setOpen(false);
-            }}
-          />
-        </SearchContextManager>
+        <>
+          <button type="button" className="insiders-gif-backdrop" aria-label="Close GIF search" onClick={() => setOpen(false)} />
+          <SearchContextManager apiKey={KEY} options={SEARCH} theme={{ darkMode: true, searchbarHeight: 36 }} shouldDefaultToTrending>
+            <PickerBody
+              onPick={(url) => {
+                onPick(url);
+                setOpen(false);
+              }}
+            />
+          </SearchContextManager>
+        </>
       ) : null}
     </div>
   );

@@ -411,7 +411,7 @@ export function nextLaunchStep(
   return {
     id: "done",
     label: "Launch complete",
-    prompt: "This token is live. Open the token page. Request the token.proton logo in Telegram, then fork Alcor and paste the listing prompt into Cursor.",
+    prompt: "This token is live. Open the token page. Submit to token.proton from there, or request help in Telegram, then fork Alcor and paste the listing prompt into Cursor.",
   };
 }
 

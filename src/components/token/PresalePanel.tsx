@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { ClubTimeField } from "@/components/launch/ClubTimeField";
 import { Field, TxLink } from "@/components/launch/ui";
 import { alcorSwapUrl } from "@/config/launch";
 import { assetAmountNumber, parseAsset, validAccount } from "@/services/assets";
@@ -14,6 +15,7 @@ import {
   setpresaleAction,
   type ChainAction,
 } from "@/services/launchActions";
+import { localToUnix, unixToLocal } from "@/services/insidersClub";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]): unknown {
@@ -27,22 +29,6 @@ function fmtUnix(unix: number): string {
   const d = new Date(unix * 1000);
   const days = Math.max(0, Math.ceil((unix - Date.now() / 1000) / 86400));
   return `${d.toLocaleString()} · ${days}d`;
-}
-
-function pad2(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-function unixToLocal(unix: number): string {
-  if (!unix) return "";
-  const d = new Date(unix * 1000);
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-
-function localToUnix(value: string): number {
-  if (!value.trim()) return 0;
-  const t = Date.parse(value);
-  return Number.isFinite(t) ? Math.floor(t / 1000) : 0;
 }
 
 type Props = {
@@ -267,20 +253,24 @@ export function PresalePanel({
               </button>
             </div>
           </Field>
-          <Field label="Delay times (cannot pull earlier)" sentence>
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <ClubTimeField
+              label="Insider buys start"
+              hint="Cannot pull earlier than the time already on chain."
+              value={delayInsider}
+              disabled={disabled}
+              onChange={setDelayInsider}
+            />
+            <ClubTimeField
+              label="Public launch"
+              hint="Cannot pull earlier than the time already on chain."
+              value={delayLaunch}
+              disabled={disabled}
+              onChange={setDelayLaunch}
+            />
+          </div>
+          <Field label="Save times" sentence>
             <div className="flex flex-wrap gap-2">
-              <input
-                type="datetime-local"
-                className="input"
-                value={delayInsider}
-                onChange={(e) => setDelayInsider(e.target.value)}
-              />
-              <input
-                type="datetime-local"
-                className="input"
-                value={delayLaunch}
-                onChange={(e) => setDelayLaunch(e.target.value)}
-              />
               <button
                 type="button"
                 className="btn btn-outline btn-sm"

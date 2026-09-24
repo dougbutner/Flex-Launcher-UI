@@ -29,7 +29,7 @@ export function Field(props: {
   sentence?: boolean;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-1.5 flex items-baseline gap-3">
         <span className={props.sentence ? "mb-0 block text-sm font-semibold text-foreground" : "label mb-0"}>
           {props.label}

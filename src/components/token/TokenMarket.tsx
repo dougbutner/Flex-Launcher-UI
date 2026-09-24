@@ -51,6 +51,63 @@ function Stat({
   );
 }
 
+export function TokenTitleStats({
+  poolId,
+  contract,
+  symbol,
+  quoteContract,
+  quoteSymbol,
+  supply,
+}: Omit<Props, "launched" | "compact">) {
+  const [data, setData] = useState<AlcorMarketView | null>(null);
+
+  useEffect(() => {
+    if (!(poolId > 0) || !quoteSymbol) {
+      setData(null);
+      return;
+    }
+    let live = true;
+    loadAlcorMarket({
+      poolId,
+      tokenContract: contract,
+      tokenSymbol: symbol,
+      quoteContract,
+      quoteSymbol,
+      supply,
+    })
+      .then((row) => {
+        if (live) setData(row);
+      })
+      .catch(() => {
+        if (live) setData(null);
+      });
+    return () => {
+      live = false;
+    };
+  }, [poolId, contract, symbol, quoteContract, quoteSymbol, supply]);
+
+  if (!(poolId > 0) || !quoteSymbol) return null;
+  const changeTone = data && data.change24 > 0 ? "up" : data && data.change24 < 0 ? "down" : undefined;
+  const vol = usdParts(data?.volumeUsd24 ?? 0);
+  const mcap = usdParts(data?.mcapUsd ?? 0);
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</div>
+        <p className="flex flex-wrap items-baseline gap-x-2 font-mono text-sm font-semibold">
+          <Amount value={data?.priceQuote ?? 0} />
+          <span className="text-muted-foreground">{quoteSymbol}</span>
+          {data?.priceUsd ? <Amount value={data.priceUsd} kind="usd" className="text-primary" /> : null}
+        </p>
+      </div>
+      <Stat label="24h" value={data ? fmtPctChange(data.change24) : "-"} tone={changeTone} />
+      <Stat label="Vol 24h" value={vol.display} title={vol.full} />
+      <Stat label="Mcap" value={mcap.display} title={mcap.full} />
+    </div>
+  );
+}
+
 export function TokenMarket({
   poolId,
   contract,

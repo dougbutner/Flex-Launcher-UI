@@ -130,12 +130,22 @@ export function TokenPageSkeleton() {
           <Pulse key={i} className="h-7 w-24 rounded-full" />
         ))}
       </div>
-      <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)_minmax(280px,360px)]">
-        <div className="border border-border bg-background/40 p-3">
+      <div className="mt-6 grid items-start gap-4 md:grid-cols-3">
+        <Pulse className="h-[100dvh] w-full md:col-span-2" />
+        <div className="max-h-[100dvh] overflow-hidden border border-border bg-background/40 p-3 md:col-span-1">
           <FeedSkeleton />
         </div>
-        <MarketChartSkeleton />
-        <Pulse className="h-[600px] w-full" />
+      </div>
+      <div className="mt-4 border border-border bg-background/40 p-4">
+        <Pulse className="h-4 w-16" />
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Pulse className="h-2.5 w-16" />
+              <Pulse className="h-6 w-28" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

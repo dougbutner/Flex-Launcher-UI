@@ -325,13 +325,13 @@ describe("launch plan", () => {
     expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 8, 10))).toBe(1_000);
     expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 9, 9))).toBe(2_000);
     expect(easyHoldNeed(50_000, 0, Date.UTC(2026, 8, 10))).toBe(5_000);
-    expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 8, 10), false)).toBe(10_000);
-    expect(easyHoldNeed(50_000, 0, Date.UTC(2026, 8, 10), false)).toBe(50_000);
+    expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 8, 10), false)).toBe(1_000);
+    expect(easyHoldNeed(50_000, 0, Date.UTC(2026, 8, 10), false)).toBe(5_000);
     expect(easyHoldFull(10_000, 2)).toBe(30_000);
     expect(easyHoldOffPercent(Date.UTC(2026, 8, 9) + 6 * 30 * 86400 * 1000)).toBe(30);
     expect(easyHoldOffPercent(Date.UTC(2026, 8, 9) + 9 * 30 * 86400 * 1000)).toBe(0);
     expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9))).toMatch(/90%/);
-    expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9))).toMatch(/Flex pairs/);
+    expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9))).toMatch(/xtokens/);
     expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9) + 9 * 30 * 86400 * 1000)).toBeNull();
     expect(
       easyHoldFlexAltTip({
@@ -339,14 +339,14 @@ describe("launch plan", () => {
         fullNeed: 50_000,
         flexNeed: 5_000,
       })
-    ).toMatch(/enough to launch a Flex-paired token/);
+    ).toBeNull();
     expect(
       easyHoldFlexAltTip({
         easyBal: 1_000,
         fullNeed: 50_000,
         flexNeed: 5_000,
       })
-    ).toMatch(/You hold 1,000 EASY. Flex-paired tokens .* only need 5,000 EASY/);
+    ).toBeNull();
     expect(
       easyHoldFlexAltTip({
         easyBal: 50_000,
@@ -778,7 +778,7 @@ describe("execute gates and pool id", () => {
     expect(ok.every((i) => i.pass)).toBe(true);
   });
 
-  it("tips Flex-pair promo when short on a non-flex hold", () => {
+  it("does not suggest a cheaper Flex pair when the hold is short", () => {
     const short = createGateItems({
       stat: null,
       easyBal: 5_000,
@@ -791,8 +791,7 @@ describe("execute gates and pool id", () => {
     const easy = short.find((i) => i.id === "easy");
     expect(easy?.pass).toBe(false);
     expect(easy?.detail ?? "").toMatch(/Need 50,000 EASY before liftoff/);
-    expect(easy?.hint ?? "").toMatch(/enough to launch a Flex-paired token/);
-    expect(easy?.hint ?? "").toMatch(/You hold 5,000 EASY/);
+    expect(easy?.hint).toBeUndefined();
   });
 
   it("marks GEASY inventory rows pass on complexflex", () => {

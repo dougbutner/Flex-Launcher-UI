@@ -5,7 +5,6 @@ import {
   MON3Y,
   SWAP_ALCOR,
   easyHoldFlexAltTip,
-  easyHoldFull,
   easyHoldNeed,
   flexAccount,
   flexMeta,
@@ -136,9 +135,8 @@ export async function runCreateGates(
     readAccounts(MON3Y, issuer, EASY_SYMBOL).catch(() => ({ rows: [] as Record<string, unknown>[] })),
     countIssuerLaunched(code, issuer),
   ]);
-  const full = easyHoldFull(meta.launchEasyMin, prior);
-  const flexNeed = easyHoldNeed(meta.launchEasyMin, prior, Date.now(), true);
-  const need = flexQuote ? flexNeed : full;
+  const need = easyHoldNeed(meta.launchEasyMin, prior);
+  const flexNeed = need;
   const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
   return createGateItems({ stat, easyBal, need, symbol, prior, flexQuote, flexNeed });
 }
@@ -257,9 +255,8 @@ export async function runPreflight(
   const flexQuote =
     launchFlex != null ? Boolean(launchFlex) : isFlexQuoteToken(plan.quote.symbol, plan.quote.contract);
   const base = flexMeta(program).launchEasyMin;
-  const full = easyHoldFull(base, prior);
-  const flexNeed = easyHoldNeed(base, prior, Date.now(), true);
-  const need = flexQuote ? flexNeed : full;
+  const need = easyHoldNeed(base, prior);
+  const flexNeed = need;
   const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
   const easyPass = easyBal + 1e-12 >= need;
   items.push({

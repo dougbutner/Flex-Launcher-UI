@@ -71,10 +71,8 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
   const tax = taxFromDraft(draft);
   const overall = taxSum(tax, draft.program);
   const meta = flexMeta(draft.program);
-  const holdNeed = easyHoldNeed(meta.launchEasyMin, 0, Date.now(), preset.flexQuote);
-  const holdLine = preset.flexQuote
-    ? `${holdEasyToLaunch(holdNeed)} (flex pair promo). More after each prior launch.`
-    : `${holdEasyToLaunch(holdNeed)} (full). More after each prior launch.`;
+  const holdNeed = easyHoldNeed(meta.launchEasyMin);
+  const holdLine = `${holdEasyToLaunch(holdNeed)} (promo, every backing). More after each prior launch.`;
   const invites = parseInviteAccounts(draft.presaleInviteList);
   const nftOn = Boolean(draft.presaleCollection.trim() || draft.presaleSchema.trim() || draft.presaleNftMin);
   const holdGateOn = Boolean(draft.presaleMinTokenQty.trim() || draft.presaleMinTokenContract.trim());
@@ -205,6 +203,8 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
                 />
               ) : null}
               {draft.presaleLpMin > 0 ? <Row k="LP min" v={String(draft.presaleLpMin)} mono /> : null}
+              {draft.presaleNeedKyc ? <Row k="KYC" v="WebAuth verified" /> : null}
+              <Row k="Gates" v={draft.presaleGatesAll ? "All" : "Any"} />
             </>
           ) : (
             <Row k="Club" v="Off. Public after liftoff." />

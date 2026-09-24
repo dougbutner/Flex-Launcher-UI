@@ -21,10 +21,10 @@ export function LaunchPreview({
   const showSymbol = draft.symbol;
   const preset = QUOTE_PRESETS.find((q) => q.id === draft.quoteId);
   const flexQuote = Boolean(preset?.flexQuote);
-  const holdAmt = easyHoldNeed(flexMeta(draft.program).launchEasyMin, 0, Date.now(), flexQuote);
+  const holdAmt = easyHoldNeed(flexMeta(draft.program).launchEasyMin);
 
   const milestones = [
-    { label: `Hold ${holdAmt.toLocaleString()} EASY${flexQuote ? "" : " (full)"}`, done: false },    { label: "Created", done: Boolean(draft.createTx) },
+    { label: `Hold ${holdAmt.toLocaleString()} EASY`, done: false },    { label: "Created", done: Boolean(draft.createTx) },
     { label: "Fees", done: Boolean(draft.feesTx) },
     { label: "Supply", done: Boolean(draft.mintTx) },
     { label: "startlaunch", done: Boolean(draft.startTx) },

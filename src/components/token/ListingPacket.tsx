@@ -32,6 +32,7 @@ type Props = {
   removing?: boolean;
   msg?: { tx?: string; err?: string };
   signHint?: string;
+  submitLabel?: string;
 };
 
 export function ListingPacket({
@@ -51,6 +52,7 @@ export function ListingPacket({
   removing = false,
   msg,
   signHint,
+  submitLabel = "Submit to proton.token",
 }: Props) {
   const [copied, setCopied] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
@@ -204,38 +206,37 @@ export function ListingPacket({
       {signHint ? <p className="text-xs text-muted-foreground">{signHint}</p> : null}
       {msg?.tx && msg.tx !== "ok" ? <TxLink tx={msg.tx} prefix="tx " /> : null}
       {msg?.err ? <p className="text-xs font-medium text-destructive">{msg.err}</p> : null}
-      {canSign && onSign ? (
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {canSign && onSign ? (
           <button
             type="button"
             className="btn btn-primary btn-sm"
             disabled={disabled || signing || nameTooLong || Boolean(draft.iconurl && !iconOk)}
             onClick={onSign}
           >
-            {signing ? "Signing…" : missing ? "Sign token.proton::reg" : "Sign token.proton::update"}
+            {signing ? "Signing…" : submitLabel}
           </button>
-          {!missing && onRemove ? (
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              disabled={disabled || signing || removing}
-              onClick={onRemove}
-            >
-              {removing ? "Removing…" : "Sign token.proton::remove"}
-            </button>
-          ) : null}
-        </div>
-      ) : (
+        ) : null}
+        {!missing && onRemove ? (
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            disabled={disabled || signing || removing}
+            onClick={onRemove}
+          >
+            {removing ? "Removing…" : "Sign token.proton::remove"}
+          </button>
+        ) : null}
         <a
           href={FLEX_TELEGRAM}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn btn-primary btn-sm"
+          className="btn btn-outline btn-sm"
           title={logoRequestTooltip(symbol, program)}
         >
-          Request token logo added
+          Request help in Telegram
         </a>
-      )}
+      </div>
     </div>
   );
 }

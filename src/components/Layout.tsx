@@ -107,6 +107,16 @@ export function Layout() {
       </button>
       <footer ref={footerRef} className={`tetra-footer ${footerOpen ? "is-open" : ""}`}>
         <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              setTermsOpen(false);
+              setJargonOpen(true);
+            }}
+          >
+            jargon
+          </button>
           <a href={DOCS} target="_blank" rel="noopener noreferrer" className="link">
             docs
           </a>
@@ -147,17 +157,7 @@ export function Layout() {
               setTermsOpen(true);
             }}
           >
-            terms
-          </button>
-          <button
-            type="button"
-            className="link"
-            onClick={() => {
-              setTermsOpen(false);
-              setJargonOpen(true);
-            }}
-          >
-            jargon
+            Legal
           </button>
         </nav>
         <p className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[11px] text-muted-foreground/70">

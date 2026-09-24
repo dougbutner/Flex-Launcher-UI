@@ -465,6 +465,7 @@ export default function Admin() {
               disabled={busyAny}
               onSign={() => void sign(t.symbol, t.precision)}
               onRemove={!missing ? () => void remove(t.symbol, t.precision) : undefined}
+              submitLabel={missing ? "Sign token.proton::reg" : "Sign token.proton::update"}
               msg={msg[t.symbol]}
             />
             <div className="mt-4 space-y-3 border-t border-border pt-4">
@@ -510,6 +511,7 @@ export default function Admin() {
           disabled={busyAny}
           onSign={() => void sign(t.symbol, t.precision)}
           onRemove={() => void remove(t.symbol, t.precision)}
+          submitLabel="Sign token.proton::update"
           msg={msg[t.symbol]}
         />
         {places(t)}
