@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { amountsAtSqrt } from "@/services/launchMath";
-import { buildSanity, midQuotePerToken } from "@/services/poolSanity";
+import { buildSanity, backingShares, midQuotePerToken } from "@/services/poolSanity";
 import { getSqrtPriceX64AtTick } from "@/services/tickMath";
 
 const GEASY = {
@@ -53,6 +53,8 @@ describe("pool sanity", () => {
     expect(view.poolRedeemCover).toBeCloseTo(GEASY.allPoolsQuoteUsd / view.walletPrintUsd!, 8);
     expect(view.lpLoyalty).toBeCloseTo(view.satelliteTokens / (view.satelliteTokens + view.walletFloat), 8);
     expect(view.poolTvlUsd).toBe(GEASY.poolTvlUsd);
+    expect(view.backing).toEqual([]);
+    expect(view.poolBook).toEqual([]);
   });
 
   it("has no average paid while the range is still untouched", () => {
@@ -130,5 +132,17 @@ describe("pool sanity", () => {
       12
     );
     expect(view.hardBackingUsd).toBeCloseTo(view.lockedQuote * 0.5, 8);
+  });
+
+  it("groups quote-side dollars into backing shares", () => {
+    const rows = backingShares([
+      { symbol: "EASY", contract: "mon3y", usd: 75 },
+      { symbol: "easy", contract: "mon3y", usd: 25 },
+      { symbol: "XPR", contract: "eosio.token", usd: 0 },
+      { symbol: "WON", contract: "w3won", usd: 100 },
+    ]);
+    expect(rows.map((row) => row.symbol)).toEqual(["EASY", "WON"]);
+    expect(rows[0].share).toBeCloseTo(0.5, 8);
+    expect(rows[1].share).toBeCloseTo(0.5, 8);
   });
 });

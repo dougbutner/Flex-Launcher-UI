@@ -48,7 +48,45 @@ export type SanityView = {
   bookCover: number | null;
   lpLoyalty: number | null;
   unpricedPools: number;
+  /** Quote-side USD of every swap.alcor pool, grouped by backing token. */
+  backing: BackingSlice[];
+  /** Pools that list this token, with the other side's symbol and USD. */
+  poolBook: PoolBookRow[];
 };
+
+export type BackingSlice = {
+  symbol: string;
+  contract: string;
+  usd: number;
+  share: number;
+};
+
+export type PoolBookRow = {
+  id: number;
+  quoteSymbol: string;
+  quoteContract: string;
+  tokenQty: number;
+  quoteUsd: number;
+};
+
+/** Share of priced quote-side USD. Rows with no price are dropped. */
+export function backingShares(
+  rows: { symbol: string; contract: string; usd: number }[]
+): BackingSlice[] {
+  const grouped = new Map<string, BackingSlice>();
+  for (const row of rows) {
+    if (!(row.usd > 0) || !row.symbol) continue;
+    const key = `${row.contract.toLowerCase()}:${row.symbol.toUpperCase()}`;
+    const prev = grouped.get(key);
+    if (prev) prev.usd += row.usd;
+    else grouped.set(key, { symbol: row.symbol.toUpperCase(), contract: row.contract, usd: row.usd, share: 0 });
+  }
+  const list = [...grouped.values()].sort((a, b) => b.usd - a.usd || a.symbol.localeCompare(b.symbol));
+  const total = list.reduce((sum, row) => sum + row.usd, 0);
+  if (!(total > 0)) return [];
+  for (const row of list) row.share = row.usd / total;
+  return list;
+}
 
 export type SanityMathInput = {
   maxSupply: number;
@@ -225,6 +263,8 @@ export function buildSanity(input: SanityMathInput): SanityView {
     bookCover,
     lpLoyalty,
     unpricedPools: input.unpricedPools ?? 0,
+    backing: [],
+    poolBook: [],
   };
 }
 
@@ -260,15 +300,22 @@ async function quoteBookUsd(
   pools: AlcorPoolRow[],
   tokenSymbol: string,
   tokenContract: string
-): Promise<{ usd: number; unpriced: number }> {
-  const sides: { contract: string; symbol: string; qty: number }[] = [];
+): Promise<{ usd: number; unpriced: number; backing: BackingSlice[]; poolBook: PoolBookRow[] }> {
+  const sides: { id: number; contract: string; symbol: string; qty: number; tokenQty: number }[] = [];
   for (const pool of pools) {
     const tokenIsA = sameToken(pool.tokenA, tokenSymbol, tokenContract);
     const tokenIsB = sameToken(pool.tokenB, tokenSymbol, tokenContract);
     const other = tokenIsA ? pool.tokenB : tokenIsB ? pool.tokenA : undefined;
+    const tokenSide = tokenIsA ? pool.tokenA : tokenIsB ? pool.tokenB : undefined;
     const qty = Number(other?.quantity) || 0;
-    if (!(qty > 0) || !other?.symbol || !other.contract) continue;
-    sides.push({ contract: other.contract, symbol: other.symbol, qty });
+    if (!other?.symbol || !other.contract) continue;
+    sides.push({
+      id: Number(pool.id) || 0,
+      contract: other.contract,
+      symbol: other.symbol,
+      qty,
+      tokenQty: Number(tokenSide?.quantity) || 0,
+    });
   }
   const keys = [...new Set(sides.map((s) => `${s.contract.toLowerCase()}:${s.symbol.toUpperCase()}`))];
   const prices = new Map<string, number>();
@@ -281,15 +328,27 @@ async function quoteBookUsd(
   );
   let usd = 0;
   let unpriced = 0;
+  const priced: { symbol: string; contract: string; usd: number }[] = [];
+  const poolBook: PoolBookRow[] = [];
   for (const side of sides) {
     const px = prices.get(`${side.contract.toLowerCase()}:${side.symbol.toUpperCase()}`) ?? 0;
-    if (!(px > 0)) {
-      unpriced += 1;
-      continue;
+    const sideUsd = px > 0 && side.qty > 0 ? side.qty * px : 0;
+    if (side.qty > 0 && !(px > 0)) unpriced += 1;
+    else if (sideUsd > 0) {
+      usd += sideUsd;
+      priced.push({ symbol: side.symbol, contract: side.contract, usd: sideUsd });
     }
-    usd += side.qty * px;
+    if (side.id > 0) {
+      poolBook.push({
+        id: side.id,
+        quoteSymbol: side.symbol.toUpperCase(),
+        quoteContract: side.contract,
+        tokenQty: side.tokenQty,
+        quoteUsd: sideUsd,
+      });
+    }
   }
-  return { usd, unpriced };
+  return { usd, unpriced, backing: backingShares(priced), poolBook };
 }
 
 async function readLockedPosition(args: {
@@ -369,10 +428,14 @@ export async function loadPoolSanity(args: {
   let allPoolsQuoteUsd: number | null = null;
   let unpricedPools = 0;
   let volumeUsd24: number | null = null;
+  let backing: BackingSlice[] = [];
+  let poolBook: PoolBookRow[] = [];
   if (listed) {
     const book = await quoteBookUsd(listed, args.symbol, args.contract);
     allPoolsQuoteUsd = book.usd;
     unpricedPools = book.unpriced;
+    backing = book.backing;
+    poolBook = book.poolBook;
     volumeUsd24 = listed.reduce((sum, row) => sum + (Number(row.volumeUSD24) || 0), 0);
   }
   const listedMain = listed?.find((row) => Number(row.id) === args.poolId);
@@ -404,5 +467,5 @@ export async function loadPoolSanity(args: {
   const posId = num(pick(position, "id")) || args.positionId;
   const lock = posId > 0 ? await readLock(posId).catch(() => null) : null;
   const unlockUnix = num(pick(lock, "unlockTime", "unlock_time"));
-  return { ...view, unlockUnix };
+  return { ...view, unlockUnix, backing, poolBook };
 }

@@ -461,7 +461,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
 
   if (!plan) {
     return (
-      <StepShell title="Execute" desc="Finish the earlier steps first." footer={<button type="button" className="btn btn-ghost" onClick={onBack}>Back</button>}>
+      <StepShell title="Send It" desc="Finish the earlier steps first." footer={<button type="button" className="btn btn-ghost" onClick={onBack}>Back</button>}>
         <p className="text-sm text-warning">The launch plan is incomplete - go back and fill in token, quote, and range.</p>
       </StepShell>
     );
@@ -472,8 +472,12 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
 
   return (
     <StepShell
-      title="Execute"
-      desc={`Signing as ${actor ?? "…"}. ${draft.symbol || "-"}@${code}. Order matters.`}
+      title="Send It"
+      desc={
+        isLoggedIn && actor
+          ? `Signing as ${actor}. ${draft.symbol || "-"}@${code}. Order matters.`
+          : "Log in"
+      }
       footer={
         <>
           <button type="button" className="btn btn-ghost" onClick={onBack}>

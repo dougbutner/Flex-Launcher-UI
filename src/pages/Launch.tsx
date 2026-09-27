@@ -94,7 +94,7 @@ export default function Launch() {
       },
       {
         id: "execute",
-        title: "Execute",
+        title: "Send It",
         desc: "Press the big red button.",
         done: Boolean(draft.addpoolTx),
         locked: !tokenOk || !taxOk,

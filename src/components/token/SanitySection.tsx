@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { HoldingBubbles } from "@/components/token/HoldingBubbles";
+import { OvalRing, type RingSlice } from "@/components/token/OvalRing";
 import { Pulse } from "@/components/ui/Pulse";
 import { formatNiceNumber, formatPlainNumber, usdParts } from "@/services/money";
 import { loadPoolSanity, type SanityView } from "@/services/poolSanity";
+import { loadHeadcounts, loadInsiderBooks, loadSpotTokens, type InsiderRow, type WalletDot } from "@/services/tokenCensus";
 
 type Props = {
   contract: string;
@@ -17,6 +20,31 @@ type Props = {
   tokenPrecision: number;
   reloadKey: number;
 };
+
+const BACKING_COLOR: Record<string, string> = {
+  EASY: "#eab308",
+  XPR: "#c4b5fd",
+  WON: "#f472b6",
+  GRAMS: "#fbbf24",
+  MEME: "#fb7185",
+  XUSDC: "#34d399",
+  XMD: "#2dd4bf",
+  LOAN: "#38bdf8",
+  INDEX: "#818cf8",
+  XBTC: "#f59e0b",
+  other: "#a8a29e",
+};
+
+function backingArcs(rows: { symbol: string; share: number }[]): RingSlice[] {
+  const main = rows.filter((row) => row.share >= 0.01);
+  const rest = rows.filter((row) => row.share < 0.01).reduce((sum, row) => sum + row.share, 0);
+  const shown = rest > 0 ? [...main, { symbol: "other", share: rest }] : main;
+  return shown.map((row) => ({
+    size: row.share,
+    color: BACKING_COLOR[row.symbol] ?? "#94a3b8",
+    label: `${row.symbol} ${share(row.share)}`,
+  }));
+}
 
 function share(n: number | null): string {
   if (n == null || !Number.isFinite(n)) return "-";
@@ -165,6 +193,13 @@ export function SanitySection(props: Props) {
   const [view, setView] = useState<SanityView | null>(null);
   const [busy, setBusy] = useState(props.poolId > 0);
   const [err, setErr] = useState("");
+  const [holders, setHolders] = useState<number | null>(null);
+  const [insiders, setInsiders] = useState<number | null>(null);
+  const [spotTokens, setSpotTokens] = useState(0);
+  const [books, setBooks] = useState<InsiderRow[]>([]);
+  const [wallets, setWallets] = useState<WalletDot[]>([]);
+  const [openAccount, setOpenAccount] = useState("");
+  const [showBubbles, setShowBubbles] = useState(false);
 
   useEffect(() => {
     setView(null);
@@ -209,6 +244,50 @@ export function SanitySection(props: Props) {
     props.tokenPrecision,
     props.reloadKey,
   ]);
+
+  useEffect(() => {
+    let live = true;
+    loadHeadcounts(props.contract, props.symbol)
+      .then((row) => {
+        if (!live) return;
+        setHolders(row.holders);
+        setInsiders(row.insiders);
+      })
+      .catch(() => {
+        if (!live) return;
+        setHolders(null);
+        setInsiders(null);
+      });
+    loadSpotTokens(props.contract, props.symbol)
+      .then((n) => {
+        if (live) setSpotTokens(n);
+      })
+      .catch(() => {
+        if (live) setSpotTokens(0);
+      });
+    return () => {
+      live = false;
+    };
+  }, [props.contract, props.symbol, props.reloadKey]);
+
+  useEffect(() => {
+    if (!view) return;
+    let live = true;
+    loadInsiderBooks(props.contract, props.symbol, view.poolBook)
+      .then((row) => {
+        if (!live) return;
+        setBooks(row.insiders);
+        setWallets(row.wallets);
+      })
+      .catch(() => {
+        if (!live) return;
+        setBooks([]);
+        setWallets([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [view, props.contract, props.symbol]);
 
   const quote = props.quoteSymbol || "quote";
   const sym = props.symbol;
@@ -257,7 +336,90 @@ export function SanitySection(props: Props) {
         <p className="mt-3 text-sm text-destructive">{err}</p>
       ) : view && mid && lockedQuote && lockedTokens && tradable && onAlcor && satellite && floatQty ? (
         <>
-          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border border-border px-3 py-3 sm:grid-cols-4">
+            <Stat label="Volume 24h" value={usd(view.volumeUsd24).display} title={usd(view.volumeUsd24).full} hint="24h volume across this token's Alcor pools." />
+            <Stat label="Vol / in hands" value={multiple(view.volOverTradable)} hint="24h volume divided by the in-hands print." />
+            <Stat label="Insiders" value={insiders == null ? "-" : String(insiders)} hint="Approved insiders on this symbol." />
+            <Stat label="Holders" value={holders == null ? "-" : String(holders)} hint="Flexer rows, or flexer_count when the contract stores it." />
+          </div>
+
+          <div className="mt-4">
+            <OvalRing
+              center={tradable.display}
+              sub="in hands"
+              top={[
+                { size: view.lockedTokens, color: "#eab308", label: "locked lp" },
+                { size: Math.max(0, view.satelliteTokens), color: "#60a5fa", label: "community" },
+                { size: Math.max(0, spotTokens), color: "#fb923c", label: "spot" },
+                { size: Math.max(0, view.walletFloat - spotTokens), color: "#4ade80", label: "wallets" },
+              ]}
+              bottom={backingArcs(view.backing)}
+            />
+          </div>
+
+          <div className="mt-4">
+            <div className="grid grid-cols-3 gap-2 border-b border-border pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span>Insider</span>
+              <span>Liquidity</span>
+              <span>Holdings</span>
+            </div>
+            {books.length === 0 ? (
+              <p className="mt-2 text-xs text-muted-foreground">No insider rows yet.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {books.map((row) => {
+                  const open = openAccount === row.account;
+                  const liq = qty(row.liquidity, sym, prec);
+                  const held = qty(row.holdings, sym, prec);
+                  return (
+                    <li key={row.account} className="py-2">
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <button
+                          type="button"
+                          className="truncate text-left font-mono underline"
+                          onClick={() => setOpenAccount(open ? "" : row.account)}
+                        >
+                          {row.account}
+                        </button>
+                        <span className="truncate font-mono" title={liq.full}>{liq.display}</span>
+                        <span className="truncate font-mono" title={held.full}>{held.display}</span>
+                      </div>
+                      {open ? (
+                        <div className="mt-2 border border-border bg-background p-2 text-xs">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Top pools and tokens</p>
+                          <ul className="mt-1 space-y-1 font-mono">
+                            <li>{held.display}</li>
+                            {row.pools.map((pool) => (
+                              <li key={pool.id}>
+                                <a className="underline" href={pool.href} target="_blank" rel="noreferrer">
+                                  {pool.quote} pool {pool.id}
+                                </a>
+                                {" "}
+                                {qty(pool.tokens, sym, prec).display}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <button type="button" className="btn btn-outline btn-sm mt-3" onClick={() => setShowBubbles((on) => !on)}>
+              {showBubbles ? "Hide bubbles" : "Show bubbles"}
+            </button>
+            {showBubbles ? (
+              <HoldingBubbles
+                pools={view.poolBook}
+                wallets={wallets}
+                officialPoolId={props.poolId}
+                symbol={sym}
+              />
+            ) : null}
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
             <Stat
               label="Liquid backing"
               value={usd(view.liquidBackingUsd).display}
@@ -328,14 +490,7 @@ export function SanitySection(props: Props) {
               hint="Pure backing divided by wallet print."
             />
             <Stat label="Pool TVL" value={usd(view.poolTvlUsd).display} title={usd(view.poolTvlUsd).full} hint="Alcor TVL of the main pool. Includes the token side." />
-            <Stat
-              label="Volume 24h"
-              value={usd(view.volumeUsd24).display}
-              title={usd(view.volumeUsd24).full}
-              hint="24h volume across this token's Alcor pools."
-            />
             <Stat label="Vol / backing" value={multiple(view.volOverBacking)} hint="24h volume divided by pure backing." />
-            <Stat label="Vol / in hands print" value={multiple(view.volOverTradable)} hint="24h volume divided by the in-hands print." />
           </div>
 
           {view.unpricedPools > 0 ? (
