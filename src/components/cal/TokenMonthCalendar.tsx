@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { format, isSameDay, isSameMonth } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { TokenIcon } from "@/components/TokenIcon";
 import { TokenEventChip } from "@/components/cal/TokenEventChip";
 import { useMonthDays, WEEKDAY_LABELS } from "@/components/cal/useMonthDays";
-import type { TokenCalEvent } from "@/components/cal/tokenCalEvents";
+import type { CalTokenMark, TokenCalEvent } from "@/components/cal/tokenCalEvents";
 
 function ymd(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -13,6 +14,11 @@ export function TokenMonthCalendar({
   year,
   month,
   events,
+  marks,
+  lit,
+  mode,
+  onToggleMark,
+  onToggleMode,
   picked,
   onPick,
   onShift,
@@ -20,6 +26,11 @@ export function TokenMonthCalendar({
   year: number;
   month: number;
   events: TokenCalEvent[];
+  marks: CalTokenMark[];
+  lit: Set<string>;
+  mode: "all" | "some" | "only";
+  onToggleMark: (key: string) => void;
+  onToggleMode: () => void;
   picked?: string;
   onPick?: (key: string) => void;
   onShift: (delta: number) => void;
@@ -114,6 +125,53 @@ export function TokenMonthCalendar({
 
   return (
     <div ref={rootRef} className="flex h-[min(72vh,760px)] flex-col overflow-x-clip border border-[#27272a] bg-background">
+      {marks.length ? (
+        <div className="flex items-center gap-2 border-b border-[#27272a] px-2 py-2" data-cal-nav>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-1">
+            {marks.map((mark) => {
+              const on = lit.has(mark.key);
+              return (
+                <button
+                  key={mark.key}
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={mark.symbol}
+                  title={mark.symbol}
+                  onClick={() => onToggleMark(mark.key)}
+                  className={`shrink-0 rounded-full transition-transform hover:scale-110 ${on ? "opacity-100" : "opacity-35"}`}
+                >
+                  <TokenIcon contract={mark.contract} symbol={mark.symbol} size={28} />
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            aria-pressed={mode === "all"}
+            aria-label={
+              mode === "all" ? "All quotes on. Click for some." : mode === "some" ? "Some quotes on. Click for only." : "Only one quote. Click for all."
+            }
+            title={
+              mode === "all"
+                ? "All quotes on"
+                : mode === "some"
+                  ? "Some quotes on"
+                  : "Only one quote"
+            }
+            onClick={onToggleMode}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-[8px] font-bold uppercase leading-none tracking-wide ${
+              mode === "all"
+                ? "border-primary bg-primary/20 text-primary shadow-[0_0_12px_hsl(var(--primary)/0.65)]"
+                : mode === "some"
+                  ? "border-primary/70 text-primary"
+                  : "border-border text-muted-foreground"
+            }`}
+          >
+            {mode === "all" ? "All" : mode === "some" ? "Some" : "Only"}
+          </button>
+        </div>
+      ) : null}
+
       <div className="flex items-center justify-between border-b border-[#27272a] px-2 py-2" data-cal-nav>
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => onShift(-1)} aria-label="Previous month">
           <ChevronLeft className="h-4 w-4" />

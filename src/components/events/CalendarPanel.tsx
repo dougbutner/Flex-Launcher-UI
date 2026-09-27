@@ -10,6 +10,8 @@ import { alcorAnalyticsUrl } from "@/config/launch";
 import type { LaunchRoom } from "@/services/mechanicsLive";
 import { EventsSkeleton, TilesRowSkeleton } from "@/components/ui/PageSkeletons";
 import {
+  calendarTokenMarks,
+  calTokenKey,
   fromCalEvents,
   mergeTokenEvents,
   sampleTokenEvents,
@@ -48,6 +50,9 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
   const [histPick, setHistPick] = useState<BoardToken | null>(null);
   const [histBusy, setHistBusy] = useState(false);
   const [histErr, setHistErr] = useState("");
+  const [filterMode, setFilterMode] = useState<"all" | "some" | "only">("all");
+  const [someKeys, setSomeKeys] = useState<Set<string> | null>(null);
+  const [onlyKey, setOnlyKey] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -80,13 +85,59 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
     () => mergeTokenEvents(fromCalEvents(clubDateEvents(events), board), sampleTokenEvents()),
     [events, board]
   );
+  const marks = useMemo(() => calendarTokenMarks(tokenEvents), [tokenEvents]);
+  const lit = useMemo(() => {
+    const all = new Set(marks.map((m) => m.key));
+    if (filterMode === "all") return all;
+    if (filterMode === "only") return onlyKey && all.has(onlyKey) ? new Set([onlyKey]) : new Set<string>();
+    if (someKeys == null) return all;
+    return new Set([...someKeys].filter((key) => all.has(key)));
+  }, [filterMode, marks, someKeys, onlyKey]);
+  const shownEvents = useMemo(
+    () => tokenEvents.filter((ev) => lit.has(calTokenKey(ev))),
+    [tokenEvents, lit]
+  );
   const monthList = useMemo(
     () =>
-      tokenEvents
+      shownEvents
         .filter((ev) => ev.launchAt.getFullYear() === year && ev.launchAt.getMonth() === month)
         .sort((a, b) => a.launchAt.getTime() - b.launchAt.getTime()),
-    [tokenEvents, year, month]
+    [shownEvents, year, month]
   );
+
+  const quoteOnView = () => {
+    const ev = tokenEvents.find((row) => row.launchAt.getFullYear() === year && row.launchAt.getMonth() === month);
+    return ev ? calTokenKey(ev) : marks[0]?.key;
+  };
+
+  const toggleMark = (key: string) => {
+    if (filterMode === "only") {
+      setOnlyKey(key);
+      return;
+    }
+    const next = new Set(filterMode === "all" || someKeys == null ? marks.map((m) => m.key) : someKeys);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    if (next.size === marks.length) {
+      setFilterMode("all");
+      return;
+    }
+    setSomeKeys(next);
+    setFilterMode("some");
+  };
+
+  const toggleMode = () => {
+    if (filterMode === "all") {
+      setFilterMode("some");
+      return;
+    }
+    if (filterMode === "some") {
+      setOnlyKey((prev) => (prev && marks.some((m) => m.key === prev) ? prev : (quoteOnView() ?? null)));
+      setFilterMode("only");
+      return;
+    }
+    setFilterMode("all");
+  };
   const open = rooms.filter((r) => r.program !== "core" && !r.launched && r.poolId > 0);
   const inFlight = rooms.filter((r) => r.program !== "core" && !r.launched && r.poolId <= 0);
 
@@ -127,7 +178,12 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
         <TokenMonthCalendar
           year={year}
           month={month}
-          events={tokenEvents}
+          events={shownEvents}
+          marks={marks}
+          lit={lit}
+          mode={filterMode}
+          onToggleMark={toggleMark}
+          onToggleMode={toggleMode}
           picked={picked}
           onPick={setPicked}
           onShift={shift}

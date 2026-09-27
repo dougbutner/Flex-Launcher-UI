@@ -51,12 +51,18 @@ export function EventsSkeleton() {
   return (
     <div className="mt-8" aria-busy="true">
       <div className="border border-border bg-card p-3">
-        <div className="mb-3 flex items-center justify-between">
-          <Pulse className="h-4 w-28" />
-          <div className="flex gap-2">
-            <Pulse className="h-8 w-8" />
-            <Pulse className="h-8 w-8" />
+        <div className="mb-3 flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 gap-1.5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Pulse key={`logo${i}`} className="h-8 w-8 shrink-0 rounded-full" />
+            ))}
           </div>
+          <Pulse className="h-9 w-9 shrink-0 rounded-full" />
+        </div>
+        <div className="mb-3 flex items-center justify-between">
+          <Pulse className="h-8 w-8" />
+          <Pulse className="h-4 w-28" />
+          <Pulse className="h-8 w-8" />
         </div>
         <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: 7 }).map((_, i) => (

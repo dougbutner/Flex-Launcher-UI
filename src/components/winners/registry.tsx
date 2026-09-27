@@ -21,7 +21,7 @@ export const WINNER_VIEWS: Array<{
   label: string;
   View: ComponentType<WinnerViewProps>;
 }> = [
+  { id: "board", label: "Board", View: BoardView },
   { id: "tiles", label: "Tiles", View: TilesView },
   { id: "bubbles", label: "Bubbles", View: BubblesView },
-  { id: "board", label: "Board", View: BoardView },
 ];

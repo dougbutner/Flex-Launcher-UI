@@ -1,7 +1,7 @@
 import type { BoardToken } from "@/services/leaderboardStore";
 
 /** Register a new id here and in `WINNER_VIEWS` to add a Winners display. */
-export const WINNER_VIEW_IDS = ["tiles", "bubbles", "board"] as const;
+export const WINNER_VIEW_IDS = ["board", "tiles", "bubbles"] as const;
 export type WinnerViewId = (typeof WINNER_VIEW_IDS)[number];
 
 export const BUBBLE_SIZE_IDS = ["liq", "volume", "mcap", "change", "holders"] as const;
@@ -25,7 +25,7 @@ export type WinnerViewState = {
 };
 
 export const DEFAULT_WINNER_VIEW: WinnerViewState = {
-  view: "tiles",
+  view: "board",
   size: "liq",
   chg: "24h",
 };

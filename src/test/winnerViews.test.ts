@@ -36,15 +36,15 @@ const sample = (p: Partial<BoardToken> & Pick<BoardToken, "symbol">): BoardToken
 });
 
 describe("winner view registry params", () => {
-  it("defaults to tiles and locked liq", () => {
-    expect(parseWinnerView(new URLSearchParams())).toEqual({ view: "tiles", size: "liq", chg: "24h" });
-    expect(winnerViewSearch({ view: "tiles", size: "liq", chg: "24h" })).toBe("");
+  it("defaults to board and locked liq", () => {
+    expect(parseWinnerView(new URLSearchParams())).toEqual({ view: "board", size: "liq", chg: "24h" });
+    expect(winnerViewSearch({ view: "board", size: "liq", chg: "24h" })).toBe("");
+    expect(winnerViewSearch({ view: "tiles", size: "liq", chg: "24h" })).toBe("?view=tiles");
     expect(winnerViewSearch({ view: "bubbles", size: "liq", chg: "24h" })).toBe("?view=bubbles");
     expect(winnerViewSearch({ view: "bubbles", size: "change", chg: "30d" })).toBe("?view=bubbles&size=change&chg=30d");
     expect(extrasNeeded({ view: "tiles", size: "change", chg: "24h" })).toBe(false);
     expect(extrasNeeded({ view: "bubbles", size: "liq", chg: "24h" })).toBe(false);
     expect(extrasNeeded({ view: "board", size: "liq", chg: "24h" })).toBe(true);
-    expect(winnerViewSearch({ view: "board", size: "liq", chg: "24h" })).toBe("?view=board");
   });
 
   it("sizes bubbles from locked liq unless another metric is picked", () => {

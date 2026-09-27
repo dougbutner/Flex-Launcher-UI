@@ -187,3 +187,34 @@ export function mergeTokenEvents(live: TokenCalEvent[], sample: TokenCalEvent[])
   const have = new Set(live.map((e) => `${e.kind}:${e.contract}:${e.symbol}`));
   return [...live, ...sample.filter((e) => !have.has(`${e.kind}:${e.contract}:${e.symbol}`))];
 }
+
+export type CalTokenMark = {
+  key: string;
+  symbol: string;
+  contract: string;
+  logo?: string;
+};
+
+const QUOTE_ORDER = ["EASY", "WON", "GRAMS", "MEME"];
+
+export function calTokenKey(ev: Pick<TokenCalEvent, "quoteContract" | "quoteSymbol">) {
+  return `${ev.quoteContract}:${ev.quoteSymbol}`;
+}
+
+/** One logo per quote the calendar events are pooled with (EASY, an xtoken, and the rest). */
+export function calendarTokenMarks(events: TokenCalEvent[]): CalTokenMark[] {
+  const map = new Map<string, CalTokenMark>();
+  for (const ev of events) {
+    const symbol = ev.quoteSymbol.trim().toUpperCase();
+    const contract = ev.quoteContract.trim();
+    if (!symbol || !contract) continue;
+    const key = `${contract}:${symbol}`;
+    if (!map.has(key)) map.set(key, { key, symbol, contract });
+  }
+  return [...map.values()].sort((a, b) => {
+    const ai = QUOTE_ORDER.indexOf(a.symbol);
+    const bi = QUOTE_ORDER.indexOf(b.symbol);
+    if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    return a.symbol.localeCompare(b.symbol);
+  });
+}
