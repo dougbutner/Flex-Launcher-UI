@@ -1,7 +1,9 @@
 import { FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
 import { parseAsset } from "@/services/assets";
+import { CACHE_KEYS } from "@/services/cacheKeys";
 import { readFlexers, readLaunches, readStat } from "@/services/flexTables";
 import { symbolCodeOf } from "@/services/preflight";
+import { liveOr } from "@/services/readThrough";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
 import { loadSiteSandbox } from "@/services/siteSandbox";
 
@@ -93,7 +95,7 @@ async function holdersOf(program: FlexProgram, contract: string, symbol: string,
   return rows.length;
 }
 
-async function loadFresh(): Promise<BoardToken[]> {
+export async function loadFreshBoard(): Promise<BoardToken[]> {
   const groups = await Promise.all(
     FLEX_PROGRAMS.map(async (p) => {
       const code = flexAccount(p.id);
@@ -150,20 +152,23 @@ async function loadFresh(): Promise<BoardToken[]> {
   return overlay ? overlay.mergeBoard(tokens) : tokens;
 }
 
-export async function loadBoardTokens(): Promise<BoardToken[]> {
+function loadBoardMemory(force?: boolean): Promise<BoardToken[]> {
   const now = Date.now();
-  if (cache && now - cache.at < TTL_MS) return cache.tokens;
-  if (!inflight) {
-    inflight = loadFresh()
-      .then((tokens) => {
-        cache = { at: Date.now(), tokens };
-        return tokens;
-      })
-      .finally(() => {
-        inflight = null;
-      });
-  }
+  if (!force && cache && now - cache.at < TTL_MS) return Promise.resolve(cache.tokens);
+  if (!force && inflight) return inflight;
+  inflight = loadFreshBoard()
+    .then((tokens) => {
+      cache = { at: Date.now(), tokens };
+      return tokens;
+    })
+    .finally(() => {
+      inflight = null;
+    });
   return inflight;
+}
+
+export async function loadBoardTokens(opts?: { force?: boolean }): Promise<BoardToken[]> {
+  return liveOr(CACHE_KEYS.board, () => loadBoardMemory(opts?.force), opts);
 }
 
 export function sortNewcomers(tokens: BoardToken[]): BoardToken[] {

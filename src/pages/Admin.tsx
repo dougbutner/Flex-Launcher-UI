@@ -35,6 +35,7 @@ import {
   type ProtonTokenRow,
 } from "@/services/tokenProton";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { AdminDatabase } from "@/components/admin/AdminDatabase";
 import { AdminSandboxToggle } from "@/test/sandbox/AdminSandboxToggle";
 import { AdminListSkeleton } from "@/components/ui/PageSkeletons";
 
@@ -541,7 +542,7 @@ export default function Admin() {
     <div className="space-y-3 rounded-xl border border-border p-4">
       <p className="text-sm font-semibold">Add a symbol by hand</p>
       <p className="text-xs text-muted-foreground">
-        Use this if launches, create history, or sqlite missed a token that already has a stat row.
+        Use this if launches, create history, or the database missed a token that already has a stat row.
       </p>
       <div className="flex flex-wrap items-end gap-2">
         <FieldTicker value={manualSym} onChange={setManualSym} />
@@ -570,6 +571,7 @@ export default function Admin() {
       <div className="mt-4">
         <AdminSandboxToggle />
       </div>
+      <AdminDatabase account={actor ?? ""} />
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button type="button" className="btn btn-outline btn-sm" disabled={busyAny} onClick={() => void load()}>
           {busy ? "Loading…" : "Refresh list"}

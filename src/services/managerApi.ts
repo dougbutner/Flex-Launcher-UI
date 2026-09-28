@@ -43,6 +43,6 @@ export async function persistLaunchDraft(issuer: string, draft: LaunchDraft): Pr
   try {
     await upsertManagerToken(managerFromDraft(issuer, draft));
   } catch (err) {
-    console.warn("Manager sqlite persist failed", err);
+    console.warn("Manager database persist failed", err);
   }
 }

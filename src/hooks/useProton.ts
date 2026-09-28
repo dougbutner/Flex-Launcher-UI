@@ -13,6 +13,8 @@ import {
   walletActor,
 } from '@/services/walletSessions';
 import { getActiveWalletId, setActiveWalletId } from '@/services/walletManifest';
+import { rainTargets, reportChainTx } from '@/services/chainTxReport';
+import { siteStatus } from '@/services/readThrough';
 import { bindSiteSandboxActor } from '@/services/siteSandbox';
 
 export function useProton() {
@@ -105,7 +107,31 @@ export function useProton() {
       }>
     ) => {
       if (!activeWallet) throw new Error('Not logged in');
-      return transactWithWallet(activeWallet, actions);
+      const result = await transactWithWallet(activeWallet, actions);
+      const who = walletActor(activeWallet);
+      try {
+        await reportChainTx(who, actions, result);
+      } catch {
+        /* a missed log must not fail a signed transaction */
+      }
+      const rains = rainTargets(actions);
+      if (rains.length) {
+        try {
+          const site = await siteStatus();
+          if (site.live && site.db) {
+            const { loadDrylands } = await import('@/services/rainBoard');
+            await loadDrylands({ force: true });
+            const { loadTokenPublic } = await import('@/services/tokenSnapshot');
+            for (const row of rains) {
+              if (!row.symbol) continue;
+              await loadTokenPublic(row.contract, row.symbol, { force: true });
+            }
+          }
+        } catch {
+          /* the page still reloads its own row */
+        }
+      }
+      return result;
     },
     [activeWallet]
   );

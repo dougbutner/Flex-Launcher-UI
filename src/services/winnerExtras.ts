@@ -1,14 +1,19 @@
 import { loadAlcorMarket } from "@/services/alcorMarket";
 import type { BoardToken } from "@/services/leaderboardStore";
-import { loadSiteSandbox } from "@/services/siteSandbox";
+import { siteStatus } from "@/services/readThrough";
+import { loadSiteSandbox, siteSandboxFlag } from "@/services/siteSandbox";
 import { pctFromPoints, sparkFromPoints, type WinnerExtra } from "@/services/winnerViews";
 
 const MONTH_MS = 30 * 86_400_000;
 const poolCache = new Map<string, WinnerExtra>();
 
 async function extraFor(token: BoardToken): Promise<WinnerExtra> {
-  const hit = poolCache.get(token.id);
-  if (hit) return hit;
+  const site = typeof window === "undefined" ? { live: false, db: false } : await siteStatus();
+  const shared = site.live && site.db && !siteSandboxFlag();
+  if (!shared) {
+    const hit = poolCache.get(token.id);
+    if (hit) return hit;
+  }
   const overlay = await loadSiteSandbox();
   const mock = overlay?.mergeMarket(
     {
@@ -29,7 +34,7 @@ async function extraFor(token: BoardToken): Promise<WinnerExtra> {
       changeMonth: pctFromPoints(mock.points, MONTH_MS) || mock.changeWeek,
       spark: sparkFromPoints(mock.points),
     };
-    poolCache.set(token.id, row);
+    if (!shared) poolCache.set(token.id, row);
     return row;
   }
   const live = await loadAlcorMarket({
@@ -47,7 +52,7 @@ async function extraFor(token: BoardToken): Promise<WinnerExtra> {
     changeMonth: live ? pctFromPoints(live.points, MONTH_MS) || live.changeWeek : 0,
     spark: live ? sparkFromPoints(live.points) : [],
   };
-  poolCache.set(token.id, row);
+  if (!shared) poolCache.set(token.id, row);
   return row;
 }
 

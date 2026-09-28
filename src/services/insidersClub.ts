@@ -1,6 +1,8 @@
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { assetAmountNumber, parseAsset, validAccount } from "@/services/assets";
+import { marksCacheKey } from "@/services/cacheKeys";
 import { readInsiders } from "@/services/flexTables";
+import { liveOr } from "@/services/readThrough";
 import { addinsidersAction, setpresaleAction, type ChainAction, type SetPresaleArgs } from "@/services/launchActions";
 
 /** lock_secs + 3d must stay ≤ 90d main lock. */
@@ -199,6 +201,20 @@ export function clubKey(contract: string, symbol: string, account: string): stri
   return `${contract.toLowerCase()}:${symbol.toUpperCase()}:${account.toLowerCase()}`;
 }
 
+export async function loadClubMarksFresh(contract: string, symbol: string): Promise<Record<string, ClubMark>> {
+  const code = contract.trim().toLowerCase();
+  const sym = symbol.trim().toUpperCase();
+  const rows = await readInsiders(code, sym, 500).catch(() => [] as Record<string, unknown>[]);
+  const out: Record<string, ClubMark> = {};
+  for (const row of rows) {
+    const mark = clubMarkOf(row);
+    const account = String(row.account ?? "").toLowerCase();
+    if (!mark || !account) continue;
+    out[clubKey(code, sym, account)] = mark;
+  }
+  return out;
+}
+
 export async function loadClubMarks(
   rooms: Array<{ contract: string; symbol: string }>
 ): Promise<Record<string, ClubMark>> {
@@ -209,17 +225,10 @@ export async function loadClubMarks(
     if (!c || !s) continue;
     unique.set(`${c}:${s}`, { contract: c, symbol: s });
   }
-  const out: Record<string, ClubMark> = {};
-  await Promise.all(
-    [...unique.values()].map(async ({ contract, symbol }) => {
-      const rows = await readInsiders(contract, symbol, 500).catch(() => [] as Record<string, unknown>[]);
-      for (const row of rows) {
-        const mark = clubMarkOf(row);
-        const account = String(row.account ?? "").toLowerCase();
-        if (!mark || !account) continue;
-        out[clubKey(contract, symbol, account)] = mark;
-      }
-    })
+  const parts = await Promise.all(
+    [...unique.values()].map(({ contract, symbol }) =>
+      liveOr(marksCacheKey(contract, symbol), () => loadClubMarksFresh(contract, symbol))
+    )
   );
-  return out;
+  return Object.assign({}, ...parts);
 }

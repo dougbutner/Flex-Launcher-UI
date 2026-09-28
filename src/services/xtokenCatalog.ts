@@ -1,4 +1,6 @@
 import { XTOKENS } from "@/config/launch";
+import { CACHE_KEYS } from "@/services/cacheKeys";
+import { liveOr } from "@/services/readThrough";
 import { loadSiteSandbox, siteSandboxFlag } from "@/services/siteSandbox";
 
 export type XtokenRow = {
@@ -167,28 +169,50 @@ function tokenUsdKey(contract: string, symbol: string) {
   return `${contract.toLowerCase()}:${symbol.toUpperCase()}`;
 }
 
-async function alcorUsdRows(): Promise<Map<string, number>> {
-  const now = Date.now();
-  if (usdCache && now - usdCache.at <= USD_TTL_MS) return usdCache.rows;
-  if (!usdInflight) {
-    usdInflight = (async () => {
-      const res = await fetch(ALCOR_TOKENS, { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error(`tokens HTTP ${res.status}`);
-      const tokens = (await res.json()) as AlcorToken[];
-      const rows = new Map<string, number>();
-      for (const t of tokens) {
-        if (!t.contract || !t.symbol) continue;
-        const usd = Number(t.usd_price || 0);
-        if (!(usd > 0)) continue;
-        rows.set(tokenUsdKey(t.contract, t.symbol), usd);
-      }
-      usdCache = { at: Date.now(), rows };
-      return rows;
-    })().finally(() => {
-      usdInflight = null;
-    });
+export async function fetchUsdEntriesFresh(): Promise<Array<[string, number]>> {
+  const res = await fetch(ALCOR_TOKENS, { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`tokens HTTP ${res.status}`);
+  const tokens = (await res.json()) as AlcorToken[];
+  const rows: Array<[string, number]> = [];
+  for (const t of tokens) {
+    if (!t.contract || !t.symbol) continue;
+    const usd = Number(t.usd_price || 0);
+    if (!(usd > 0)) continue;
+    rows.push([tokenUsdKey(t.contract, t.symbol), usd]);
   }
-  return usdInflight;
+  return rows;
+}
+
+function rememberUsd(entries: Array<[string, number]>): Map<string, number> {
+  const rows = new Map(entries);
+  usdCache = { at: Date.now(), rows };
+  return rows;
+}
+
+async function alcorUsdRows(): Promise<Map<string, number>> {
+  if (typeof window === "undefined") {
+    if (usdCache && Date.now() - usdCache.at < 15_000) return usdCache.rows;
+    if (usdInflight) return usdInflight;
+    usdInflight = fetchUsdEntriesFresh()
+      .then((entries) => rememberUsd(entries))
+      .finally(() => {
+        usdInflight = null;
+      });
+    return usdInflight;
+  }
+  const entries = await liveOr(CACHE_KEYS.usd, async () => {
+    if (usdCache && Date.now() - usdCache.at <= USD_TTL_MS) return [...usdCache.rows.entries()];
+    if (!usdInflight) {
+      usdInflight = fetchUsdEntriesFresh()
+        .then((fresh) => rememberUsd(fresh))
+        .finally(() => {
+          usdInflight = null;
+        });
+    }
+    const rows = await usdInflight;
+    return [...rows.entries()];
+  });
+  return rememberUsd(entries);
 }
 
 /** Spot USD from Alcor `api/v2/tokens`. Held constant for range estimates. */

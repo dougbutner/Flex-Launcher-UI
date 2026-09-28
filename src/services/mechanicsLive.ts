@@ -5,7 +5,9 @@ import {
   type FlexProgram,
 } from "@/config/launch";
 import { parseAsset } from "@/services/assets";
+import { CACHE_KEYS, metricsCacheKey } from "@/services/cacheKeys";
 import { readAccounts, readFlexers, readLaunches, readPositions } from "@/services/flexTables";
+import { liveOr } from "@/services/readThrough";
 import { rankHolders } from "@/services/mechanicsScore";
 import { symbolCodeOf } from "@/services/preflight";
 import { getActions, getCurrencyBalance } from "@/services/rpc";
@@ -36,21 +38,39 @@ function num(v: unknown): number {
   return 0;
 }
 
-export async function loadTokenMetrics(contract: string, symbol: string, poolId: number): Promise<TokenMetrics> {
+export type TokenMetricsJson = {
+  ranks: Array<[string, number]>;
+  lpByOwner: Array<[string, number]>;
+  holdByOwner: Array<[string, number]>;
+  totalLiq: number;
+};
+
+function metricsFromJson(raw: TokenMetricsJson): TokenMetrics {
+  return {
+    ranks: new Map(raw.ranks || []),
+    lpByOwner: new Map(raw.lpByOwner || []),
+    holdByOwner: new Map(raw.holdByOwner || []),
+    totalLiq: Number(raw.totalLiq) || 0,
+  };
+}
+
+export async function loadTokenMetricsFresh(contract: string, symbol: string, poolId: number): Promise<TokenMetricsJson> {
+  const code = contract.trim().toLowerCase();
+  const sym = symbol.trim().toUpperCase();
   const [flexers, positions] = await Promise.all([
-    readFlexers(contract, symbol, 500).catch(() => [] as Record<string, unknown>[]),
+    readFlexers(code, sym, 500).catch(() => [] as Record<string, unknown>[]),
     poolId > 0 ? readPositions(poolId).catch(() => [] as Record<string, unknown>[]) : Promise.resolve([] as Record<string, unknown>[]),
   ]);
   const balances = flexers
     .map((row) => {
       const owner = String(pick(row, "owner") ?? "").toLowerCase();
-      const raw = parseAsset(String(pick(row, "balance") ?? "")) ;
+      const raw = parseAsset(String(pick(row, "balance") ?? ""));
       const amount = raw ? Number(raw.amount) : 0;
       return { owner, raw: amount };
     })
-    .filter((row) => row.owner && !SKIP_OWNERS.has(row.owner) && row.owner !== contract);
+    .filter((row) => row.owner && !SKIP_OWNERS.has(row.owner) && row.owner !== code);
   const ranks = rankHolders(balances);
-  const holdByOwner = new Map(balances.map((row) => [row.owner, row.raw] as const));
+  const holdByOwner = balances.map((row) => [row.owner, row.raw] as [string, number]);
 
   const lpByOwner = new Map<string, number>();
   let totalLiq = 0;
@@ -61,7 +81,17 @@ export async function loadTokenMetrics(contract: string, symbol: string, poolId:
     totalLiq += liq;
     lpByOwner.set(owner, (lpByOwner.get(owner) ?? 0) + liq);
   }
-  return { ranks, lpByOwner, holdByOwner, totalLiq };
+  return {
+    ranks: [...ranks.entries()],
+    lpByOwner: [...lpByOwner.entries()],
+    holdByOwner,
+    totalLiq,
+  };
+}
+
+export async function loadTokenMetrics(contract: string, symbol: string, poolId: number): Promise<TokenMetrics> {
+  const raw = await liveOr(metricsCacheKey(contract, symbol, poolId), () => loadTokenMetricsFresh(contract, symbol, poolId));
+  return metricsFromJson(raw);
 }
 
 const txCache = new Map<string, { at: number; n: number }>();
@@ -151,7 +181,7 @@ const CORE_ROOMS: LaunchRoom[] = PROJECT_CORE_TOKENS.map((t) => ({
   unlockTime: 0,
 }));
 
-export async function loadLaunchRooms(): Promise<LaunchRoom[]> {
+export async function loadLaunchRoomsFresh(): Promise<LaunchRoom[]> {
   const groups = await Promise.all(
     FLEX_PROGRAMS.map(async (p) => {
       const code = flexAccount(p.id);
@@ -177,4 +207,8 @@ export async function loadLaunchRooms(): Promise<LaunchRoom[]> {
   const launched = groups.flat();
   const seen = new Set(CORE_ROOMS.map((r) => `${r.contract}:${r.symbol}`));
   return [...CORE_ROOMS, ...launched.filter((r) => !seen.has(`${r.contract}:${r.symbol}`))];
+}
+
+export function loadLaunchRooms(opts?: { force?: boolean }): Promise<LaunchRoom[]> {
+  return liveOr(CACHE_KEYS.rooms, () => loadLaunchRoomsFresh(), opts);
 }

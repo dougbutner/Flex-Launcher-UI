@@ -2,10 +2,19 @@ import { CHAIN_ENDPOINTS } from "@/services/walletConstants";
 
 export type FlexProgram = "easyflex" | "complexflex" | "flexforex";
 
-export const FLEXFOREX_CONTRACT = import.meta.env.VITE_FLEXFOREX_CONTRACT?.trim() || "for3x";
-export const EASYFLEX_CONTRACT = import.meta.env.VITE_EASYFLEX?.trim() || "3asy";
-export const COMPLEXFLEX_CONTRACT = import.meta.env.VITE_COMPLEXFLEX?.trim() || "fl3x";
-export const SWAP_ALCOR = import.meta.env.VITE_SWAP_ALCOR?.trim() || "swap.alcor";
+const viteEnv = import.meta.env as
+  | {
+      VITE_FLEXFOREX_CONTRACT?: string;
+      VITE_EASYFLEX?: string;
+      VITE_COMPLEXFLEX?: string;
+      VITE_SWAP_ALCOR?: string;
+    }
+  | undefined;
+
+export const FLEXFOREX_CONTRACT = viteEnv?.VITE_FLEXFOREX_CONTRACT?.trim() || "for3x";
+export const EASYFLEX_CONTRACT = viteEnv?.VITE_EASYFLEX?.trim() || "3asy";
+export const COMPLEXFLEX_CONTRACT = viteEnv?.VITE_COMPLEXFLEX?.trim() || "fl3x";
+export const SWAP_ALCOR = viteEnv?.VITE_SWAP_ALCOR?.trim() || "swap.alcor";
 
 /** Hardcoded in all three contracts as MON3Y - liftoff reads EASY here, not VITE_EASYFLEX. */
 export const MON3Y = "mon3y";

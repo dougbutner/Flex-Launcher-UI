@@ -26,6 +26,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# Issuer manager sqlite (dev / preview)
+# Issuer manager sqlite (dev / preview). MySQL is the store now.
 data/*.sqlite
 data/*.sqlite-*
+functions/generated/

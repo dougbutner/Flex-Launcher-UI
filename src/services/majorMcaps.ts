@@ -1,3 +1,6 @@
+import { CACHE_KEYS } from "@/services/cacheKeys";
+import { liveOr } from "@/services/readThrough";
+
 export type MajorMcap = {
   id: "bitcoin" | "ripple" | "solana";
   label: string;
@@ -17,19 +20,27 @@ const COINGECKO =
 let cache: { at: number; rows: MajorMcap[] } | null = null;
 const TTL_MS = 15 * 60 * 1000;
 
-export async function fetchMajorMcaps(): Promise<MajorMcap[]> {
+export async function fetchMajorMcapsFresh(): Promise<MajorMcap[]> {
+  const res = await fetch(COINGECKO);
+  if (!res.ok) return cache?.rows ?? MAJOR_MCAP_FALLBACK;
+  const json = (await res.json()) as Record<string, { usd_market_cap?: number }>;
+  return MAJOR_MCAP_FALLBACK.map((row) => {
+    const usd = Number(json[row.id]?.usd_market_cap || 0);
+    return usd > 0 ? { ...row, usd } : row;
+  }).sort((a, b) => a.usd - b.usd);
+}
+
+async function fetchMajorMcapsLocal(): Promise<MajorMcap[]> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.rows;
   try {
-    const res = await fetch(COINGECKO);
-    if (!res.ok) return cache?.rows ?? MAJOR_MCAP_FALLBACK;
-    const json = (await res.json()) as Record<string, { usd_market_cap?: number }>;
-    const rows: MajorMcap[] = MAJOR_MCAP_FALLBACK.map((row) => {
-      const usd = Number(json[row.id]?.usd_market_cap || 0);
-      return usd > 0 ? { ...row, usd } : row;
-    }).sort((a, b) => a.usd - b.usd);
+    const rows = await fetchMajorMcapsFresh();
     cache = { at: Date.now(), rows };
     return rows;
   } catch {
     return cache?.rows ?? MAJOR_MCAP_FALLBACK;
   }
+}
+
+export async function fetchMajorMcaps(opts?: { force?: boolean }): Promise<MajorMcap[]> {
+  return liveOr(CACHE_KEYS.mcaps, () => fetchMajorMcapsLocal(), opts);
 }

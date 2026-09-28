@@ -5,8 +5,9 @@ import { BACKING_LP, BandSquare, CoverGauge, DEGEN_LP, ECOSYSTEM_LP, LoyaltyDisk
 import { DecimalText } from "@/components/Amount";
 import { Pulse } from "@/components/ui/Pulse";
 import { formatNiceNumber, formatPlainNumber, usdParts } from "@/services/money";
-import { loadPoolSanity, splitCommunityLp, type SanityView } from "@/services/poolSanity";
-import { loadHeadcounts, loadInsiderBooks, loadSpotTokens, type InsiderRow, type WalletDot } from "@/services/tokenCensus";
+import { splitCommunityLp, type SanityView } from "@/services/poolSanity";
+import { loadTokenBook } from "@/services/tokenBook";
+import type { InsiderRow, WalletDot } from "@/services/tokenCensus";
 
 type Props = {
   contract: string;
@@ -245,22 +246,28 @@ export function SanitySection(props: Props) {
   }, [props.contract, props.symbol]);
 
   useEffect(() => {
-    if (!(props.poolId > 0)) {
-      setBusy(false);
-      setErr("");
-      setView(null);
-      return;
-    }
     let live = true;
-    setBusy(true);
+    setBusy(props.poolId > 0);
     setErr("");
-    loadPoolSanity(props)
+    loadTokenBook(props, { force: props.reloadKey > 0 })
       .then((row) => {
-        if (live) setView(row);
+        if (!live) return;
+        setView(row.view);
+        setErr(row.error);
+        setHolders(row.holders);
+        setInsiders(row.insiders);
+        setSpotTokens(row.spotTokens);
+        setBooks(row.books);
+        setWallets(row.wallets);
       })
       .catch((e: unknown) => {
         if (!live) return;
         setView(null);
+        setBooks([]);
+        setWallets([]);
+        setHolders(null);
+        setInsiders(null);
+        setSpotTokens(0);
         setErr(e instanceof Error ? e.message : "Could not read the locked pool.");
       })
       .finally(() => {
@@ -283,50 +290,6 @@ export function SanitySection(props: Props) {
     props.tokenPrecision,
     props.reloadKey,
   ]);
-
-  useEffect(() => {
-    let live = true;
-    loadHeadcounts(props.contract, props.symbol)
-      .then((row) => {
-        if (!live) return;
-        setHolders(row.holders);
-        setInsiders(row.insiders);
-      })
-      .catch(() => {
-        if (!live) return;
-        setHolders(null);
-        setInsiders(null);
-      });
-    loadSpotTokens(props.contract, props.symbol)
-      .then((n) => {
-        if (live) setSpotTokens(n);
-      })
-      .catch(() => {
-        if (live) setSpotTokens(0);
-      });
-    return () => {
-      live = false;
-    };
-  }, [props.contract, props.symbol, props.reloadKey]);
-
-  useEffect(() => {
-    if (!view) return;
-    let live = true;
-    loadInsiderBooks(props.contract, props.symbol, view.poolBook)
-      .then((row) => {
-        if (!live) return;
-        setBooks(row.insiders);
-        setWallets(row.wallets);
-      })
-      .catch(() => {
-        if (!live) return;
-        setBooks([]);
-        setWallets([]);
-      });
-    return () => {
-      live = false;
-    };
-  }, [view, props.contract, props.symbol]);
 
   const quote = props.quoteSymbol || "quote";
   const sym = props.symbol;

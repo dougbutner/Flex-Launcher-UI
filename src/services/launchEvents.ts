@@ -1,6 +1,8 @@
+import { CACHE_KEYS } from "@/services/cacheKeys";
 import { readPresale } from "@/services/flexTables";
-import { loadBoardTokens, type BoardToken } from "@/services/leaderboardStore";
-import { loadLaunchRooms, type LaunchRoom } from "@/services/mechanicsLive";
+import { loadBoardTokens, loadFreshBoard, type BoardToken } from "@/services/leaderboardStore";
+import { loadLaunchRooms, loadLaunchRoomsFresh, type LaunchRoom } from "@/services/mechanicsLive";
+import { liveOr } from "@/services/readThrough";
 
 export type CalKind = "presale" | "launch" | "liftoff" | "unlock";
 
@@ -67,8 +69,7 @@ function pushEvent(events: CalEvent[], row: CalEvent) {
   events.push(row);
 }
 
-export async function loadCalendarEvents(): Promise<{ events: CalEvent[]; rooms: LaunchRoom[] }> {
-  const [board, rooms] = await Promise.all([loadBoardTokens().catch(() => [] as BoardToken[]), loadLaunchRooms()]);
+async function assembleCalendar(board: BoardToken[], rooms: LaunchRoom[]): Promise<{ events: CalEvent[]; rooms: LaunchRoom[] }> {
   const seen = new Map(board.map((t) => [t.id, t] as const));
   const events: CalEvent[] = [];
   const clubRooms = rooms.filter((r) => r.program !== "core");
@@ -131,4 +132,28 @@ export async function loadCalendarEvents(): Promise<{ events: CalEvent[]; rooms:
   }
   events.sort((a, b) => a.at - b.at);
   return { events, rooms };
+}
+
+/** Chain read used by the MySQL snapshot. Skips the browser caches. */
+export async function loadCalendarEventsFresh(): Promise<{ events: CalEvent[]; rooms: LaunchRoom[] }> {
+  const [board, rooms] = await Promise.all([
+    loadFreshBoard().catch(() => [] as BoardToken[]),
+    loadLaunchRoomsFresh(),
+  ]);
+  return assembleCalendar(board, rooms);
+}
+
+export async function loadCalendarEvents(opts?: { force?: boolean }): Promise<{ events: CalEvent[]; rooms: LaunchRoom[] }> {
+  return liveOr(
+    CACHE_KEYS.calendar,
+    async () => {
+      if (typeof window === "undefined") return loadCalendarEventsFresh();
+      const [board, rooms] = await Promise.all([
+        loadBoardTokens().catch(() => [] as BoardToken[]),
+        loadLaunchRooms(),
+      ]);
+      return assembleCalendar(board, rooms);
+    },
+    opts
+  );
 }

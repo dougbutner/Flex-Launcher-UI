@@ -1,6 +1,9 @@
 import type { ChainAction } from "@/services/launchActions";
 import { parseAsset, validPrecision } from "@/services/assets";
+import { CACHE_KEYS } from "@/services/cacheKeys";
 import { readLaunches, readStat } from "@/services/flexTables";
+import { liveOr, siteStatus } from "@/services/readThrough";
+import { siteSandboxFlag } from "@/services/siteSandbox";
 import { symbolCodeOf } from "@/services/preflight";
 import { getActions, getTableRows } from "@/services/rpc";
 import { rememberRemoteTokenIcon } from "@/services/tokenIcons";
@@ -85,40 +88,51 @@ function rememberRowIcon(row: ProtonTokenRow) {
 
 let protonTableJob: Promise<ProtonTokenRow[]> | null = null;
 
-/** Paginated token.proton tokens table. Partial rows are kept if a later page fails. */
-export async function loadProtonTokenTable(force = false): Promise<ProtonTokenRow[]> {
-  if (!force && protonTableJob) return protonTableJob;
-  protonTableJob = (async () => {
-    const rows: ProtonTokenRow[] = [];
-    let lower: string | number | undefined;
-    try {
-      for (;;) {
-        const page = await getTableRows<ProtonTokenRow>({
-          code: TOKEN_PROTON,
-          table: "tokens",
-          scope: TOKEN_PROTON,
-          limit: 200,
-          lower_bound: lower,
-        });
-        for (const row of page.rows) {
-          rows.push(row);
-          rememberRowIcon(row);
-        }
-        if (!page.more || !page.next_key || rows.length >= 50_000) break;
-        lower = page.next_key;
-      }
-    } catch (err) {
-      if (rows.length) return rows;
-      throw err;
-    }
-    return rows;
-  })();
+export async function fetchProtonTokenRows(): Promise<ProtonTokenRow[]> {
+  const rows: ProtonTokenRow[] = [];
+  let lower: string | number | undefined;
   try {
-    return await protonTableJob;
+    for (;;) {
+      const page = await getTableRows<ProtonTokenRow>({
+        code: TOKEN_PROTON,
+        table: "tokens",
+        scope: TOKEN_PROTON,
+        limit: 200,
+        lower_bound: lower,
+      });
+      for (const row of page.rows) rows.push(row);
+      if (!page.more || !page.next_key || rows.length >= 50_000) break;
+      lower = page.next_key;
+    }
   } catch (err) {
-    protonTableJob = null;
+    if (rows.length) return rows;
     throw err;
   }
+  return rows;
+}
+
+function stampIcons(rows: ProtonTokenRow[]) {
+  for (const row of rows) rememberRowIcon(row);
+  return rows;
+}
+
+/** Paginated token.proton tokens table. Partial rows are kept if a later page fails. */
+export async function loadProtonTokenTable(force = false): Promise<ProtonTokenRow[]> {
+  if (typeof window !== "undefined" && !siteSandboxFlag()) {
+    const site = await siteStatus();
+    if (site.live && site.db) {
+      const rows = await liveOr(CACHE_KEYS.proton, () => fetchProtonTokenRows(), { force });
+      return stampIcons(rows);
+    }
+  }
+  if (!force && protonTableJob) return protonTableJob;
+  protonTableJob = fetchProtonTokenRows()
+    .then((rows) => stampIcons(rows))
+    .catch((err) => {
+      protonTableJob = null;
+      throw err;
+    });
+  return protonTableJob;
 }
 
 export async function listProtonRowsForContract(tcontract: string): Promise<ProtonTokenRow[]> {

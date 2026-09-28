@@ -14,16 +14,8 @@ import { TokenPageSkeleton } from "@/components/ui/PageSkeletons";
 import { alcorAnalyticsUrl, explorerAccount, flexMeta, hasAngelChannels, isFlexContractActor, programFromAccount } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
-import {
-  readAccounts,
-  readFlexers,
-  readFlexpools,
-  readInsiders,
-  readLaunch,
-  readPresale,
-  readSettings,
-  readStat,
-} from "@/services/flexTables";
+import { readAccounts, readFlexers, readInsiders } from "@/services/flexTables";
+import { loadTokenPublic } from "@/services/tokenSnapshot";
 import {
   checklockAction,
   pullangelAction,
@@ -67,29 +59,27 @@ export default function Token() {
   const [iconSrc, setIconSrc] = useState("");
   const [sanityEpoch, setSanityEpoch] = useState(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     if (!code || !sym || !program) return;
     setBusy(true);
     setError("");
     try {
-      const [l, s, conf, fp, flexers, ps, ins] = await Promise.all([
-        readLaunch(code, sym),
-        readStat(code, sym),
-        readSettings(code, sym),
-        readFlexpools(code, sym).catch(() => [] as Record<string, unknown>[]),
+      const [shared, flexers, ins] = await Promise.all([
+        loadTokenPublic(code, sym, { force }),
         actor
           ? readFlexers(code, sym, 500).catch(() => [] as Record<string, unknown>[])
           : Promise.resolve([] as Record<string, unknown>[]),
-        readPresale(code, sym).catch(() => null),
         actor
           ? readInsiders(code, sym, 500).catch(() => [] as Record<string, unknown>[])
           : Promise.resolve([] as Record<string, unknown>[]),
       ]);
+      const l = shared.launch;
+      const s = shared.stat;
       setLaunch(l);
       setStat(s);
-      setSettings(conf);
-      setPools(fp);
-      setPresale(ps);
+      setSettings(shared.settings);
+      setPools(shared.pools);
+      setPresale(shared.presale);
       setFlexer(actor ? (flexers.find((f) => String(pick(f, "owner")) === actor) ?? null) : null);
       setInsider(actor ? (ins.find((r) => String(pick(r, "account")) === actor) ?? null) : null);
       if (actor) {
@@ -120,7 +110,7 @@ export default function Token() {
       setError(txErrorMessage(err));
     } finally {
       setBusy(false);
-      setSanityEpoch((n) => n + 1);
+      if (force) setSanityEpoch((n) => n + 1);
     }
   }, [actor, code, program, sym]);
 
@@ -175,7 +165,7 @@ export default function Token() {
               : pulljackpotAction(code, sym);
       const res = await transact([action]);
       setPokeMsg({ tx: txIdFromResult(res) || "ok" });
-      void load();
+      void load(true);
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
@@ -245,7 +235,7 @@ export default function Token() {
             supply={supplyAmt}
           />
         </div>
-        <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load()}>
+        <button type="button" className="btn btn-outline btn-sm" disabled={busy} onClick={() => void load(true)}>
           {busy ? "Refreshing…" : "Refresh"}
         </button>
       </div>
@@ -372,7 +362,7 @@ export default function Token() {
           holderBalanceRaw={holderBalRaw}
           onConnect={() => void addWebAuthWallet()}
           transact={transact}
-          onDone={() => void load()}
+          onDone={() => void load(true)}
         />
       ) : null}
 
@@ -403,7 +393,7 @@ export default function Token() {
             quoteSymbol={quoteSymbol}
             busy={busy || poking != null}
             transact={transact}
-            onDone={() => void load()}
+            onDone={() => void load(true)}
           />
         </div>
       ) : null}
@@ -421,7 +411,7 @@ export default function Token() {
             pools={pools}
             busy={busy || poking != null}
             transact={transact}
-            onDone={() => void load()}
+            onDone={() => void load(true)}
           />
         </div>
       ) : null}

@@ -1,5 +1,9 @@
 import { alcorTokenId } from "@/config/launch";
+import { assetAmountNumber, parseAsset } from "@/services/assets";
+import { marketCacheKey } from "@/services/cacheKeys";
+import { readLaunch, readStat } from "@/services/flexTables";
 import { formatNiceNumber } from "@/services/money";
+import { liveOr } from "@/services/readThrough";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
 import { loadSiteSandbox, siteSandboxFlag } from "@/services/siteSandbox";
 
@@ -203,7 +207,7 @@ export async function fetchSwapPoolsForToken(symbol: string, contract: string): 
   return [...byId.values()];
 }
 
-export async function loadAlcorMarket(args: {
+export async function loadAlcorMarketFresh(args: {
   poolId: number;
   tokenContract: string;
   tokenSymbol: string;
@@ -212,11 +216,6 @@ export async function loadAlcorMarket(args: {
   supply: number;
 }): Promise<AlcorMarketView | null> {
   if (!(args.poolId > 0)) return null;
-  if (siteSandboxFlag()) {
-    const overlay = await loadSiteSandbox();
-    const mock = overlay?.mergeMarket(args, null);
-    if (mock) return mock;
-  }
   const [poolRes, swapsRes, usdPrice, quoteUsd] = await Promise.all([
     fetch(`${ALCOR_POOL}/${args.poolId}`, { signal: AbortSignal.timeout(10_000) }),
     fetch(`${ALCOR_POOL}/${args.poolId}/swaps?limit=500`, { signal: AbortSignal.timeout(12_000) }),
@@ -252,4 +251,48 @@ export async function loadAlcorMarket(args: {
     points: buildPoints(Array.isArray(swaps) ? swaps : [], tokenIsA),
     trades: buildTrades(Array.isArray(swaps) ? swaps : [], tokenIsA),
   };
+}
+
+export async function loadAlcorMarket(
+  args: {
+    poolId: number;
+    tokenContract: string;
+    tokenSymbol: string;
+    quoteContract: string;
+    quoteSymbol: string;
+    supply: number;
+  },
+  opts?: { force?: boolean }
+): Promise<AlcorMarketView | null> {
+  if (!(args.poolId > 0)) return null;
+  if (siteSandboxFlag()) {
+    const overlay = await loadSiteSandbox();
+    const mock = overlay?.mergeMarket(args, null);
+    if (mock) return mock;
+  }
+  return liveOr(marketCacheKey(args.tokenContract, args.tokenSymbol, args.poolId), () => loadAlcorMarketFresh(args), opts);
+}
+
+/** Snapshot loader: quote and supply come from the launch and stat rows. */
+export async function loadMarketForCache(key: string): Promise<AlcorMarketView | null> {
+  const m = /^market:([a-z1-5.]{1,12}):([A-Z]{1,7}):(\d+)$/.exec(key);
+  if (!m) return null;
+  const contract = m[1];
+  const symbol = m[2];
+  const poolId = Number(m[3]);
+  const [launch, stat] = await Promise.all([
+    readLaunch(contract, symbol).catch(() => null),
+    readStat(contract, symbol).catch(() => null),
+  ]);
+  const quote = (launch?.quote ?? null) as { quantity?: string; contract?: string } | null;
+  const parsed = parseAsset(String(quote?.quantity ?? ""));
+  const supply = assetAmountNumber(String(stat?.supply ?? "0"));
+  return loadAlcorMarketFresh({
+    poolId,
+    tokenContract: contract,
+    tokenSymbol: symbol,
+    quoteContract: String(quote?.contract ?? ""),
+    quoteSymbol: parsed?.symbol ?? "",
+    supply,
+  });
 }
