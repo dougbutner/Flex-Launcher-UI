@@ -168,7 +168,7 @@ export default function Launch() {
       {started ? (
         <p className="mb-4 text-xs text-warning">
           Created on chain. Token created is frozen until the liquidity is locked, and you can adjust some parameters
-          later in Manager, some fees can change, but not in a way that may hurt holders.
+          later in Dev Tools, some fees can change, but not in a way that may hurt holders.
         </p>
       ) : null}
 

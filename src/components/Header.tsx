@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { FlexLogo } from "@/components/FlexLogo";
 import { isFlexContractActor } from "@/config/launch";
-import { useManagerAccess } from "@/hooks/useManagerAccess";
 import { useWallet } from "@/hooks/useWallet";
 import { walletTypeLabel } from "@/services/walletSessions";
 
 const NAV = [
   { to: "/launch", label: "Launch" },
+  { to: "/manager", label: "Dev Tools" },
   { to: "/events", label: "Events" },
   { to: "/insiders", label: "Insiders" },
   { to: "/leaderboard", label: "Winners" },
@@ -31,11 +31,8 @@ export function Header({ collapsed, onExpand }: { collapsed: boolean; onExpand: 
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDetailsElement>(null);
   const location = useLocation();
-  const showManager = useManagerAccess(isLoggedIn ? actor : null);
   const nav = [
-    NAV[0],
-    ...(showManager ? [{ to: "/manager", label: "Dev's Manager" }] : []),
-    ...NAV.slice(1),
+    ...NAV,
     ...(isFlexContractActor(actor)
       ? [
           { to: "/admin", label: "Admin" },

@@ -7,7 +7,10 @@ import {
   insidersStepValid,
   localToUnix,
   parseInviteAccounts,
+  presaleAdjustError,
+  presaleAdjustState,
   unixToLocal,
+  type PresaleAdjust,
 } from "@/services/insidersClub";
 
 describe("insidersClub", () => {
@@ -41,6 +44,39 @@ describe("insidersClub", () => {
     expect(insidersStepValid({ ...base, presaleLockSecs: 88 * 86400 })).toMatch(/90d/);
     expect(insidersStepValid({ ...base, presaleLockedInsiderBps: 250 })).toMatch(/Insider LP lock days/);
     expect(insidersStepValid({ ...base, presaleLockedInsiderBps: 50 })).toMatch(/Insider Max/);
+  });
+
+  it("keeps setpresale open until launched, and blocks a late first row", () => {
+    expect(presaleAdjustState(false, false)).toBe("open");
+    expect(presaleAdjustState(false, true)).toBe("open");
+    expect(presaleAdjustState(true, true)).toBe("sealed");
+    expect(presaleAdjustState(true, false)).toBe("missed");
+  });
+
+  it("allows earlier times on setpresale while the row is writable", () => {
+    const form: PresaleAdjust = {
+      insiderTime: "2020-01-01T00:00:00",
+      launchTime: "2020-01-02T00:00:00",
+      mode: 0,
+      insiderBps: 100,
+      lockedInsiderBps: 0,
+      collection: "",
+      schema: "",
+      nftMin: 0,
+      minTokenQty: "",
+      minTokenContract: "",
+      lpMin: 0,
+      lockSecs: 0,
+      lockedLpMin: 0,
+      needKyc: false,
+      gatesAll: false,
+      inviteList: "",
+    };
+    expect(presaleAdjustError(form)).toBeNull();
+    expect(presaleAdjustError({ ...form, launchTime: "2020-01-01T00:00:00" })).toMatch(/Public launch/);
+    expect(presaleAdjustError({ ...form, lockedInsiderBps: 50 })).toMatch(/Insider Max/);
+    expect(presaleAdjustError({ ...form, lockSecs: 88 * 86400 })).toMatch(/90d/);
+    expect(presaleAdjustError({ ...form, lockedLpMin: 10, lockSecs: 0 })).toBeNull();
   });
 
   it("builds setpresale then addinsiders", () => {

@@ -1,5 +1,5 @@
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
-import { validAccount } from "@/services/assets";
+import { assetAmountNumber, parseAsset, validAccount } from "@/services/assets";
 import { readInsiders } from "@/services/flexTables";
 import { addinsidersAction, setpresaleAction, type ChainAction, type SetPresaleArgs } from "@/services/launchActions";
 
@@ -51,6 +51,72 @@ export function inviteListError(raw: string): string | null {
     if (!validAccount(name)) return `Bad account ${name}. Use 1-12 char names (a-z, 1-5).`;
   }
   return null;
+}
+
+/** setpresale is open while launches.launched is false, even after a presale liftoff. */
+export function presaleAdjustState(launched: boolean, hasRow: boolean): "open" | "sealed" | "missed" {
+  if (!launched) return "open";
+  return hasRow ? "sealed" : "missed";
+}
+
+export type PresaleAdjust = {
+  insiderTime: string;
+  launchTime: string;
+  mode: number;
+  insiderBps: number;
+  lockedInsiderBps: number;
+  collection: string;
+  schema: string;
+  nftMin: number;
+  minTokenQty: string;
+  minTokenContract: string;
+  lpMin: number;
+  lockSecs: number;
+  lockedLpMin: number;
+  needKyc: boolean;
+  gatesAll: boolean;
+  inviteList: string;
+};
+
+/** Contract checks for setpresale. Times may move earlier while the row is still writable. */
+export function presaleAdjustError(form: PresaleAdjust): string | null {
+  const insiderTime = localToUnix(form.insiderTime);
+  const launchTime = localToUnix(form.launchTime);
+  if (!insiderTime || !launchTime) return "Set insider buys start and public launch.";
+  if (launchTime <= insiderTime) return "Public launch must come after insider buys start.";
+  if (form.mode < 0 || form.mode > 3 || !Number.isInteger(form.mode)) return "Mode is 0-3.";
+  if (
+    form.insiderBps < 0 ||
+    form.insiderBps > 10000 ||
+    form.lockedInsiderBps < 0 ||
+    form.lockedInsiderBps > 10000
+  ) {
+    return "Caps are 0-100% of supply.";
+  }
+  if (form.lockedInsiderBps > 0 && form.lockedInsiderBps < form.insiderBps) {
+    return "LP provider bonus must be at least Insider Max.";
+  }
+  const col = form.collection.trim();
+  const schema = form.schema.trim();
+  if ((col && !schema) || (!col && schema)) return "NFT needs both AtomicAssets collection and schema.";
+  if ((col && !validAccount(col)) || (schema && !validAccount(schema))) {
+    return "AtomicAssets collection and schema must be account names.";
+  }
+  const minQty = form.minTokenQty.trim();
+  const minContract = form.minTokenContract.trim();
+  if (minQty) {
+    if (!parseAsset(minQty)) return "Min Hold needs a quantity like 1.000000 EASY.";
+    if (assetAmountNumber(minQty) > 0) {
+      if (!minContract) return "Min Hold quantity needs a contract.";
+      if (!validAccount(minContract)) return "Min Hold contract is not a valid account.";
+    }
+  } else if (minContract && !validAccount(minContract)) {
+    return "Min Hold contract is not a valid account.";
+  }
+  if ((form.lockedLpMin > 0 || form.lockSecs > 0) && form.lockSecs > PRESALE_LOCK_MAX_SECS) {
+    return "Insider LP lock days must be at least 3 days shorter than the 90d main lock.";
+  }
+  return inviteListError(form.inviteList);
 }
 
 /** Null if skipped or valid. */

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Field, StatusIcon, TxLink } from "@/components/launch/ui";
 import { AirdropPanel } from "@/components/manager/AirdropPanel";
+import { ManagerPresale } from "@/components/manager/ManagerPresale";
 import { WinnerTextLink } from "@/components/winners/WinnerTextLink";
 import { RainDefaultsFields } from "@/components/launch/RainDefaultsFields";
 import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
@@ -62,7 +63,7 @@ export default function Manager() {
   const [rain, setRain] = useState<RainDefaults>({ rainMinHold: 0, rainMinPool: 0 });
   const [rainSaving, setRainSaving] = useState(false);
   const [rainSaveMsg, setRainSaveMsg] = useState("");
-  const [tool, setTool] = useState<"meta" | "tax" | "airdrop">("meta");
+  const [tool, setTool] = useState<"meta" | "tax" | "airdrop" | "presale">("meta");
 
   const load = useCallback(async () => {
     if (!actor) return;
@@ -349,34 +350,33 @@ export default function Manager() {
     [views]
   );
 
-  if (!isLoggedIn || !actor) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-        <h1 className="text-3xl font-black tracking-tight">Tools</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Connect the issuer account that already signed create. This page follows that account name, not this browser.
-        </p>
-        <button type="button" className="btn btn-primary mt-6" onClick={() => void addWebAuthWallet()}>
-          Connect Wallet
-        </button>
-      </div>
-    );
-  }
-
-  const started = views != null && managerHasStarted(views);
+  const checking = Boolean(isLoggedIn && actor && views == null);
+  const started = Boolean(isLoggedIn && actor && views != null && managerHasStarted(views));
+  const toolTitle = started ? undefined : checking ? "Checking this account." : "Opens after this account creates a token.";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
-        <h1 className="text-3xl font-black tracking-tight">Tools</h1>
-        {started ? (
-          <>
-            <WinnerTextLink label="Metadata" active={tool === "meta"} onClick={() => setTool("meta")} />
-            <WinnerTextLink label="Adjust Tax" active={tool === "tax"} onClick={() => setTool("tax")} />
-            <WinnerTextLink label="Airdrop" active={tool === "airdrop"} onClick={() => setTool("airdrop")} />
-          </>
-        ) : null}
+        <h1 className="text-3xl font-black tracking-tight">Dev Tools</h1>
+        <WinnerTextLink label="Metadata" active={started && tool === "meta"} disabled={!started} title={toolTitle} onClick={() => setTool("meta")} />
+        <WinnerTextLink label="Adjust Tax" active={started && tool === "tax"} disabled={!started} title={toolTitle} onClick={() => setTool("tax")} />
+        <WinnerTextLink label="Airdrop" active={started && tool === "airdrop"} disabled={!started} title={toolTitle} onClick={() => setTool("airdrop")} />
+        <WinnerTextLink label="Presale" active={started && tool === "presale"} disabled={!started} title={toolTitle} onClick={() => setTool("presale")} />
       </div>
+
+      {!isLoggedIn || !actor ? (
+        <>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Connect the issuer account that already signed create. Token links stay inactive until that account has a token.
+          </p>
+          <button type="button" className="btn btn-primary mt-6" onClick={() => void addWebAuthWallet()}>
+            Connect Wallet
+          </button>
+        </>
+      ) : null}
+
+      {isLoggedIn && actor ? (
+      <>
       <button
         type="button"
         className="mt-3 text-left text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
@@ -398,7 +398,7 @@ export default function Manager() {
       ) : !started ? (
         <div className="card mt-2 p-6">
           <p className="text-sm text-muted-foreground">
-            Manager shows up after your first on-chain create. Start on the Launch page, then come back from any device
+            Token links turn on after your first on-chain create. Start on the Launch page, then come back from any device
             with this account.
           </p>
           <Link to="/launch" className="btn btn-primary mt-4 inline-flex">
@@ -407,6 +407,40 @@ export default function Manager() {
         </div>
       ) : tool === "airdrop" ? (
         <AirdropPanel actor={actor} issued={issued} transact={transact} />
+      ) : tool === "presale" && view ? (
+        <section className="card mt-2 space-y-5 p-6">
+          <div>
+            <p className="font-mono text-lg font-bold">${view.token.symbol}</p>
+            <p className="text-xs text-muted-foreground">
+              {view.token.program} @ {view.token.contract}
+            </p>
+          </div>
+          {views.length > 1 ? (
+            <ul className="space-y-2">
+              {views.map((v) => {
+                const key = managerTokenKey(v.token.contract, v.token.symbol);
+                const on = key === selected;
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(key)}
+                      className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left ${
+                        on ? "border-primary bg-primary/10" : "border-border bg-background/40 hover:border-primary/40"
+                      }`}
+                    >
+                      <TokenIcon contract={v.token.contract} symbol={v.token.symbol} size={36} rounded="xl" />
+                      <span className="min-w-0 flex-1 font-mono text-sm font-bold">
+                        {v.token.symbol} <span className="text-muted-foreground">@ {v.token.contract}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+          <ManagerPresale contract={view.token.contract} symbol={view.token.symbol} actor={actor} transact={transact} />
+        </section>
       ) : (
         <>
           {views.length > 1 ? (
@@ -688,6 +722,8 @@ export default function Manager() {
           ) : null}
         </>
       )}
+      </>
+      ) : null}
     </div>
   );
 }

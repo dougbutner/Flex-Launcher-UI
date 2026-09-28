@@ -66,10 +66,10 @@ export function LiftoffModal({ draft, onReset }: Props) {
         </div>
         <p className="mt-5 text-center text-xs text-muted-foreground">
           <Link to="/manager" className="link" onClick={onReset}>
-            Manage token
+            Open Dev Tools
           </Link>
           {" · "}
-          Manager is ready for setfees, pools, and {draft.program === "flexforex" ? "ratios / setdist" : "setmin"}.
+          Dev Tools is ready for setfees, pools, and {draft.program === "flexforex" ? "ratios / setdist" : "setmin"}.
         </p>
       </div>
     </div>

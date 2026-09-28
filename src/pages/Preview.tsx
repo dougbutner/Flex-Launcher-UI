@@ -82,7 +82,7 @@ export default function Preview() {
         <section className="card mt-8 space-y-3 p-6">
           <h2 className="text-sm font-bold tracking-tight">Wallet and Alcor listing</h2>
           <p className="text-xs text-muted-foreground">
-            Faux draft. Submit to token.proton or request help in Telegram, then copy the Alcor AI prompt the same way Manager does.
+            Faux draft. Submit to token.proton or request help in Telegram, then copy the Alcor AI prompt the same way Dev Tools does.
           </p>
           <PreviewListing />
         </section>

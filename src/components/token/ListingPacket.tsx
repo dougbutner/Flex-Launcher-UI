@@ -143,7 +143,7 @@ export function ListingPacket({
         </>
       ) : (
         <p className="text-xs text-muted-foreground break-all">
-          {draft.iconurl || "No icon URL saved yet. Paste one in Manager metadata."}
+          {draft.iconurl || "No icon URL saved yet. Paste one in Dev Tools metadata."}
         </p>
       )}
       <p className="text-xs text-muted-foreground">
