@@ -2,6 +2,12 @@ import { managerFromDraft } from "@/services/managerDraft";
 import { parseManagerToken, type ManagerToken } from "@/services/managerStore";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 
+function issuerError(message: string, fallback: string) {
+  const text = message.trim();
+  if (!text || /mysql|MYSQL_|not configured/i.test(text)) return fallback;
+  return text;
+}
+
 async function readJson(res: Response): Promise<unknown> {
   const text = await res.text();
   try {
@@ -18,7 +24,7 @@ export async function listManagerTokens(q: { issuer?: string; contract?: string 
   if (![...params.keys()].length) return [];
   const res = await fetch(`/api/manager?${params}`);
   const body = (await readJson(res)) as { tokens?: unknown; error?: string };
-  if (!res.ok) throw new Error(body.error || `Manager store ${res.status}`);
+  if (!res.ok) throw new Error(issuerError(body.error || "", "Could not load saved copy."));
   const tokens = Array.isArray(body.tokens) ? body.tokens : [];
   return tokens.map(parseManagerToken).filter((row): row is ManagerToken => Boolean(row));
 }
@@ -30,9 +36,9 @@ export async function upsertManagerToken(token: ManagerToken): Promise<ManagerTo
     body: JSON.stringify(token),
   });
   const body = (await readJson(res)) as { token?: unknown; error?: string };
-  if (!res.ok) throw new Error(body.error || `Manager store ${res.status}`);
+  if (!res.ok) throw new Error(issuerError(body.error || "", "Could not save."));
   const parsed = parseManagerToken(body.token);
-  if (!parsed) throw new Error("Manager store returned a bad row.");
+  if (!parsed) throw new Error("Could not read the saved copy.");
   if (typeof window !== "undefined") window.dispatchEvent(new Event("flex-manager-updated"));
   return parsed;
 }
@@ -43,6 +49,6 @@ export async function persistLaunchDraft(issuer: string, draft: LaunchDraft): Pr
   try {
     await upsertManagerToken(managerFromDraft(issuer, draft));
   } catch (err) {
-    console.warn("Manager database persist failed", err);
+    console.warn("Launch copy was not saved", err);
   }
 }

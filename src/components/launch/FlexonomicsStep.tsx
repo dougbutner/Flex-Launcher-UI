@@ -39,7 +39,7 @@ export function FlexonomicsStep({ draft, patch, onNext, onBack, locked = false }
       {locked ? (
         <p className="text-xs text-warning">
           Create already landed. Tax, ticker, and rain defaults are frozen here so execute preflight stays honest.
-          Adjust tax later in Dev Tools with setfees. Rain floors stay in the database (Dev Tools or Admin).
+          Adjust tax later in Dev Tools with setfees. Rain floors stay in Dev Tools or Admin.
         </p>
       ) : null}
       <TaxBucketsForm

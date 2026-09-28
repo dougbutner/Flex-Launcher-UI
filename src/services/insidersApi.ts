@@ -23,6 +23,12 @@ export type FeedResponse = {
   range: FeedRange;
 };
 
+function clubError(message: string | undefined, fallback: string) {
+  const text = (message || "").trim();
+  if (!text || /mysql|MYSQL_|not configured/i.test(text)) return fallback;
+  return text;
+}
+
 async function readJson(res: Response): Promise<unknown> {
   const text = await res.text();
   try {
@@ -60,7 +66,7 @@ function asPost(raw: unknown): InsiderPost | null {
 export async function fetchCaptcha(): Promise<{ id: string; prompt: string }> {
   const res = await fetch("/api/insiders/captcha");
   const body = (await readJson(res)) as { id?: string; prompt?: string; error?: string };
-  if (!res.ok || !body.id || !body.prompt) throw new Error(body.error || "Captcha failed to load.");
+  if (!res.ok || !body.id || !body.prompt) throw new Error(clubError(body.error, "Captcha failed to load."));
   return { id: body.id, prompt: body.prompt };
 }
 
@@ -91,7 +97,7 @@ export async function fetchFeed(
       range?: FeedRange;
       error?: string;
     };
-    if (!res.ok) throw new Error(body.error || `Feed ${res.status}`);
+    if (!res.ok) throw new Error(clubError(body.error, "Feed is unavailable."));
     const posts = (Array.isArray(body.posts) ? body.posts : []).map(asPost).filter((p): p is InsiderPost => Boolean(p));
     empty.posts = posts;
     empty.activity = body.activity && typeof body.activity === "object" ? body.activity : {};
@@ -123,7 +129,7 @@ export async function createPost(input: {
     body: JSON.stringify(input),
   });
   const body = (await readJson(res)) as { id?: number; error?: string };
-  if (!res.ok) throw new Error(body.error || `Post ${res.status}`);
+  if (!res.ok) throw new Error(clubError(body.error, "Could not post."));
   return { id: Number(body.id) };
 }
 
@@ -140,5 +146,5 @@ export async function recordUp(input: {
     body: JSON.stringify(input),
   });
   const body = (await readJson(res)) as { error?: string };
-  if (!res.ok) throw new Error(body.error || `UP ${res.status}`);
+  if (!res.ok) throw new Error(clubError(body.error, "Could not record the UP."));
 }

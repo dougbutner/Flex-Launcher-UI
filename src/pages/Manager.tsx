@@ -51,7 +51,6 @@ export default function Manager() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saveMsg, setSaveMsg] = useState("");
-  const [storeHint, setStoreHint] = useState("");
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
   const [tax, setTax] = useState<TaxDraft | null>(null);
   const [taxBusy, setTaxBusy] = useState(false);
@@ -69,13 +68,12 @@ export default function Manager() {
     if (!actor) return;
     setBusy(true);
     setError("");
-    setStoreHint("");
     try {
       let stored: ManagerToken[] = [];
       try {
         stored = await listManagerTokens({ issuer: actor });
-      } catch (err) {
-        setStoreHint(txErrorMessage(err));
+      } catch {
+        stored = [];
       }
       const chain = await listIssuerTokens(actor).catch(() => []);
       const next = mergeManagerViews(chain, stored);
@@ -387,11 +385,6 @@ export default function Manager() {
       </button>
 
       {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
-      {storeHint ? (
-        <p className="mt-2 text-xs text-warning">
-          Metadata store: {storeHint}. You can still follow on-chain next steps.
-        </p>
-      ) : null}
 
       {views == null ? (
         <ManagerSkeleton />
