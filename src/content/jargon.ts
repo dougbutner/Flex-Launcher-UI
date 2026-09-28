@@ -26,3 +26,28 @@ export const JARGON_ENTRIES: { term: string; def: string }[] = [
   { term: "Floor", def: "minimum payout size." },
   { term: "Bps", def: "hundredths of a percent (100 = 1%)." },
 ];
+
+export const NUMBERS_JARGON_TITLE = "By the numbers";
+
+export const NUMBERS_JARGON: { term: string; def: string }[] = [
+  {
+    term: "LP",
+    def: "Liquidity pool. Two tokens paired on Alcor so people can swap. Locked LP is the day-one position. It cannot leave until the lock ends.",
+  },
+  {
+    term: "Market cap",
+    def: "The launch pool's mid price, in dollars, times this token's max supply.",
+  },
+  {
+    term: "Pure liquid backing",
+    def: "Dollars of the launch quote sitting in the day-one locked pool. The lower arc shows the tokens currently in liquidity pools with this one.",
+  },
+  {
+    term: "Total backing",
+    def: "Pure liquid backing plus the quote dollars in every community pool for this token.",
+  },
+  {
+    term: "Community LP",
+    def: "Pools added after the locked position. Backing community LP uses the launch quote. Ecosystem community LP uses EASY, WON, GRAMS, MEME, XMD, LOAN, METAL, or an xtoken. Degen community LP is any other pair.",
+  },
+];

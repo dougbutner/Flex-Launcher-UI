@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { DecimalText } from "@/components/Amount";
 import { TokenIcon } from "@/components/TokenIcon";
 import {
   easyHoldNeed,
@@ -400,7 +401,9 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
                     >
                       <TokenIcon contract={XTOKENS} symbol={row.symbol} size={52} />
                       <span className="font-mono text-xs font-bold">{row.symbol}</span>
-                      <span className="text-[10px] text-muted-foreground">{fmtUsd(row.usdPrice)}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        <DecimalText text={fmtUsd(row.usdPrice)} />
+                      </span>
                     </button>
                   );
                 })}

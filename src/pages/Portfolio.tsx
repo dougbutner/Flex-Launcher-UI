@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { DecimalText } from "@/components/Amount";
 import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
 import { BagsSkeleton } from "@/components/ui/PageSkeletons";
@@ -280,7 +281,7 @@ export default function Portfolio() {
         <div className="stat-box">
           <div className="text-xs uppercase tracking-wide text-muted-foreground">XPR balance</div>
           <div className="mt-1 font-mono text-lg font-bold">
-            {xpr == null ? "…" : xpr.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+            {xpr == null ? "…" : <DecimalText text={xpr.toLocaleString(undefined, { maximumFractionDigits: 4 })} />}
           </div>
         </div>
         <div className="stat-box">
@@ -395,28 +396,30 @@ export default function Portfolio() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-mono text-lg font-bold">{fmt(h.balance, h.precision)}</div>
+                    <div className="font-mono text-lg font-bold">
+                      <DecimalText text={fmt(h.balance, h.precision)} />
+                    </div>
                     <div className="text-xs text-muted-foreground">balance</div>
                   </div>
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className={h.reflectionPool > 0 ? "chip-primary" : "chip-muted"}>
-                    pool {fmt(h.reflectionPool, h.precision)} {h.symbol}
+                    pool <DecimalText text={fmt(h.reflectionPool, h.precision)} /> {h.symbol}
                   </span>
                   {h.program === "flexforex" ? (
                     <>
                       <span className={h.angelPool > 0 ? "chip-primary" : "chip-muted"}>
-                        angel pot {fmt(h.angelPool, h.precision)}
+                        angel pot <DecimalText text={fmt(h.angelPool, h.precision)} />
                       </span>
                       <span className={h.jackpotPool > 0 ? "chip-primary" : "chip-muted"}>
-                        jackpot {fmt(h.jackpotPool, h.precision)}
+                        jackpot <DecimalText text={fmt(h.jackpotPool, h.precision)} />
                       </span>
                     </>
                   ) : null}
                   {h.estSplash != null ? (
                     <span className="chip-success" title="Your balance ÷ circulating supply × 38.2% of the pending pool">
-                      est. splash ~{fmt(h.estSplash, h.precision)} {h.symbol}
+                      est. splash ~<DecimalText text={fmt(h.estSplash, h.precision)} /> {h.symbol}
                     </span>
                   ) : null}
                   {angel !== 1000 ? <span className="chip-muted">angel {angel}</span> : null}

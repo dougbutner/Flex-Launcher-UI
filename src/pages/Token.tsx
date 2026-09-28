@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ClubFeed, WeekTopPost } from "@/components/insiders/ClubFeed";
+import { DecimalText } from "@/components/Amount";
 import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
 import { SanitySection } from "@/components/token/SanitySection";
@@ -263,14 +264,14 @@ export default function Token() {
         {Boolean(pick(launch, "swap_underlying_default")) && quoteSymbol ? (
           <span className="chip-muted">→ {quoteSymbol} default</span>
         ) : null}
-        <span className="chip-muted">pool {fmt(reflectionPool, precision)}</span>
+        <span className="chip-muted">pool <DecimalText text={fmt(reflectionPool, precision)} /></span>
         {hasAngelChannels(program) ? (
           <>
             <span className={angelPool > 0 ? "chip-primary" : "chip-muted"}>
-              angel {fmt(angelPool, precision)}
+              angel <DecimalText text={fmt(angelPool, precision)} />
             </span>
             <span className={jackpotPool > 0 ? "chip-primary" : "chip-muted"}>
-              jackpot {fmt(jackpotPool, precision)}
+              jackpot <DecimalText text={fmt(jackpotPool, precision)} />
             </span>
           </>
         ) : null}

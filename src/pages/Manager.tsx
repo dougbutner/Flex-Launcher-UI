@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Field, StatusIcon, TxLink } from "@/components/launch/ui";
+import { AirdropPanel } from "@/components/manager/AirdropPanel";
+import { WinnerTextLink } from "@/components/winners/WinnerTextLink";
 import { RainDefaultsFields } from "@/components/launch/RainDefaultsFields";
 import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
 import { TokenIcon } from "@/components/TokenIcon";
@@ -60,6 +62,7 @@ export default function Manager() {
   const [rain, setRain] = useState<RainDefaults>({ rainMinHold: 0, rainMinPool: 0 });
   const [rainSaving, setRainSaving] = useState(false);
   const [rainSaveMsg, setRainSaveMsg] = useState("");
+  const [tool, setTool] = useState<"meta" | "tax" | "airdrop">("meta");
 
   const load = useCallback(async () => {
     if (!actor) return;
@@ -341,10 +344,15 @@ export default function Manager() {
     navigate("/launch");
   };
 
+  const issued = useMemo(
+    () => (views ?? []).map((v) => ({ contract: v.token.contract, symbol: v.token.symbol, precision: v.token.precision })),
+    [views]
+  );
+
   if (!isLoggedIn || !actor) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-        <h1 className="text-3xl font-black tracking-tight">Dev's Manager</h1>
+        <h1 className="text-3xl font-black tracking-tight">Tools</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Connect the issuer account that already signed create. This page follows that account name, not this browser.
         </p>
@@ -359,9 +367,19 @@ export default function Manager() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
+        <h1 className="text-3xl font-black tracking-tight">Tools</h1>
+        {started ? (
+          <>
+            <WinnerTextLink label="Metadata" active={tool === "meta"} onClick={() => setTool("meta")} />
+            <WinnerTextLink label="Adjust Tax" active={tool === "tax"} onClick={() => setTool("tax")} />
+            <WinnerTextLink label="Airdrop" active={tool === "airdrop"} onClick={() => setTool("airdrop")} />
+          </>
+        ) : null}
+      </div>
       <button
         type="button"
-        className="text-left text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+        className="mt-3 text-left text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
         disabled={busy}
         onClick={() => void load()}
       >
@@ -387,6 +405,8 @@ export default function Manager() {
             Go to Launch
           </Link>
         </div>
+      ) : tool === "airdrop" ? (
+        <AirdropPanel actor={actor} issued={issued} transact={transact} />
       ) : (
         <>
           {views.length > 1 ? (
@@ -462,6 +482,8 @@ export default function Manager() {
                 </div>
               </div>
 
+              {tool === "meta" ? (
+              <>
               <Field label="Display name" hint={`Max ${TOKEN_PROTON_TNAME_MAX} characters (token.proton).`}>
                 <input
                   className="input"
@@ -557,8 +579,11 @@ export default function Manager() {
                 </button>
                 {rainSaveMsg ? <p className="text-xs text-muted-foreground">{rainSaveMsg}</p> : null}
               </div>
+              </>
+              ) : null}
 
-              {tax && settings ? (
+              {tool === "tax" ? (
+              tax && settings ? (
                 <div className="space-y-3 border-t border-border pt-5">
                   <TaxBucketsForm
                     program={view.token.program}
@@ -597,8 +622,13 @@ export default function Manager() {
                 </div>
               ) : view.progress.create ? (
                 <FormPanelSkeleton />
+              ) : (
+                <p className="text-sm text-muted-foreground">Set fees after create.</p>
+              )
               ) : null}
 
+              {tool === "meta" ? (
+              <>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Launch steps</p>
                 <ol className="mt-2 space-y-1.5">
@@ -652,6 +682,8 @@ export default function Manager() {
                   </div>
                 ) : null}
               </div>
+              </>
+              ) : null}
             </section>
           ) : null}
         </>

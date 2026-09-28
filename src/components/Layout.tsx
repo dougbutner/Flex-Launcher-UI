@@ -5,7 +5,7 @@ import { Header } from "@/components/Header";
 import { TokenIcon } from "@/components/TokenIcon";
 import { SandboxBanner } from "@/test/sandbox/SandboxBanner";
 import { DISCLAIMER_PARAS, LEGAL_TERMS_URL } from "@/content/disclaimer";
-import { JARGON_ENTRIES, JARGON_TITLE } from "@/content/jargon";
+import { JARGON_ENTRIES, JARGON_TITLE, NUMBERS_JARGON, NUMBERS_JARGON_TITLE } from "@/content/jargon";
 import { useTetraChrome } from "@/hooks/useTetraChrome";
 import {
   EOSIO_TOKEN,
@@ -214,6 +214,15 @@ export function Layout() {
           </h2>
           <dl className="tetra-jargon">
             {JARGON_ENTRIES.map((row) => (
+              <div key={row.term} className="tetra-jargon__row">
+                <dt>{row.term}</dt>
+                <dd>{row.def}</dd>
+              </div>
+            ))}
+          </dl>
+          <h3 className="tetra-jargon__heading">{NUMBERS_JARGON_TITLE}</h3>
+          <dl className="tetra-jargon">
+            {NUMBERS_JARGON.map((row) => (
               <div key={row.term} className="tetra-jargon__row">
                 <dt>{row.term}</dt>
                 <dd>{row.def}</dd>

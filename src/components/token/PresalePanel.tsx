@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ClubTimeField } from "@/components/launch/ClubTimeField";
+import { DecimalText } from "@/components/Amount";
 import { Field, TxLink } from "@/components/launch/ui";
 import { alcorSwapUrl } from "@/config/launch";
 import { assetAmountNumber, parseAsset, validAccount } from "@/services/assets";
@@ -160,7 +161,7 @@ export function PresalePanel({
       <p className="text-xs text-muted-foreground">
         Gates: {gates.join(" · ")}. Your remaining buy room:{" "}
         <span className="font-mono font-semibold text-foreground">
-          {(remaining / 10 ** precision).toLocaleString(undefined, { maximumFractionDigits: precision })} {symbol}
+          <DecimalText text={(remaining / 10 ** precision).toLocaleString(undefined, { maximumFractionDigits: precision })} /> {symbol}
         </span>
       </p>
 

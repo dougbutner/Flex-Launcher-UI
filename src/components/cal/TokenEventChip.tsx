@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Coins, Ellipsis, Handshake, Images, Layers, Lock, LockKeyhole, Rocket } from "lucide-react";
 import { format } from "date-fns";
 import { TokenIcon } from "@/components/TokenIcon";
+import { DecimalText } from "@/components/Amount";
 import { fmtUsd } from "@/services/money";
 import { CHIP_BORDER, CHIP_TONE, type TokenCalEvent } from "@/components/cal/tokenCalEvents";
 
@@ -155,16 +156,16 @@ export function TokenEventChip({
           ) : null}
           <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 font-mono">
             <p>
-              Cap <span className="font-semibold">{cap}</span>
+              Cap <span className="font-semibold"><DecimalText text={cap} /></span>
             </p>
             <p>
-              Liq <span className="font-semibold">{fmtUsd(event.liquidity)}</span>
+              Liq <span className="font-semibold"><DecimalText text={fmtUsd(event.liquidity)} /></span>
             </p>
             <p>
-              Start <span className="font-semibold">{fmtUsd(event.startMcap)}</span>
+              Start <span className="font-semibold"><DecimalText text={fmtUsd(event.startMcap)} /></span>
             </p>
             <p>
-              End <span className="font-semibold">{fmtUsd(event.endMcap)}</span>
+              End <span className="font-semibold"><DecimalText text={fmtUsd(event.endMcap)} /></span>
             </p>
           </div>
         </div>
@@ -177,7 +178,9 @@ export function TokenEventChip({
                   {s.label}
                   {s.hint ? ` ${s.hint}` : ""}
                 </p>
-                <p className="font-mono text-xs font-bold">{pctLabel(s.pct)}</p>
+                <p className="font-mono text-xs font-bold">
+                  <DecimalText text={pctLabel(s.pct)} />
+                </p>
               </div>
             ))}
           </div>
@@ -210,7 +213,9 @@ export function TokenEventChip({
           <span className="mt-0.5 text-[8px] font-bold uppercase leading-none tracking-[0.16em] opacity-80">PRE</span>
         ) : null}
       </span>
-      <span className="hidden truncate text-[9px] opacity-80 sm:inline">{cap}</span>
+      <span className="hidden truncate text-[9px] opacity-80 sm:inline">
+        <DecimalText text={cap} />
+      </span>
       <span className="ml-auto flex shrink-0 items-center gap-0.5">
         <InsiderLockIcons event={event} size={12} />
         {event.kind === "launch" ? <Rocket className="h-3 w-3" /> : null}

@@ -1,3 +1,5 @@
+import { DecimalText } from "@/components/Amount";
+
 export type RingSlice = {
   size: number;
   color: string;
@@ -12,16 +14,20 @@ type Props = {
   top: readonly RingSlice[];
   /** Lower arch, opening the other way. Backing. */
   bottom: readonly RingSlice[];
+  topCaption?: string;
+  topTitle?: string;
+  bottomCaption?: string;
+  bottomTitle?: string;
 };
 
 const VB_W = 640;
-const VB_H = 320;
+const VB_H = 348;
 const CX = 320;
 const RX = 228;
 const CUT = 0.045;
 
-const TOP = { cy: 108, ry: 62, from: Math.PI + 0.22, to: Math.PI * 2 - 0.22 };
-const BOT = { cy: 214, ry: 62, from: 0.22, to: Math.PI - 0.22 };
+const TOP = { cy: 128, ry: 62, from: Math.PI + 0.22, to: Math.PI * 2 - 0.22 };
+const BOT = { cy: 236, ry: 62, from: 0.22, to: Math.PI - 0.22 };
 
 function pt(theta: number, cy: number, ry: number, rx = RX): [number, number] {
   return [CX + rx * Math.cos(theta), cy + ry * Math.sin(theta)];
@@ -58,20 +64,37 @@ function layout(slices: readonly RingSlice[], from: number, to: number, cy: numb
 }
 
 /** Top arch and a separate reverse arch underneath. Interior stays empty. */
-export function OvalRing({ center, sub, top, bottom }: Props) {
+export function OvalRing({
+  center,
+  sub,
+  top,
+  bottom,
+  topCaption = "Distribution",
+  topTitle = "Distribution of supply.",
+  bottomCaption = "Pure liquid backing",
+  bottomTitle = "Tokens currently in liquidity pools with this token.",
+}: Props) {
   const upper = layout(top, TOP.from, TOP.to, TOP.cy, TOP.ry);
   const lower = layout(bottom, BOT.from, BOT.to, BOT.cy, BOT.ry);
 
   return (
-    <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="block w-full bg-[#0d0d0d]" role="img" aria-label={`${center} ${sub}`}>
-      <title>{`${center} ${sub}. Upper arch is where the supply sits. Lower arch is quote backing by token.`}</title>
+    <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="block w-full bg-[#0d0d0d]" role="img" aria-label={`${center} ${sub}. ${topTitle} ${bottomTitle}`}>
+      <title>{`${center} ${sub}. ${topTitle} ${bottomTitle}`}</title>
+      <text x={CX} y={18} textAnchor="middle" fill="#f4f1e8" fillOpacity="0.45" fontSize="12" fontFamily="ui-monospace, monospace">
+        <title>{topTitle}</title>
+        {topCaption}
+      </text>
+      <text x={CX} y={240} textAnchor="middle" fill="#f4f1e8" fillOpacity="0.45" fontSize="12" fontFamily="ui-monospace, monospace">
+        <title>{bottomTitle}</title>
+        {bottomCaption}
+      </text>
       {[...upper, ...lower].map((path, i) => (
         <path key={i} d={path.d} fill="none" stroke={path.color} strokeWidth={16} strokeLinecap="butt" />
       ))}
-      <text x={CX} y={158} textAnchor="middle" fill="#f4f1e8" fontSize="20" fontFamily="ui-monospace, monospace">
-        {center}
+      <text x={CX} y={178} textAnchor="middle" fill="#f4f1e8" fontSize="20" fontFamily="ui-monospace, monospace">
+        <DecimalText text={center} svg />
       </text>
-      <text x={CX} y={178} textAnchor="middle" fill="#a8a29e" fontSize="12" fontFamily="ui-monospace, monospace">
+      <text x={CX} y={198} textAnchor="middle" fill="#a8a29e" fontSize="12" fontFamily="ui-monospace, monospace">
         {sub}
       </text>
       {upper.map((path, i) =>

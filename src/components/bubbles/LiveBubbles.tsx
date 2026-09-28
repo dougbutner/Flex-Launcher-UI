@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type PointerEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { DecimalText } from "@/components/Amount";
 import { hueFromId, seedNodes, stepNodes, type SimNode } from "@/services/bubblePhysics";
 
 export type LiveBubbleItem = {
@@ -148,7 +149,7 @@ export function LiveBubbles({ items, className, labelMinR = LABEL_MIN }: Props) 
                   fontFamily="ui-monospace, monospace"
                   display="none"
                 >
-                  {item.sub}
+                  <DecimalText text={item.sub} svg />
                 </text>
               ) : null}
             </>

@@ -4,7 +4,7 @@ import {
   alcorChartWidgetUrl,
   alcorSwapUrl,
 } from "@/config/launch";
-import { Amount } from "@/components/Amount";
+import { Amount, DecimalText } from "@/components/Amount";
 import { GoldPriceChart } from "@/components/token/GoldPriceChart";
 import {
   filterPoints,
@@ -45,7 +45,7 @@ function Stat({
     <div className="min-w-0">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`truncate font-mono text-sm font-semibold ${color}`} title={title && title !== value ? title : undefined}>
-        {value}
+        <DecimalText text={value} />
       </div>
     </div>
   );

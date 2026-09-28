@@ -282,6 +282,16 @@
   margin: 0;
 }
 
+.tetra-jargon__heading {
+  margin: 18px 0 10px;
+  font-family: var(--tetra-font);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: var(--tetra-tracking-ui);
+  text-transform: uppercase;
+  color: var(--tetra-ink);
+}
+
 .tetra-jargon__row {
   display: grid;
   grid-template-columns: minmax(6.5rem, max-content) minmax(0, 1fr);

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { HoldingBubbles } from "@/components/token/HoldingBubbles";
 import { OvalRing, type RingSlice } from "@/components/token/OvalRing";
 import { BACKING_LP, BandSquare, CoverGauge, DEGEN_LP, ECOSYSTEM_LP, LoyaltyDisk, TrackPair } from "@/components/token/StatShapes";
+import { DecimalText } from "@/components/Amount";
 import { Pulse } from "@/components/ui/Pulse";
 import { formatNiceNumber, formatPlainNumber, usdParts } from "@/services/money";
 import { loadPoolSanity, splitCommunityLp, type SanityView } from "@/services/poolSanity";
@@ -128,34 +129,61 @@ function priceLine(quote: number | null, quoteSymbol: string, dollars: number | 
   return { display: q, full: qFull };
 }
 
+function NumberTitle({
+  label,
+  explain,
+  open,
+  onToggle,
+}: {
+  label: string;
+  explain: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="bg-primary/10 px-1 text-left text-[10px] font-semibold uppercase tracking-wider text-foreground/80 hover:bg-primary/25"
+      aria-expanded={open}
+      onClick={onToggle}
+    >
+      {label}
+    </button>
+  );
+}
+
+function Explain({ text }: { text: string }) {
+  return <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{text}</p>;
+}
+
 function Stat({
   label,
   value,
   title,
-  hint,
+  explain,
   tone,
   color,
 }: {
   label: string;
   value: string;
   title?: string;
-  hint?: string;
+  explain: string;
   tone?: "gold" | "up";
   color?: string;
 }) {
+  const [open, setOpen] = useState(false);
   const colorClass = tone === "gold" ? "text-primary" : tone === "up" ? "text-success" : "text-foreground";
   return (
-    <div className="min-w-0" title={hint}>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground" title={hint}>
-        {label}
-      </div>
+    <div className="min-w-0">
+      <NumberTitle label={label} explain={explain} open={open} onToggle={() => setOpen((on) => !on)} />
       <div
         className={`break-words font-mono text-sm font-semibold ${color ? "" : colorClass}`}
         style={color ? { color } : undefined}
-        title={title && title !== value ? title : hint}
+        title={title && title !== value ? title : undefined}
       >
-        {value}
+        <DecimalText text={value} />
       </div>
+      {open ? <Explain text={explain} /> : null}
     </div>
   );
 }
@@ -171,17 +199,16 @@ function Reading({
   title?: string;
   body: string;
 }) {
+  const [open, setOpen] = useState(false);
   return (
     <li className="border border-border px-3 py-2">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" title={body}>
-          {label}
-        </span>
+        <NumberTitle label={label} explain={body} open={open} onToggle={() => setOpen((on) => !on)} />
         <span className="min-w-0 break-words text-right font-mono text-sm font-semibold" title={title && title !== value ? title : undefined}>
-          {value}
+          <DecimalText text={value} />
         </span>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">{body}</p>
+      {open ? <Explain text={body} /> : null}
     </li>
   );
 }
@@ -322,6 +349,9 @@ export function SanitySection(props: Props) {
   const capUsd = view?.fullPrintUsd ?? null;
   const overCap = (amount: number) => (amount > 0 && capUsd != null && capUsd > 0 ? amount / capUsd : null);
   const money = (amount: number) => (amount > 0 ? usd(amount).display : "-");
+  const pureUsd = view?.hardBackingUsd != null && view.hardBackingUsd > 0 ? view.hardBackingUsd : 0;
+  const totalUsd = pureUsd + lpSplit.sameUsd + lpSplit.ecosystemUsd + lpSplit.degenUsd;
+  const totalBacking = totalUsd > 0 ? usd(totalUsd) : view?.liquidBackingUsd != null ? usd(view.liquidBackingUsd) : { display: "-", full: "-" };
   const sameHint = `Community LP posted in ${quote || "the launch quote"}, the same token as the locked backing.`;
   const ecoHint =
     "Community LP in ecosystem quotes besides the launch quote: EASY, WON, GRAMS, MEME, XMD, LOAN, METAL, and xtokens.";
@@ -367,16 +397,20 @@ export function SanitySection(props: Props) {
       ) : view && mid && lockedQuote && lockedTokens && tradable && onAlcor && satellite && floatQty ? (
         <>
           <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border border-border px-3 py-3 sm:grid-cols-4">
-            <Stat label="Volume 24h" value={usd(view.volumeUsd24).display} title={usd(view.volumeUsd24).full} hint="24h volume across this token's Alcor pools." />
-            <Stat label="Vol / in hands" value={multiple(view.volOverTradable)} hint="24h volume divided by the in-hands print." />
-            <Stat label="Insiders" value={insiders == null ? "-" : String(insiders)} hint="Approved insiders on this symbol." />
-            <Stat label="Holders" value={holders == null ? "-" : String(holders)} hint="Flexer rows, or flexer_count when the contract stores it." />
+            <Stat label="Volume 24h" value={usd(view.volumeUsd24).display} title={usd(view.volumeUsd24).full} explain="Sum of Alcor volumeUSD24 on every swap pool that lists this token." />
+            <Stat label="Vol / in hands" value={multiple(view.volOverTradable)} explain="That 24h volume divided by the dollar print of supply outside the locked position (Alcor price times max supply minus locked tokens)." />
+            <Stat label="Insiders" value={insiders == null ? "-" : String(insiders)} explain="Count of approved rows on the insiders table for this symbol. If none are approved, the row count." />
+            <Stat label="Holders" value={holders == null ? "-" : String(holders)} explain="stat.flexer_count when the contract stores it and it is above zero. Otherwise the number of flexers rows read for this symbol." />
           </div>
 
           <div className="mt-4">
             <OvalRing
               center={tradable.display}
               sub="in hands"
+              topCaption="Distribution"
+              topTitle="Distribution of supply."
+              bottomCaption="Pure liquid backing"
+              bottomTitle={`These are the tokens currently in liquidity pools with ${sym}.`}
               top={[
                 { size: view.lockedTokens, color: "#eab308", label: "locked LP", title: "Tokens still inside the day-one locked position." },
                 { size: Math.max(0, view.satelliteTokens), color: "#60a5fa", label: "community LP", title: "Tokens on swap.alcor outside the locked position." },
@@ -390,6 +424,7 @@ export function SanitySection(props: Props) {
             <CoverGauge
               ratio={view.backingOverFull}
               backing={view.hardBackingUsd != null ? usd(view.hardBackingUsd).display : lockedQuote.display}
+              total={totalBacking.display}
               cap={usd(view.fullPrintUsd).display}
               extras={[
                 {
@@ -409,7 +444,7 @@ export function SanitySection(props: Props) {
                 {
                   ratio: overCap(lpSplit.degenUsd),
                   usd: money(lpSplit.degenUsd),
-                  label: "Degen LP",
+                  label: "Degen community LP",
                   color: DEGEN_LP,
                   hint: degenHint,
                 },
@@ -434,7 +469,7 @@ export function SanitySection(props: Props) {
                 color: "#38bdf8",
               }}
               right={{
-                label: "pure backing",
+                label: "pure liquid",
                 amount: view.hardBackingUsd ?? 0,
                 text: usd(view.hardBackingUsd).display,
                 color: "#eab308",
@@ -506,97 +541,97 @@ export function SanitySection(props: Props) {
 
           <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
             <Stat
-              label="Liquid backing"
-              value={usd(view.liquidBackingUsd).display}
-              title={usd(view.liquidBackingUsd).full}
+              label="Total backing"
+              value={totalBacking.display}
+              title={totalBacking.full}
               tone="gold"
-              hint="Quote in every Alcor pool: the locked position plus community LP."
+              explain="Pure liquid backing plus quote dollars in backing community LP, ecosystem community LP, and degen community LP."
             />
             <Stat
               label="Price"
               value={qty(view.midQuote, quote).display}
               title={mid.full}
-              hint="Price from the main locked pool."
+              explain={`Quote per token from sqrtPriceX64 on the locked Alcor pool (pool ${props.poolId}).`}
             />
             <Stat
               label={`Locked ${quote}`}
               value={lockedUsd ? `${lockedQuote.display} (${lockedUsd})` : lockedQuote.display}
               title={lockedUsd ? `${lockedQuote.full} (${lockedUsd})` : lockedQuote.full}
               tone="gold"
-              hint="Quote sitting in the day-one locked position, with its dollar value."
+              explain={`Quote inside the day-one locked position, from its liquidity and ticks. Dollars are that amount times the Alcor USD price of ${quote}.`}
             />
-            <Stat label="Pure liquid static" value={lockedTokens.display} title={lockedTokens.full} hint="Tokens still inside the locked position." />
+            <Stat label="Pure liquid static" value={lockedTokens.display} title={lockedTokens.full} explain="This token still inside the day-one locked position, from that position's liquidity and ticks." />
             <Stat
               label="In hands"
               value={tradable.display}
               title={tradable.full}
-              hint="Max supply minus tokens in the main locked position."
+              explain="stat max supply minus tokens still in the day-one locked position."
             />
             <Stat
               label="Tradable print"
               value={printOf(view.tradablePrintUsd, view.midQuote, view.tradableSupply, quote).display}
               title={printOf(view.tradablePrintUsd, view.midQuote, view.tradableSupply, quote).full}
-              hint="Price times in-hands supply."
+              explain="Pool mid price times the Alcor USD price of the quote, times in-hands supply."
             />
-            <Stat label="swap.alcor" value={onAlcor.display} title={onAlcor.full} hint="Token balance on swap.alcor, all pools." />
+            <Stat label="swap.alcor" value={onAlcor.display} title={onAlcor.full} explain={`accounts balance of ${sym} scoped to swap.alcor. That is every pool, including the locked position.`} />
             <Stat
               label="Satellite pooled"
               value={satellite.display}
               title={satellite.full}
-              hint="swap.alcor balance minus the main locked position."
+              explain="swap.alcor balance minus tokens still in the day-one locked position."
             />
             <Stat
               label="Wallet float"
               value={floatQty.display}
               title={floatQty.full}
-              hint="Max supply minus the swap.alcor balance."
+              explain="stat max supply minus the swap.alcor balance. Tokens that are not in any Alcor pool."
             />
             <Stat
               label="Wallet print"
               value={printOf(view.walletPrintUsd, view.midQuote, view.walletFloat, quote).display}
               title={printOf(view.walletPrintUsd, view.midQuote, view.walletFloat, quote).full}
-              hint="Price times wallet float."
+              explain="Pool mid price times the Alcor USD price of the quote, times wallet float."
             />
             <Stat
-              label="Pure backing"
+              label="Pure liquid backing"
               value={view.hardBackingUsd != null ? usd(view.hardBackingUsd).display : lockedQuote.display}
               title={view.hardBackingUsd != null ? usd(view.hardBackingUsd).full : lockedQuote.full}
               tone="gold"
-              hint="Dollar value of the quote in the main locked position."
+              explain={`Quote in the day-one locked position times the Alcor USD price of ${quote}.`}
             />
             <Stat
               label="Backing community LP"
               value={money(lpSplit.sameUsd)}
               title={lpSplit.sameUsd > 0 ? usd(lpSplit.sameUsd).full : undefined}
               color={BACKING_LP}
-              hint={sameHint}
+              explain={`Quote USD in community pools whose pair is ${quote || "the launch quote"}, the same asset as the locked backing. The locked position is not included.`}
             />
             <Stat
               label="Ecosystem community LP"
               value={money(lpSplit.ecosystemUsd)}
               title={lpSplit.ecosystemUsd > 0 ? usd(lpSplit.ecosystemUsd).full : undefined}
               color={ECOSYSTEM_LP}
-              hint={ecoHint}
+              explain="Quote USD in community pools paired with EASY, WON, GRAMS, MEME, XMD, LOAN, METAL, or an xtoken, when that is not the launch quote."
             />
             <Stat
-              label="Degen LP"
+              label="Degen community LP"
               value={money(lpSplit.degenUsd)}
               title={lpSplit.degenUsd > 0 ? usd(lpSplit.degenUsd).full : undefined}
               color={DEGEN_LP}
-              hint={degenHint}
+              explain="Quote USD in community pools whose pair is neither the launch quote nor an ecosystem token."
             />
             <Stat
               label="Backing / full print"
               value={share(view.backingOverFull)}
-              hint="Pure backing divided by price times max supply. Locked tokens stay in the denominator."
+              explain="Locked quote divided by mid price times max supply. Locked tokens stay in the supply."
             />
             <Stat
               label="Backing / wallet print"
               value={share(view.backingOverWallet)}
-              hint="Pure backing divided by wallet print."
+              explain="Locked quote divided by mid price times wallet float (max supply minus the swap.alcor balance)."
             />
-            <Stat label="Pool TVL" value={usd(view.poolTvlUsd).display} title={usd(view.poolTvlUsd).full} hint="Alcor TVL of the main pool. Includes the token side." />
-            <Stat label="Vol / backing" value={multiple(view.volOverBacking)} hint="24h volume divided by pure backing." />
+            <Stat label="Pool TVL" value={usd(view.poolTvlUsd).display} title={usd(view.poolTvlUsd).full} explain="Alcor tvlUSD on the launch pool. If that is missing, token quantity times token USD plus quote quantity times quote USD." />
+            <Stat label="Vol / backing" value={multiple(view.volOverBacking)} explain="Sum of Alcor volumeUSD24 on this token's pools, divided by the dollar value of quote in the locked position." />
           </div>
 
           {view.unpricedPools > 0 ? (
@@ -609,70 +644,70 @@ export function SanitySection(props: Props) {
             <Reading
               label="Main redeem cover"
               value={share(view.backingOverWallet)}
-              body="If every wallet sold, this is the share of that dump the day-one locked stables can cash."
+              body="Locked quote divided by mid price times wallet float. Wallet float is stat max supply minus the swap.alcor balance."
             />
             <Reading
               label="Pool redeem cover"
               value={share(view.poolRedeemCover)}
-              body="Same wallet dump, counted against quote in all swap.alcor pools, not just the main locked range."
+              body="Priced quote USD in every Alcor pool for this token, divided by the dollar print of wallet float."
             />
             <Reading
               label="Book cover"
               value={share(view.bookCover)}
-              body="Wallets and community LP sell. Cash is still the main locked stables."
+              body="Locked quote divided by mid price times in-hands supply. In hands is max supply minus tokens still in the locked position."
             />
             <Reading
               label="Community LP"
               value={satellite.display}
               title={satellite.full}
-              body="Tokens on swap.alcor outside the main locked pools. Crowd-posted depth."
+              body="swap.alcor balance of this token minus the amount still in the day-one locked position."
             />
             <Reading
               label="Backing community LP"
               value={money(lpSplit.sameUsd)}
               title={lpSplit.sameUsd > 0 ? usd(lpSplit.sameUsd).full : undefined}
-              body={sameHint}
+              body={`Quote USD in community pools paired with ${quote || "the launch quote"}. The locked position is excluded.`}
             />
             <Reading
               label="Ecosystem community LP"
               value={money(lpSplit.ecosystemUsd)}
               title={lpSplit.ecosystemUsd > 0 ? usd(lpSplit.ecosystemUsd).full : undefined}
-              body={ecoHint}
+              body="Quote USD in community pools paired with EASY, WON, GRAMS, MEME, XMD, LOAN, METAL, or an xtoken, when that pair is not the launch quote."
             />
             <Reading
-              label="Degen LP"
+              label="Degen community LP"
               value={money(lpSplit.degenUsd)}
               title={lpSplit.degenUsd > 0 ? usd(lpSplit.degenUsd).full : undefined}
-              body={degenHint}
+              body="Quote USD in community pools whose pair is neither the launch quote nor an ecosystem token."
             />
             <Reading
-              label="Liquid backing"
-              value={usd(view.liquidBackingUsd).display}
-              title={usd(view.liquidBackingUsd).full}
-              body="Pure backing plus quote posted in community LP."
+              label="Total backing"
+              value={totalBacking.display}
+              title={totalBacking.full}
+              body="Pure liquid backing plus quote dollars in backing community LP, ecosystem community LP, and degen community LP."
             />
             <Reading
-              label="Pure backing"
+              label="Pure liquid backing"
               value={usd(view.hardBackingUsd).display}
               title={usd(view.hardBackingUsd).full}
-              body="Stables in the main locked pools. The official cash."
+              body={`Quote inside the day-one locked position times the Alcor USD price of ${quote}.`}
             />
             <Reading
               label="Pure liquid static"
               value={lockedTokens.display}
               title={lockedTokens.full}
-              body="Tokens already in those main pools. Safe inventory, not a dump."
+              body="This token still inside the day-one locked position, from that position's liquidity and ticks."
             />
             <Reading
               label="Loose float"
               value={floatQty.display}
               title={floatQty.full}
-              body="Max supply minus everything on swap.alcor. Wallets that can hit the book."
+              body="stat max supply minus the swap.alcor token balance."
             />
             <Reading
               label="LP loyalty"
               value={share(view.lpLoyalty)}
-              body="Community LP / (community LP + loose float). How much of the unlocked token is still pooled."
+              body="Satellite pooled tokens divided by satellite pooled plus wallet float. Satellite is swap.alcor minus the locked position."
             />
           </ul>
         </>

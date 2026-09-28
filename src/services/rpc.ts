@@ -172,7 +172,9 @@ export async function getActions(params: {
   throw new Error(last);
 }
 
-export async function getTokens(account: string): Promise<Array<{ symbol: string; amount: string; contract: string; decimals?: number }>> {
+export async function getTokens(
+  account: string
+): Promise<Array<{ symbol: string; amount: string | number; contract: string; decimals?: number; precision?: number }>> {
   let last = "get_tokens failed";
   for (const base of HYPERION_ENDPOINTS) {
     try {
@@ -181,7 +183,9 @@ export async function getTokens(account: string): Promise<Array<{ symbol: string
         last = res.statusText;
         continue;
       }
-      const data = (await res.json()) as { tokens?: Array<{ symbol: string; amount: string; contract: string; decimals?: number }> };
+      const data = (await res.json()) as {
+        tokens?: Array<{ symbol: string; amount: string | number; contract: string; decimals?: number; precision?: number }>;
+      };
       return data.tokens ?? [];
     } catch (err) {
       last = err instanceof Error ? err.message : String(err);

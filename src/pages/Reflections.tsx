@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Amount } from "@/components/Amount";
+import { Amount, DecimalText } from "@/components/Amount";
 import { TokenIcon } from "@/components/TokenIcon";
 import { RainSkeleton } from "@/components/ui/PageSkeletons";
 import { TxLink } from "@/components/launch/ui";
@@ -242,7 +242,7 @@ export default function Reflections() {
                   <div className="relative min-h-[4.75rem] px-2 pb-3 text-center">
                     <div className="flex flex-col items-center gap-0.5 transition-opacity group-hover:opacity-0 group-focus:opacity-0">
                       <span className="break-all font-mono text-[11px] leading-tight text-muted-foreground">
-                        {fmtPool(d.pool, d.precision)} {d.symbol}
+                        <DecimalText text={fmtPool(d.pool, d.precision)} /> {d.symbol}
                       </span>
                       <span className="font-mono text-sm font-semibold text-primary">
                         <Amount value={d.usd} kind="usd" />
@@ -259,7 +259,7 @@ export default function Reflections() {
                           splash 38.2%
                         </span>
                         <span className="break-all font-mono text-base font-bold leading-tight text-white">
-                          {fmtPool(splash, d.precision)} {d.symbol}
+                          <DecimalText text={fmtPool(splash, d.precision)} /> {d.symbol}
                         </span>
                         <span className="font-mono text-[10px] text-white/70">
                           <Amount value={splashUsd} kind="usd" />

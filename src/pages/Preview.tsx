@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { alcorAnalyticsUrl, isFlexContractActor } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
+import { DecimalText } from "@/components/Amount";
 import { TokenIcon } from "@/components/TokenIcon";
 import { TokenGlyph } from "@/components/TokenGlyph";
 import { CalTokenCard } from "@/components/events/CalTokenCard";
@@ -348,15 +349,17 @@ export default function Preview() {
               </div>
             </div>
             <div className="text-right">
-              <div className="font-mono text-lg font-bold">{fmt(h.balance, h.precision)}</div>
+              <div className="font-mono text-lg font-bold">
+                <DecimalText text={fmt(h.balance, h.precision)} />
+              </div>
               <div className="text-xs text-muted-foreground">balance</div>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="chip-primary">pool {fmt(h.reflectionPool, h.precision)} {h.symbol}</span>
-            <span className="chip-primary">angel pot {fmt(h.angelPool, h.precision)}</span>
-            <span className="chip-primary">jackpot {fmt(h.jackpotPool, h.precision)}</span>
-            <span className="chip-success">est. splash ~{fmt(h.estSplash, h.precision)} {h.symbol}</span>
+            <span className="chip-primary">pool <DecimalText text={fmt(h.reflectionPool, h.precision)} /> {h.symbol}</span>
+            <span className="chip-primary">angel pot <DecimalText text={fmt(h.angelPool, h.precision)} /></span>
+            <span className="chip-primary">jackpot <DecimalText text={fmt(h.jackpotPool, h.precision)} /></span>
+            <span className="chip-success">est. splash ~<DecimalText text={fmt(h.estSplash, h.precision)} /> {h.symbol}</span>
             <span className="chip-muted">angel {angel}</span>
             <span className="chip-muted">
               → {beneficiary} {(beneRate / 100).toFixed(0)}%

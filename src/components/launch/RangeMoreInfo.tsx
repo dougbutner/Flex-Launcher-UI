@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { DecimalText } from "@/components/Amount";
 import { fmtPrice } from "@/components/launch/draftPlan";
 import { fetchMajorMcaps, MAJOR_MCAP_FALLBACK, type MajorMcap } from "@/services/majorMcaps";
 import {
@@ -221,7 +222,9 @@ export function RangeMoreInfo({
               {nextCosts.map(({ m, cost }) => (
                 <div key={m} className="rounded-xl border border-primary/15 bg-background/40 px-2 py-2 text-center">
                   <div className="font-mono text-[10px] text-muted-foreground">{m}x</div>
-                  <div className="font-mono text-xs font-bold">{usd(cost?.usd)}</div>
+                  <div className="font-mono text-xs font-bold">
+                    <DecimalText text={usd(cost?.usd)} />
+                  </div>
                   {cost?.capped ? <div className="text-[9px] text-muted-foreground">range max</div> : null}
                 </div>
               ))}
@@ -247,7 +250,9 @@ export function RangeMoreInfo({
                   onChange={(e) => setCompareLog(Number(e.target.value))}
                   className="flex-1 accent-[hsl(var(--primary))]"
                 />
-                <span className="w-24 text-right font-mono text-xs font-bold">{usd(compareTarget)}</span>
+                <span className="w-24 text-right font-mono text-xs font-bold">
+                  <DecimalText text={usd(compareTarget)} />
+                </span>
               </div>
               <p className="text-xs text-muted-foreground">
                 Matching {usd(compareTarget)} FDV is {fmtMult(compareTarget / startMc)} this launch.
@@ -278,7 +283,9 @@ export function RangeMoreInfo({
                   }}
                 >
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{row.label}</div>
-                  <div className="font-mono text-sm font-bold">{usd(row.usd)}</div>
+                  <div className="font-mono text-sm font-bold">
+                    <DecimalText text={usd(row.usd)} />
+                  </div>
                   <div className="mt-1 text-[10px] text-muted-foreground">
                     {startMc > 0 ? `${fmtMult(mult)} vs start` : "-"}
                   </div>
@@ -339,7 +346,9 @@ export function RangeMoreInfo({
               <p className="text-xs text-muted-foreground">
                 After another {extraUsd > 0 ? usd(extraUsd) : "$0"} walks the pool, the original ${USD_BUY_PROBE} bag
                 marks at{" "}
-                <span className="font-mono font-semibold text-foreground">{usd(scenario.bagUsdAfter)}</span>
+                <span className="font-mono font-semibold text-foreground">
+                  <DecimalText text={usd(scenario.bagUsdAfter)} />
+                </span>
                 {" "}({fmtMult(scenario.bagMultiple)}). Extra takes {fmtPct(scenario.extraSupplyPct)} (
                 {fmtPrice(scenario.extraTokens)} {tokenSymbol}).
                 {scenario.capped ? " The range is fully walked." : ""}

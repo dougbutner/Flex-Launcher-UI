@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, Ellipsis, Handshake, Rocket, Search } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { TokenIcon } from "@/components/TokenIcon";
+import { DecimalText } from "@/components/Amount";
 import { ProgramDots } from "@/components/token/ProgramDots";
+import { BACKING_LP, DEGEN_LP, ECOSYSTEM_LP } from "@/components/token/StatShapes";
 import { WinnerTextLink } from "@/components/winners/WinnerTextLink";
 import { BoardFilterRail } from "@/components/winners/BoardFilters";
 import { fmtPctChange } from "@/services/alcorMarket";
-import { flexAccount } from "@/config/launch";
 import { fmtUsd } from "@/services/money";
 import {
   applyBoardFilters,
@@ -30,14 +31,22 @@ import type { BoardToken } from "@/services/leaderboardStore";
 import type { WinnerViewProps } from "@/components/winners/types";
 import { MOCK_CLUB_LOCKS, MOCK_SPECS, mockTokenLogo } from "@/test/sandbox/data";
 
+const COVER_BARS = ["#eab308", BACKING_LP, ECOSYSTEM_LP, DEGEN_LP];
+
 function CoverTrack({ ratio }: { ratio: number | null }) {
   const fill = ratio == null ? 0 : Math.min(1, Math.max(0, ratio));
   return (
     <span className="inline-flex min-w-[7.5rem] items-center gap-2" title="Pure liquid backing divided by market cap">
-      <span className="relative h-2 w-16 shrink-0 bg-white/10">
-        <span className="absolute inset-y-0 left-0 bg-primary" style={{ width: `${fill * 100}%` }} />
+      <span className="relative h-2 w-16 shrink-0 bg-[#262626]">
+        <span className="absolute inset-y-0 left-0 flex" style={{ width: `${fill * 100}%` }}>
+          {COVER_BARS.map((color) => (
+            <span key={color} className="h-full flex-1" style={{ background: color }} />
+          ))}
+        </span>
       </span>
-      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{fmtCover(ratio)}</span>
+      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+        <DecimalText text={fmtCover(ratio)} />
+      </span>
     </span>
   );
 }
@@ -246,12 +255,11 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
           tabIndex={0}
           className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-card outline-none"
         >
-          <table className="w-full min-w-[1040px] border-collapse text-[13px]">
+          <table className="w-full min-w-[920px] border-collapse text-[13px]">
             <thead className="sticky top-0 z-20 bg-card">
               <tr className="h-11 border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                 <th className="w-8 px-3 font-medium">#</th>
-                <th className="sticky left-0 z-20 min-w-[220px] bg-card px-3 font-medium">Token</th>
-                <th className="min-w-[72px] px-3 font-medium">Contract</th>
+                <th className="sticky left-0 z-20 w-44 bg-card px-3 font-medium">Token</th>
                 <th className="min-w-[88px] px-3 font-medium">
                   <HeaderSort label="Age" active={sort === "age"} dir={dir} onClick={() => setTab("age")} />
                 </th>
@@ -276,7 +284,7 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
             <tbody>
               {page.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={9} className="px-3 py-8 text-center text-sm text-muted-foreground">
                     No tokens match.
                   </td>
                 </tr>
@@ -299,7 +307,7 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                     >
                       <td className="px-3 py-3 font-mono tabular-nums text-muted-foreground">{i + 1}</td>
                       <td
-                        className={`sticky left-0 z-10 px-3 py-3 ${
+                        className={`sticky left-0 z-10 w-44 max-w-[11rem] px-3 py-3 ${
                           hi === i ? "bg-muted" : "bg-card"
                         } group-hover:bg-muted`}
                       >
@@ -323,20 +331,21 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                             </span>
                             <span className="block truncate text-[11px] text-muted-foreground">{prettyTokenName(t.symbol)}</span>
                           </span>
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className="inline-flex items-center gap-1.5" title={flexAccount(t.program)}>
-                          <ProgramDots program={t.program} />
-                          <span className="font-mono text-[11px] text-muted-foreground">{flexAccount(t.program)}</span>
+                          <span className="ml-auto flex items-center self-center">
+                            <ProgramDots program={t.program} />
+                          </span>
                         </span>
                       </td>
                       <td className="px-3 py-3 font-mono tabular-nums text-muted-foreground">{fmtAge(t.firstSeenAt)}</td>
-                      <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtUsd(t.mcapUsd)}</td>
+                      <td className="px-3 py-3 text-right font-mono tabular-nums">
+                        <DecimalText text={fmtUsd(t.mcapUsd)} />
+                      </td>
                       <td className="px-4 py-3">
                         <CoverTrack ratio={coverRatio(t.backingUsd, t.mcapUsd)} />
                       </td>
-                      <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtUsd(t.volumeUsd)}</td>
+                      <td className="px-3 py-3 text-right font-mono tabular-nums">
+                        <DecimalText text={fmtUsd(t.volumeUsd)} />
+                      </td>
                       <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtHolders(t.holders)}</td>
                       <td className="px-3 py-3 text-right">
                         {bone ? (
@@ -349,7 +358,7 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                                 up ? "text-success" : down ? "text-destructive" : "text-muted-foreground"
                               }`}
                             >
-                              {chg == null ? "-" : fmtPctChange(chg)}
+                              {chg == null ? "-" : <DecimalText text={fmtPctChange(chg)} />}
                             </span>
                           </span>
                         )}
@@ -364,7 +373,7 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                               navigate(`/insiders/${t.contract}/${t.symbol}`);
                             }}
                           >
-                            Ask
+                            INSIDE
                           </button>
                           <RowMenu token={t} />
                         </span>
