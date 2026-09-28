@@ -85,7 +85,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
     holdNeed <= 0
       ? "No EASY hold on a verified first launch."
       : holdKind === "flex"
-        ? `${holdEasyToLaunch(holdNeed)}. Flex quotes stay at 90% off. More after each prior launch.`
+        ? `${holdEasyToLaunch(holdNeed)}. EASY, WON, GRAMS, and MEME always use this 10% hold, not the full hold. More after each prior launch.`
         : `${holdEasyToLaunch(holdNeed)} this month. The discount steps down every 30 days. More after each prior launch.`;
   const invites = parseInviteAccounts(draft.presaleInviteList);
   const nftOn = Boolean(draft.presaleCollection.trim() || draft.presaleSchema.trim() || draft.presaleNftMin);

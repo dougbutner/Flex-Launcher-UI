@@ -152,7 +152,7 @@ export function easyHoldPromoCopy(nowMs = Date.now()): string | null {
     off > 0
       ? `XPR, XMD, LOAN, and xtokens are ${off}% off the EASY hold this month.`
       : "XPR, XMD, LOAN, and xtokens are at the full EASY hold.";
-  return `EASY, WON, GRAMS, and MEME stay at 90% off the EASY hold. GEASY on 3asy and fl3x has no EASY hold on a verified first launch. ${other}`;
+  return `EASY, WON, GRAMS, and MEME always use the 10% EASY hold, not the full hold. That price does not rise. GEASY on 3asy and fl3x has no EASY hold on a verified first launch. ${other}`;
 }
 
 /**

@@ -278,7 +278,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       <div>
         <p className="label">Flex quotes</p>
         <p className="mb-2 text-xs text-muted-foreground">
-          EASY, WON, GRAMS, and MEME stay at 90% off: {holdEasyToLaunch(flexHold)}.
+          EASY, WON, GRAMS, and MEME always use the 10% hold, not the full hold: {holdEasyToLaunch(flexHold)}. That price does not rise.
           {geasyQuoteAllowed(draft.program)
             ? ` GEASY: ${geasyHold <= 0 ? "no EASY hold on a verified first launch" : holdEasyToLaunch(geasyHold)}.`
             : ""}

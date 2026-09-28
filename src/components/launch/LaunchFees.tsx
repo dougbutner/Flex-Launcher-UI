@@ -60,9 +60,9 @@ export function FeeTable() {
       </div>
       <p>
         The EASY columns are the hold on a first launch. Each token you already launched on that contract multiplies
-        the hold. EASY, WON, GRAMS, and MEME stay at 90% off.
+        the hold. EASY, WON, GRAMS, and MEME always use the 10% rate, not the full hold. That price does not rise.
         {off > 0
-          ? ` XPR, XMD, LOAN, and xtokens are ${off}% off this month, then 10 points less every 30 days.`
+          ? ` Only XPR, XMD, LOAN, and xtokens rise over time: ${off}% off this month, then 10 points less every 30 days.`
           : " XPR, XMD, LOAN, and xtokens are at the full hold."}{" "}
         GEASY skips the EASY hold on your first launch when your WebAuth account is verified. A later launch on the
         same contract follows that monthly promo. GEASY is not offered on for3x.

@@ -138,11 +138,12 @@ export default function Launch() {
           <p>
             Only on <span className="font-mono">XPR Network</span>. Create on {flexAccount(draft.program)}, then setfees,
             seed one-sided Alcor liquidity, then liftoff. Non-flex backings (XPR, XMD, LOAN, xtoken) need to prove
-            enough liquidity to be used. Flex quotes stay at 90% off the EASY hold ({flexHold.toLocaleString()} EASY).
+            enough liquidity to be used. EASY, WON, GRAMS, and MEME always use the 10% EASY hold (
+            {flexHold.toLocaleString()} EASY), not the full hold. That price does not rise.
             {geasyQuoteAllowed(draft.program) ? " GEASY has no EASY hold on a verified first launch." : ""}{" "}
             {holdOff > 0
-              ? `Other backings are ${holdOff}% off this month (${otherHold.toLocaleString()} EASY).`
-              : `Other backings are at the full EASY hold (${otherHold.toLocaleString()} EASY).`}{" "}
+              ? `Only XPR, XMD, LOAN, and xtokens rise over time. This month that hold is ${otherHold.toLocaleString()} EASY.`
+              : `XPR, XMD, LOAN, and xtokens are at the full EASY hold (${otherHold.toLocaleString()} EASY).`}{" "}
             No fee is charged to launch.{" "}
             <button
               type="button"
