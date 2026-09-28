@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
 import { BagsSkeleton } from "@/components/ui/PageSkeletons";
-import { FLEX_PROGRAMS, alcorSwapUrl, flexAccount, type FlexProgram } from "@/config/launch";
+import { FLEX_PROGRAMS, alcorAnalyticsUrl, alcorSwapUrl, flexAccount, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { readAccounts, readFlexers, readInsiders, readLaunches, readStat, readXprBalance } from "@/services/flexTables";
@@ -15,6 +15,24 @@ import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse
 import { loadProtonTokenTable } from "@/services/tokenProton";
 
 const DIST_BPS = 0.382;
+
+function SymbolLinks({ contract, symbol, large }: { contract: string; symbol: string; large?: boolean }) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <Link to={`/token/${contract}/${symbol}`} className={`font-mono font-bold hover:underline ${large ? "text-lg" : ""}`}>
+        ${symbol}
+      </Link>
+      <a
+        href={alcorAnalyticsUrl(symbol, contract)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[11px] font-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+      >
+        Alcor Analytics
+      </a>
+    </div>
+  );
+}
 
 type Holding = {
   key: string;
@@ -293,7 +311,7 @@ export default function Portfolio() {
                 <div className="flex min-w-0 items-center gap-3">
                   <TokenIcon key={iconsReady} contract={t.contract} symbol={t.symbol} size={36} rounded="xl" />
                   <div>
-                  <div className="font-mono font-bold">${t.symbol}</div>
+                  <SymbolLinks contract={t.contract} symbol={t.symbol} />
                   <div className="text-xs text-muted-foreground">
                     {t.program} @ {t.contract} ·{" "}
                     {t.launched ? "live" : t.poolId ? "insiders" : "in progress"}
@@ -321,7 +339,7 @@ export default function Portfolio() {
                 <div className="flex min-w-0 items-center gap-3">
                   <TokenIcon key={iconsReady} contract={t.contract} symbol={t.symbol} size={36} />
                   <div>
-                    <div className="font-mono font-bold">${t.symbol}</div>
+                    <SymbolLinks contract={t.contract} symbol={t.symbol} />
                     <div className="text-xs text-muted-foreground">
                       {t.program} @ {t.contract} · {t.launched ? "live" : t.poolId ? "insiders" : "in progress"}
                     </div>
@@ -357,7 +375,7 @@ export default function Portfolio() {
                   <div className="flex min-w-0 items-center gap-3">
                     <TokenIcon key={iconsReady} contract={h.contract} symbol={h.symbol} size={40} rounded="xl" />
                     <div>
-                    <div className="font-mono text-lg font-bold">${h.symbol}</div>
+                    <SymbolLinks contract={h.contract} symbol={h.symbol} large />
                     <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                       {h.program} @ {h.contract}
                       {h.quoteSymbol ? (

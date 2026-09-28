@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { HoldingBubbles } from "@/components/token/HoldingBubbles";
 import { OvalRing, type RingSlice } from "@/components/token/OvalRing";
+import { BACKING_LP, BandSquare, CoverGauge, DEGEN_LP, ECOSYSTEM_LP, LoyaltyDisk, TrackPair } from "@/components/token/StatShapes";
 import { Pulse } from "@/components/ui/Pulse";
 import { formatNiceNumber, formatPlainNumber, usdParts } from "@/services/money";
-import { loadPoolSanity, type SanityView } from "@/services/poolSanity";
+import { loadPoolSanity, splitCommunityLp, type SanityView } from "@/services/poolSanity";
 import { loadHeadcounts, loadInsiderBooks, loadSpotTokens, type InsiderRow, type WalletDot } from "@/services/tokenCensus";
 
 type Props = {
@@ -43,6 +44,7 @@ function backingArcs(rows: { symbol: string; share: number }[]): RingSlice[] {
     size: row.share,
     color: BACKING_COLOR[row.symbol] ?? "#94a3b8",
     label: `${row.symbol} ${share(row.share)}`,
+    title: `${row.symbol} share of priced quote sitting in Alcor pools for this token.`,
   }));
 }
 
@@ -132,18 +134,26 @@ function Stat({
   title,
   hint,
   tone,
+  color,
 }: {
   label: string;
   value: string;
   title?: string;
   hint?: string;
   tone?: "gold" | "up";
+  color?: string;
 }) {
-  const color = tone === "gold" ? "text-primary" : tone === "up" ? "text-success" : "text-foreground";
+  const colorClass = tone === "gold" ? "text-primary" : tone === "up" ? "text-success" : "text-foreground";
   return (
     <div className="min-w-0" title={hint}>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`break-words font-mono text-sm font-semibold ${color}`} title={title && title !== value ? title : undefined}>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground" title={hint}>
+        {label}
+      </div>
+      <div
+        className={`break-words font-mono text-sm font-semibold ${color ? "" : colorClass}`}
+        style={color ? { color } : undefined}
+        title={title && title !== value ? title : hint}
+      >
         {value}
       </div>
     </div>
@@ -164,7 +174,9 @@ function Reading({
   return (
     <li className="border border-border px-3 py-2">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" title={body}>
+          {label}
+        </span>
         <span className="min-w-0 break-words text-right font-mono text-sm font-semibold" title={title && title !== value ? title : undefined}>
           {value}
         </span>
@@ -301,13 +313,31 @@ export function SanitySection(props: Props) {
   const satellite = view ? qty(view.satelliteTokens, sym, prec) : null;
   const floatQty = view ? qty(view.walletFloat, sym, prec) : null;
   const days = view ? lockDaysLeft(view.unlockUnix) : null;
+  const lpSplit = splitCommunityLp({
+    slices: view?.backing ?? [],
+    quoteSymbol: props.quoteSymbol,
+    quoteContract: props.quoteContract,
+    hardBackingUsd: view?.hardBackingUsd ?? null,
+  });
+  const capUsd = view?.fullPrintUsd ?? null;
+  const overCap = (amount: number) => (amount > 0 && capUsd != null && capUsd > 0 ? amount / capUsd : null);
+  const money = (amount: number) => (amount > 0 ? usd(amount).display : "-");
+  const sameHint = `Community LP posted in ${quote || "the launch quote"}, the same token as the locked backing.`;
+  const ecoHint =
+    "Community LP in ecosystem quotes besides the launch quote: EASY, WON, GRAMS, MEME, XMD, LOAN, METAL, and xtokens.";
+  const degenHint = "Community LP paired with a quote that is not the launch token and not an ecosystem token.";
   const poolHref = `https://alcor.exchange/v/xpr/analytics/pools/${props.poolId}`;
   const posHref = `https://alcor.exchange/v/xpr/swap/positions/${props.positionId}`;
 
   return (
     <section className="mt-4 border border-border bg-background/40 p-4" aria-label="By the numbers">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-bold tracking-tight">By The Numbers</h2>
+        <h2
+          className="text-sm font-bold tracking-tight"
+          title="Price, locked backing, supply in hands, and community LP split into the launch quote, ecosystem quotes, and degen quotes."
+        >
+          By The Numbers
+        </h2>
         {view ? (
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] text-muted-foreground">
             <a className="underline hover:text-foreground" href={poolHref} target="_blank" rel="noreferrer">
@@ -348,20 +378,75 @@ export function SanitySection(props: Props) {
               center={tradable.display}
               sub="in hands"
               top={[
-                { size: view.lockedTokens, color: "#eab308", label: "locked lp" },
-                { size: Math.max(0, view.satelliteTokens), color: "#60a5fa", label: "community" },
-                { size: Math.max(0, spotTokens), color: "#fb923c", label: "spot" },
-                { size: Math.max(0, view.walletFloat - spotTokens), color: "#4ade80", label: "wallets" },
+                { size: view.lockedTokens, color: "#eab308", label: "locked LP", title: "Tokens still inside the day-one locked position." },
+                { size: Math.max(0, view.satelliteTokens), color: "#60a5fa", label: "community LP", title: "Tokens on swap.alcor outside the locked position." },
+                { size: Math.max(0, spotTokens), color: "#fb923c", label: "spot", title: "Tokens held on the alcor spot account." },
+                { size: Math.max(0, view.walletFloat - spotTokens), color: "#4ade80", label: "wallets", title: "Tokens in wallets, outside spot and pools." },
               ]}
               bottom={backingArcs(view.backing)}
+            />
+          </div>
+          <div className="mt-3">
+            <CoverGauge
+              ratio={view.backingOverFull}
+              backing={view.hardBackingUsd != null ? usd(view.hardBackingUsd).display : lockedQuote.display}
+              cap={usd(view.fullPrintUsd).display}
+              extras={[
+                {
+                  ratio: overCap(lpSplit.sameUsd),
+                  usd: money(lpSplit.sameUsd),
+                  label: "Backing community LP",
+                  color: BACKING_LP,
+                  hint: sameHint,
+                },
+                {
+                  ratio: overCap(lpSplit.ecosystemUsd),
+                  usd: money(lpSplit.ecosystemUsd),
+                  label: "Ecosystem community LP",
+                  color: ECOSYSTEM_LP,
+                  hint: ecoHint,
+                },
+                {
+                  ratio: overCap(lpSplit.degenUsd),
+                  usd: money(lpSplit.degenUsd),
+                  label: "Degen LP",
+                  color: DEGEN_LP,
+                  hint: degenHint,
+                },
+              ]}
+            />
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <BandSquare
+              parts={[
+                { size: view.lockedTokens, color: "#eab308", label: "locked LP", title: "Tokens still inside the day-one locked position." },
+                { size: Math.max(0, view.satelliteTokens), color: "#60a5fa", label: "community LP", title: "Tokens on swap.alcor outside the locked position." },
+                { size: Math.max(0, spotTokens), color: "#fb923c", label: "spot", title: "Tokens held on the alcor spot account." },
+                { size: Math.max(0, view.walletFloat - spotTokens), color: "#4ade80", label: "wallets", title: "Tokens in wallets, outside spot and pools." },
+              ]}
+            />
+            <LoyaltyDisk ratio={view.lpLoyalty} />
+            <TrackPair
+              left={{
+                label: "24h volume",
+                amount: view.volumeUsd24 ?? 0,
+                text: usd(view.volumeUsd24).display,
+                color: "#38bdf8",
+              }}
+              right={{
+                label: "pure backing",
+                amount: view.hardBackingUsd ?? 0,
+                text: usd(view.hardBackingUsd).display,
+                color: "#eab308",
+              }}
             />
           </div>
 
           <div className="mt-4">
             <div className="grid grid-cols-3 gap-2 border-b border-border pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-              <span>Insider</span>
-              <span>Liquidity</span>
-              <span>Holdings</span>
+              <span title="Approved insider account.">Insider</span>
+              <span title="This token the insider has posted in pools.">Liquidity</span>
+              <span title="This token the insider holds outside pools.">Holdings</span>
             </div>
             {books.length === 0 ? (
               <p className="mt-2 text-xs text-muted-foreground">No insider rows yet.</p>
@@ -480,6 +565,27 @@ export function SanitySection(props: Props) {
               hint="Dollar value of the quote in the main locked position."
             />
             <Stat
+              label="Backing community LP"
+              value={money(lpSplit.sameUsd)}
+              title={lpSplit.sameUsd > 0 ? usd(lpSplit.sameUsd).full : undefined}
+              color={BACKING_LP}
+              hint={sameHint}
+            />
+            <Stat
+              label="Ecosystem community LP"
+              value={money(lpSplit.ecosystemUsd)}
+              title={lpSplit.ecosystemUsd > 0 ? usd(lpSplit.ecosystemUsd).full : undefined}
+              color={ECOSYSTEM_LP}
+              hint={ecoHint}
+            />
+            <Stat
+              label="Degen LP"
+              value={money(lpSplit.degenUsd)}
+              title={lpSplit.degenUsd > 0 ? usd(lpSplit.degenUsd).full : undefined}
+              color={DEGEN_LP}
+              hint={degenHint}
+            />
+            <Stat
               label="Backing / full print"
               value={share(view.backingOverFull)}
               hint="Pure backing divided by price times max supply. Locked tokens stay in the denominator."
@@ -522,10 +628,28 @@ export function SanitySection(props: Props) {
               body="Tokens on swap.alcor outside the main locked pools. Crowd-posted depth."
             />
             <Reading
+              label="Backing community LP"
+              value={money(lpSplit.sameUsd)}
+              title={lpSplit.sameUsd > 0 ? usd(lpSplit.sameUsd).full : undefined}
+              body={sameHint}
+            />
+            <Reading
+              label="Ecosystem community LP"
+              value={money(lpSplit.ecosystemUsd)}
+              title={lpSplit.ecosystemUsd > 0 ? usd(lpSplit.ecosystemUsd).full : undefined}
+              body={ecoHint}
+            />
+            <Reading
+              label="Degen LP"
+              value={money(lpSplit.degenUsd)}
+              title={lpSplit.degenUsd > 0 ? usd(lpSplit.degenUsd).full : undefined}
+              body={degenHint}
+            />
+            <Reading
               label="Liquid backing"
               value={usd(view.liquidBackingUsd).display}
               title={usd(view.liquidBackingUsd).full}
-              body="Pure backing plus quote posted in community pools."
+              body="Pure backing plus quote posted in community LP."
             />
             <Reading
               label="Pure backing"

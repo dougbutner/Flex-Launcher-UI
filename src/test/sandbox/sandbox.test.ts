@@ -43,6 +43,7 @@ describe("site sandbox mock snapshot", () => {
         firstSeenAt: 1,
         mcapUsd: 9,
         liqUsd: 1,
+        backingUsd: 0.4,
         volumeUsd: 1,
         holders: 1,
       },

@@ -105,6 +105,7 @@ export function mergeBoard(live: BoardToken[]): BoardToken[] {
     firstSeenAt: unixMs(t.spec.launchAt),
     mcapUsd: t.spec.mcapUsd,
     liqUsd: t.spec.liqUsd,
+    backingUsd: t.spec.mcapUsd > 0 && t.spec.liqUsd > 0 ? Math.min(t.spec.liqUsd * 0.5, t.spec.mcapUsd) : 0,
     volumeUsd: t.spec.volumeUsd,
     holders: t.spec.holders.length,
   }));

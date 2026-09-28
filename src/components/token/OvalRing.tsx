@@ -2,6 +2,7 @@ export type RingSlice = {
   size: number;
   color: string;
   label: string;
+  title?: string;
 };
 
 type Props = {
@@ -52,7 +53,7 @@ function layout(slices: readonly RingSlice[], from: number, to: number, cy: numb
     const [rawX, rawY] = pt(mid, cy, ry + 28, RX + 40);
     const lx = Math.min(VB_W - 36, Math.max(36, rawX));
     const ly = Math.min(VB_H - 10, Math.max(14, rawY));
-    return { d: arc(cy, ry, a0, a1), color: slice.color, label: slice.label, showLabel: len > 0.26, lx, ly };
+    return { d: arc(cy, ry, a0, a1), color: slice.color, label: slice.label, title: slice.title, showLabel: len > 0.26, lx, ly };
   });
 }
 
@@ -63,6 +64,7 @@ export function OvalRing({ center, sub, top, bottom }: Props) {
 
   return (
     <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="block w-full bg-[#0d0d0d]" role="img" aria-label={`${center} ${sub}`}>
+      <title>{`${center} ${sub}. Upper arch is where the supply sits. Lower arch is quote backing by token.`}</title>
       {[...upper, ...lower].map((path, i) => (
         <path key={i} d={path.d} fill="none" stroke={path.color} strokeWidth={16} strokeLinecap="butt" />
       ))}
@@ -75,6 +77,7 @@ export function OvalRing({ center, sub, top, bottom }: Props) {
       {upper.map((path, i) =>
         path.showLabel ? (
           <text key={`t${i}`} x={path.lx} y={path.ly} textAnchor="middle" fill={path.color} fontSize="11" fontFamily="ui-monospace, monospace">
+            {path.title ? <title>{path.title}</title> : null}
             {path.label}
           </text>
         ) : null
@@ -82,6 +85,7 @@ export function OvalRing({ center, sub, top, bottom }: Props) {
       {lower.map((path, i) =>
         path.showLabel ? (
           <text key={`b${i}`} x={path.lx} y={path.ly} textAnchor="middle" fill={path.color} fontSize="11" fontFamily="ui-monospace, monospace">
+            {path.title ? <title>{path.title}</title> : null}
             {path.label}
           </text>
         ) : null

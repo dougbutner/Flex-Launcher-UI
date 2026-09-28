@@ -69,6 +69,51 @@ export type PoolBookRow = {
   quoteUsd: number;
 };
 
+/** Flex quotes plus XMD, LOAN, METAL, and anything on xtokens. */
+const ECOSYSTEM_SYMBOLS = new Set(["EASY", "WON", "GRAMS", "MEME", "XMD", "LOAN", "METAL"]);
+
+export function isEcosystemQuote(symbol: string, contract: string): boolean {
+  if (contract.toLowerCase() === "xtokens") return true;
+  return ECOSYSTEM_SYMBOLS.has(symbol.toUpperCase());
+}
+
+export type CommunityLpSplit = {
+  /** Community LP in the launch quote, after the locked position. */
+  sameUsd: number;
+  /** Community LP in other ecosystem quotes. */
+  ecosystemUsd: number;
+  /** Community LP in any other quote. */
+  degenUsd: number;
+};
+
+/** Quote already inside the locked position stays out of these three. */
+export function splitCommunityLp(args: {
+  slices: { symbol: string; contract: string; usd: number }[];
+  quoteSymbol: string;
+  quoteContract: string;
+  hardBackingUsd: number | null;
+}): CommunityLpSplit {
+  const quoteSym = args.quoteSymbol.toUpperCase();
+  const quoteCode = args.quoteContract.toLowerCase();
+  let sameGross = 0;
+  let ecosystemUsd = 0;
+  let degenUsd = 0;
+  for (const row of args.slices) {
+    if (!(row.usd > 0)) continue;
+    const sym = row.symbol.toUpperCase();
+    const code = row.contract.toLowerCase();
+    const same = sym === quoteSym && (quoteCode === "" || code === quoteCode);
+    if (same) {
+      sameGross += row.usd;
+      continue;
+    }
+    if (isEcosystemQuote(sym, code)) ecosystemUsd += row.usd;
+    else degenUsd += row.usd;
+  }
+  const hard = args.hardBackingUsd != null && args.hardBackingUsd > 0 ? args.hardBackingUsd : 0;
+  return { sameUsd: Math.max(0, sameGross - hard), ecosystemUsd, degenUsd };
+}
+
 /** Share of priced quote-side USD. Rows with no price are dropped. */
 export function backingShares(
   rows: { symbol: string; contract: string; usd: number }[]

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { amountsAtSqrt } from "@/services/launchMath";
-import { buildSanity, backingShares, midQuotePerToken } from "@/services/poolSanity";
+import { buildSanity, backingShares, midQuotePerToken, splitCommunityLp } from "@/services/poolSanity";
 import { getSqrtPriceX64AtTick } from "@/services/tickMath";
 
 const GEASY = {
@@ -144,5 +144,27 @@ describe("pool sanity", () => {
     expect(rows.map((row) => row.symbol)).toEqual(["EASY", "WON"]);
     expect(rows[0].share).toBeCloseTo(0.5, 8);
     expect(rows[1].share).toBeCloseTo(0.5, 8);
+  });
+
+  it("splits community LP into the launch quote, ecosystem quotes, and degen", () => {
+    const split = splitCommunityLp({
+      slices: [
+        { symbol: "EASY", contract: "mon3y", usd: 8000 },
+        { symbol: "WON", contract: "w3won", usd: 500 },
+        { symbol: "GRAMS", contract: "gold.mon3y", usd: 40 },
+        { symbol: "MEME", contract: "m3m3", usd: 30 },
+        { symbol: "XMD", contract: "xmd.token", usd: 200 },
+        { symbol: "LOAN", contract: "loan.token", usd: 50 },
+        { symbol: "XBTC", contract: "xtokens", usd: 300 },
+        { symbol: "METAL", contract: "xtokens", usd: 100 },
+        { symbol: "INDEX", contract: "foo", usd: 400 },
+      ],
+      quoteSymbol: "EASY",
+      quoteContract: "mon3y",
+      hardBackingUsd: 6000,
+    });
+    expect(split.sameUsd).toBe(2000);
+    expect(split.ecosystemUsd).toBe(1220);
+    expect(split.degenUsd).toBe(400);
   });
 });

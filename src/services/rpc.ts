@@ -1,7 +1,9 @@
 import { HYPERION_ENDPOINTS, RPC_ENDPOINTS } from "@/config/launch";
 import { safeScopeName } from "@/services/eosioName";
 
-const UA = { "Content-Type": "application/json" };
+// text/plain is a simple request, so the browser skips the OPTIONS preflight.
+// Greymass answers that preflight with 400, which blocks every table read.
+const UA = { "Content-Type": "text/plain" };
 
 async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
@@ -17,9 +19,11 @@ export async function rpcPost<T = Record<string, unknown>>(path: string, body: u
         await sleep(Math.min(8000, 1000 * 2 ** i));
         continue;
       }
-      const data = (await res.json()) as T & { error?: { what?: string; details?: Array<{ message?: string }> } };
-      if (!res.ok) {
-        last = data?.error?.details?.[0]?.message || data?.error?.what || res.statusText;
+      const data = (await res.json().catch(() => null)) as
+        | (T & { error?: { what?: string; details?: Array<{ message?: string }> } })
+        | null;
+      if (!res.ok || !data) {
+        last = data?.error?.details?.[0]?.message || data?.error?.what || res.statusText || "RPC failed";
         continue;
       }
       return data;

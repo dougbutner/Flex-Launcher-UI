@@ -3,7 +3,7 @@ import type { BoardToken } from "@/services/leaderboardStore";
 import { fmtUsd } from "@/services/money";
 import type { WinnerExtra } from "@/services/winnerViews";
 
-export const BOARD_SORT_IDS = ["volume", "mcap", "holders", "age", "gainers"] as const;
+export const BOARD_SORT_IDS = ["volume", "mcap", "holders", "age", "gainers", "cover"] as const;
 export type BoardSortId = (typeof BOARD_SORT_IDS)[number];
 
 export const BOARD_SORT_TABS: Array<{ id: BoardSortId; label: string }> = [
@@ -66,6 +66,22 @@ export function fmtAge(atMs: number, now = Date.now()): string {
   const days = Math.floor(hours / 24);
   if (days < 60) return `${days}d`;
   return `${Math.max(1, Math.floor(days / 30))}mo`;
+}
+
+/** Pure liquid backing divided by market cap. Null when either side is missing. */
+export function coverRatio(backingUsd: number, mcapUsd: number): number | null {
+  if (!(backingUsd > 0) || !(mcapUsd > 0)) return null;
+  const q = backingUsd / mcapUsd;
+  return Number.isFinite(q) ? q : null;
+}
+
+export function fmtCover(ratio: number | null): string {
+  if (ratio == null || !Number.isFinite(ratio)) return "-";
+  const pct = ratio * 100;
+  const abs = Math.abs(pct);
+  if (abs >= 1000) return `${pct.toFixed(0)}%`;
+  if (abs >= 10) return `${pct.toFixed(1)}%`;
+  return `${pct.toFixed(2)}%`;
 }
 
 export function fmtHolders(n: number): string {
@@ -150,6 +166,9 @@ export function sortBoardRows(
     } else if (key === "age") {
       av = a.firstSeenAt;
       bv = b.firstSeenAt;
+    } else if (key === "cover") {
+      av = coverRatio(a.backingUsd, a.mcapUsd) ?? 0;
+      bv = coverRatio(b.backingUsd, b.mcapUsd) ?? 0;
     } else {
       av = extras?.get(a.id)?.change24 ?? 0;
       bv = extras?.get(b.id)?.change24 ?? 0;

@@ -1061,6 +1061,7 @@ describe("leaderboard tiles", () => {
     firstSeenAt: 1,
     mcapUsd: 0,
     liqUsd: 0,
+    backingUsd: 0,
     volumeUsd: 0,
     holders: 0,
     ...p,

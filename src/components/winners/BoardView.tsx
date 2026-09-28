@@ -16,7 +16,9 @@ import {
   boardFilterChips,
   clearBoardChip,
   EMPTY_BOARD_FILTERS,
+  coverRatio,
   fmtAge,
+  fmtCover,
   fmtHolders,
   matchBoardQuery,
   prettyTokenName,
@@ -27,6 +29,18 @@ import {
 import type { BoardToken } from "@/services/leaderboardStore";
 import type { WinnerViewProps } from "@/components/winners/types";
 import { MOCK_CLUB_LOCKS, MOCK_SPECS, mockTokenLogo } from "@/test/sandbox/data";
+
+function CoverTrack({ ratio }: { ratio: number | null }) {
+  const fill = ratio == null ? 0 : Math.min(1, Math.max(0, ratio));
+  return (
+    <span className="inline-flex min-w-[7.5rem] items-center gap-2" title="Pure liquid backing divided by market cap">
+      <span className="relative h-2 w-16 shrink-0 bg-white/10">
+        <span className="absolute inset-y-0 left-0 bg-primary" style={{ width: `${fill * 100}%` }} />
+      </span>
+      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{fmtCover(ratio)}</span>
+    </span>
+  );
+}
 
 function Spark({ pts, up }: { pts: number[]; up: boolean }) {
   if (pts.length < 2) return null;
@@ -128,7 +142,6 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
   const [typed, setTyped] = useState("");
   const [draft, setDraft] = useState<BoardFilters>(EMPTY_BOARD_FILTERS);
   const [applied, setApplied] = useState<BoardFilters>(EMPTY_BOARD_FILTERS);
-  const [railOpen, setRailOpen] = useState(false);
   const [shown, setShown] = useState(BOARD_PAGE);
   const [hi, setHi] = useState(0);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -186,7 +199,6 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
         setApplied(next);
         setDraft(next);
       }}
-      onClose={railOpen ? () => setRailOpen(false) : undefined}
     />
   );
 
@@ -205,9 +217,6 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
             onChange={(e) => setTyped(e.target.value)}
           />
         </label>
-        <button type="button" className="text-[11px] uppercase tracking-wide text-muted-foreground lg:hidden" onClick={() => setRailOpen(true)}>
-          Filters
-        </button>
       </div>
 
       {chips.length ? (
@@ -229,40 +238,45 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-start gap-4">
+      <div className="mt-4">{rail}</div>
+
+      <div className="mt-4">
         <div
           ref={bodyRef}
           tabIndex={0}
           className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-border bg-card outline-none"
         >
-          <table className="w-full min-w-[920px] border-collapse text-[13px]">
+          <table className="w-full min-w-[1040px] border-collapse text-[13px]">
             <thead className="sticky top-0 z-20 bg-card">
-              <tr className="h-10 border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className="w-8 px-2 font-medium">#</th>
-                <th className="sticky left-0 z-20 min-w-[220px] bg-card px-2 font-medium">Token</th>
-                <th className="min-w-[72px] px-2 font-medium">Contract</th>
-                <th className="min-w-[88px] px-2 font-medium">
+              <tr className="h-11 border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                <th className="w-8 px-3 font-medium">#</th>
+                <th className="sticky left-0 z-20 min-w-[220px] bg-card px-3 font-medium">Token</th>
+                <th className="min-w-[72px] px-3 font-medium">Contract</th>
+                <th className="min-w-[88px] px-3 font-medium">
                   <HeaderSort label="Age" active={sort === "age"} dir={dir} onClick={() => setTab("age")} />
                 </th>
-                <th className="min-w-[110px] px-2 text-right font-medium">
+                <th className="min-w-[110px] px-3 text-right font-medium">
                   <HeaderSort label="Market cap" active={sort === "mcap"} dir={dir} onClick={() => setTab("mcap")} />
                 </th>
-                <th className="min-w-[110px] px-2 text-right font-medium">
+                <th className="min-w-[148px] px-4 font-medium">
+                  <HeaderSort label="Back / cap" active={sort === "cover"} dir={dir} onClick={() => setTab("cover")} />
+                </th>
+                <th className="min-w-[110px] px-3 text-right font-medium">
                   <HeaderSort label="Vol 24h" active={sort === "volume"} dir={dir} onClick={() => setTab("volume")} />
                 </th>
-                <th className="min-w-[90px] px-2 text-right font-medium">
+                <th className="min-w-[90px] px-3 text-right font-medium">
                   <HeaderSort label="Holders" active={sort === "holders"} dir={dir} onClick={() => setTab("holders")} />
                 </th>
-                <th className="min-w-[100px] px-2 text-right font-medium">
+                <th className="min-w-[100px] px-3 text-right font-medium">
                   <HeaderSort label="24h" active={sort === "gainers"} dir={dir} onClick={() => setTab("gainers")} />
                 </th>
-                <th className="min-w-[72px] px-2 font-medium"> </th>
+                <th className="min-w-[72px] px-3 font-medium"> </th>
               </tr>
             </thead>
             <tbody>
               {page.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={10} className="px-3 py-8 text-center text-sm text-muted-foreground">
                     No tokens match.
                   </td>
                 </tr>
@@ -277,15 +291,15 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                   return (
                     <tr
                       key={t.id}
-                      className={`group h-[52px] cursor-pointer border-b border-border/80 hover:bg-white/[0.03] ${
+                      className={`group cursor-pointer border-b border-border/80 hover:bg-white/[0.03] ${
                         hi === i ? "bg-white/[0.04]" : ""
                       }`}
                       onClick={() => openRow(t)}
                       onMouseEnter={() => setHi(i)}
                     >
-                      <td className="px-2 font-mono tabular-nums text-muted-foreground">{i + 1}</td>
+                      <td className="px-3 py-3 font-mono tabular-nums text-muted-foreground">{i + 1}</td>
                       <td
-                        className={`sticky left-0 z-10 px-2 ${
+                        className={`sticky left-0 z-10 px-3 py-3 ${
                           hi === i ? "bg-muted" : "bg-card"
                         } group-hover:bg-muted`}
                       >
@@ -311,17 +325,20 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                           </span>
                         </span>
                       </td>
-                      <td className="px-2">
+                      <td className="px-3 py-3">
                         <span className="inline-flex items-center gap-1.5" title={flexAccount(t.program)}>
                           <ProgramDots program={t.program} />
                           <span className="font-mono text-[11px] text-muted-foreground">{flexAccount(t.program)}</span>
                         </span>
                       </td>
-                      <td className="px-2 font-mono tabular-nums text-muted-foreground">{fmtAge(t.firstSeenAt)}</td>
-                      <td className="px-2 text-right font-mono tabular-nums">{fmtUsd(t.mcapUsd)}</td>
-                      <td className="px-2 text-right font-mono tabular-nums">{fmtUsd(t.volumeUsd)}</td>
-                      <td className="px-2 text-right font-mono tabular-nums">{fmtHolders(t.holders)}</td>
-                      <td className="px-2 text-right">
+                      <td className="px-3 py-3 font-mono tabular-nums text-muted-foreground">{fmtAge(t.firstSeenAt)}</td>
+                      <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtUsd(t.mcapUsd)}</td>
+                      <td className="px-4 py-3">
+                        <CoverTrack ratio={coverRatio(t.backingUsd, t.mcapUsd)} />
+                      </td>
+                      <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtUsd(t.volumeUsd)}</td>
+                      <td className="px-3 py-3 text-right font-mono tabular-nums">{fmtHolders(t.holders)}</td>
+                      <td className="px-3 py-3 text-right">
                         {bone ? (
                           <span className="ml-auto block h-3 w-16 animate-pulse bg-secondary" />
                         ) : (
@@ -337,7 +354,7 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                           </span>
                         )}
                       </td>
-                      <td className="px-2">
+                      <td className="px-3 py-3">
                         <span className="flex items-center justify-end gap-1">
                           <button
                             type="button"
@@ -368,18 +385,7 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
             </button>
           ) : null}
         </div>
-
-        <div className="hidden lg:block">{rail}</div>
       </div>
-
-      {railOpen ? (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <button type="button" className="absolute inset-0 bg-black/50" aria-label="Close filters" onClick={() => setRailOpen(false)} />
-          <div className="absolute inset-y-0 right-0 w-[280px] overflow-y-auto border-l border-border bg-background p-3">
-            {rail}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

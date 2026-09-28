@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { isFlexContractActor } from "@/config/launch";
+import { alcorAnalyticsUrl, isFlexContractActor } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { TokenIcon } from "@/components/TokenIcon";
 import { TokenGlyph } from "@/components/TokenGlyph";
@@ -274,7 +274,19 @@ export default function Preview() {
           <ul className="mt-2 space-y-2">
             <li className="card flex flex-wrap items-center justify-between gap-3 p-4">
               <div>
-                <div className="font-mono font-bold">${previewIssued.symbol}</div>
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <Link to={`/token/${previewIssued.contract}/${previewIssued.symbol}`} className="font-mono font-bold hover:underline">
+                    ${previewIssued.symbol}
+                  </Link>
+                  <a
+                    href={alcorAnalyticsUrl(previewIssued.symbol, previewIssued.contract)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  >
+                    Alcor Analytics
+                  </a>
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {previewIssued.program} @ {previewIssued.contract} · live
                 </div>
@@ -291,7 +303,19 @@ export default function Preview() {
               <div className="flex items-center gap-3">
                 <TokenIcon contract={PREVIEW_CONTRACT} symbol={PREVIEW_SYMBOL} size={36} />
                 <div>
-                  <div className="font-mono font-bold">${previewIssued.symbol}</div>
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <Link to={`/token/${PREVIEW_CONTRACT}/${previewIssued.symbol}`} className="font-mono font-bold hover:underline">
+                      ${previewIssued.symbol}
+                    </Link>
+                    <a
+                      href={alcorAnalyticsUrl(previewIssued.symbol, PREVIEW_CONTRACT)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    >
+                      Alcor Analytics
+                    </a>
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {previewIssued.symbol}@{PREVIEW_CONTRACT} · live
                   </div>
@@ -306,7 +330,19 @@ export default function Preview() {
         <article className="card mt-3 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="font-mono text-lg font-bold">${h.symbol}</div>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <Link to={`/token/${h.contract}/${h.symbol}`} className="font-mono text-lg font-bold hover:underline">
+                  ${h.symbol}
+                </Link>
+                <a
+                  href={alcorAnalyticsUrl(h.symbol, h.contract)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  Alcor Analytics
+                </a>
+              </div>
               <div className="text-xs text-muted-foreground">
                 {h.program} @ {h.contract} · {h.quoteSymbol} pair · reflections active
               </div>

@@ -20,6 +20,8 @@ export type BoardToken = {
   firstSeenAt: number;
   mcapUsd: number;
   liqUsd: number;
+  /** Quote sitting in the launch pool, in USD. Pure liquid backing. */
+  backingUsd: number;
   volumeUsd: number;
   holders: number;
 };
@@ -126,6 +128,7 @@ async function loadFresh(): Promise<BoardToken[]> {
       const tvl = Number(pool?.tvlUSD || 0);
       const quoteQty = sideQty(pool, item.quote.symbol, item.quote.contract);
       const liqUsd = tvl > 0 ? tvl : quoteUsd > 0 ? quoteQty * quoteUsd : 0;
+      const backingUsd = quoteUsd > 0 && quoteQty > 0 ? quoteQty * quoteUsd : 0;
       const holders = await holdersOf(item.program, item.contract, item.symbol, stat);
       return {
         id: `${item.contract}:${item.symbol}`,
@@ -138,6 +141,7 @@ async function loadFresh(): Promise<BoardToken[]> {
         firstSeenAt: seenMs(pool?.firstSeenAt) || item.poolId,
         mcapUsd,
         liqUsd,
+        backingUsd,
         volumeUsd: Number(pool?.volumeUSD24 || 0),
         holders,
       } satisfies BoardToken;

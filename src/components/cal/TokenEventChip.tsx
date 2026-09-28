@@ -130,6 +130,9 @@ export function TokenEventChip({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{event.name}</p>
             <p className="font-mono text-base font-black tracking-tight">${event.symbol}</p>
+            {event.kind === "insider" ? (
+              <p className="text-[9px] font-bold uppercase leading-none tracking-[0.18em] text-muted-foreground">PRE</p>
+            ) : null}
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{event.platform}</p>
           </div>
           <DotsMenu event={event} onDone={onClose} />
@@ -201,7 +204,12 @@ export function TokenEventChip({
       }}
     >
       <TokenIcon contract={event.contract} symbol={event.symbol} src={event.logo} size={16} rounded="xl" />
-      <span className="truncate font-mono text-[10px] font-bold leading-none sm:text-xs">{event.symbol}</span>
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate font-mono text-[10px] font-bold leading-none sm:text-xs">{event.symbol}</span>
+        {event.kind === "insider" ? (
+          <span className="mt-0.5 text-[8px] font-bold uppercase leading-none tracking-[0.16em] opacity-80">PRE</span>
+        ) : null}
+      </span>
       <span className="hidden truncate text-[9px] opacity-80 sm:inline">{cap}</span>
       <span className="ml-auto flex shrink-0 items-center gap-0.5">
         <InsiderLockIcons event={event} size={12} />

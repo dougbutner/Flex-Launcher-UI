@@ -127,24 +127,6 @@ export function TokenMonthCalendar({
     <div ref={rootRef} className="flex h-[min(72vh,760px)] flex-col overflow-x-clip border border-[#27272a] bg-background">
       {marks.length ? (
         <div className="flex items-center gap-2 border-b border-[#27272a] px-2 py-2" data-cal-nav>
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-1">
-            {marks.map((mark) => {
-              const on = lit.has(mark.key);
-              return (
-                <button
-                  key={mark.key}
-                  type="button"
-                  aria-pressed={on}
-                  aria-label={mark.symbol}
-                  title={mark.symbol}
-                  onClick={() => onToggleMark(mark.key)}
-                  className={`shrink-0 rounded-full transition-transform hover:scale-110 ${on ? "opacity-100" : "opacity-35"}`}
-                >
-                  <TokenIcon contract={mark.contract} symbol={mark.symbol} size={28} />
-                </button>
-              );
-            })}
-          </div>
           <button
             type="button"
             aria-pressed={mode === "all"}
@@ -169,6 +151,24 @@ export function TokenMonthCalendar({
           >
             {mode === "all" ? "All" : mode === "some" ? "Some" : "Only"}
           </button>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-1">
+            {marks.map((mark) => {
+              const on = lit.has(mark.key);
+              return (
+                <button
+                  key={mark.key}
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={mark.symbol}
+                  title={mark.symbol}
+                  onClick={() => onToggleMark(mark.key)}
+                  className={`shrink-0 rounded-full transition-transform hover:scale-110 ${on ? "opacity-100" : "opacity-35"}`}
+                >
+                  <TokenIcon contract={mark.contract} symbol={mark.symbol} size={28} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : null}
 

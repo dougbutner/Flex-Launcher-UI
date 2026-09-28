@@ -5,7 +5,9 @@ import {
   boardFilterChips,
   clearBoardChip,
   EMPTY_BOARD_FILTERS,
+  coverRatio,
   fmtAge,
+  fmtCover,
   fmtHolders,
   matchBoardQuery,
   prettyTokenName,
@@ -30,6 +32,7 @@ const sample = (p: Partial<BoardToken> & Pick<BoardToken, "symbol">): BoardToken
   firstSeenAt: 1,
   mcapUsd: 100,
   liqUsd: 40,
+  backingUsd: 20,
   volumeUsd: 10,
   holders: 7,
   ...p,
@@ -97,6 +100,10 @@ describe("winner board table helpers", () => {
     expect(fmtAge(Date.now() - 3 * 3600_000)).toBe("3h");
     expect(fmtAge(Date.now() - 4 * 86400_000)).toBe("4d");
     expect(fmtHolders(14300)).toBe("14.3K");
+    expect(coverRatio(25, 100)).toBeCloseTo(0.25);
+    expect(coverRatio(0, 100)).toBeNull();
+    expect(fmtCover(0.184)).toBe("18.4%");
+    expect(fmtCover(0.084)).toBe("8.40%");
     expect(prettyTokenName("GEASY")).toBe("Geasy");
     const a = sample({ symbol: "AAA", volumeUsd: 1, mcapUsd: 9, holders: 2, firstSeenAt: 10 });
     const b = sample({ symbol: "BBB", volumeUsd: 8, mcapUsd: 3, holders: 9, firstSeenAt: 30, program: "easyflex", contract: "3asy" });

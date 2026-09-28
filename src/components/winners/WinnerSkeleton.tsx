@@ -21,10 +21,15 @@ export function BoardSkeleton() {
         ))}
         <Pulse className="ml-auto h-9 w-56" />
       </div>
-      <div className="mt-4 flex items-start gap-4">
-        <div className="min-w-0 flex-1 border border-border bg-card">
+      <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Pulse key={i} className="h-14 w-14 rounded-full" />
+        ))}
+      </div>
+      <div className="mt-4">
+        <div className="min-w-0 border border-border bg-card">
           {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="flex h-[52px] items-center gap-3 border-b border-border/80 px-3">
+            <div key={i} className="flex items-center gap-4 border-b border-border/80 px-3 py-3">
               <Pulse className="h-5 w-5 rounded-md" />
               <div className="space-y-1">
                 <Pulse className="h-3 w-20" />
@@ -36,11 +41,6 @@ export function BoardSkeleton() {
               <Pulse className="h-3 w-10" />
               <Pulse className="h-3 w-16" />
             </div>
-          ))}
-        </div>
-        <div className="hidden w-[280px] shrink-0 flex-col gap-3 lg:flex">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Pulse key={i} className="h-24" />
           ))}
         </div>
       </div>
