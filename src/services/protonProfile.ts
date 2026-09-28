@@ -4,6 +4,7 @@ export type ProtonProfile = {
   acc: string;
   name: string;
   avatar: string;
+  verified: boolean;
 };
 
 const cache = new Map<string, { at: number; profile: ProtonProfile | null }>();
@@ -33,6 +34,7 @@ export async function readProtonProfile(account: string): Promise<ProtonProfile 
       acc,
       name: String(row.name ?? ""),
       avatar: String(row.avatar ?? ""),
+      verified: Boolean(row.verified),
     };
     cache.set(acc, { at: now, profile });
     return profile;
@@ -40,4 +42,9 @@ export async function readProtonProfile(account: string): Promise<ProtonProfile 
     cache.set(acc, { at: now, profile: null });
     return null;
   }
+}
+
+export async function readProtonVerified(account: string): Promise<boolean> {
+  const profile = await readProtonProfile(account);
+  return Boolean(profile?.verified);
 }

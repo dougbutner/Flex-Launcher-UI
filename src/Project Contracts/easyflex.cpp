@@ -114,7 +114,8 @@ ACTION easyflex::create(const name& issuer, const asset& maximum_supply) {
         const auto sc = sym.code();
         check(sc != symbol_code("EASY") && sc != symbol_code("GRAMS") && sc != symbol_code("MEME") &&
                   sc != symbol_code("WON") && sc != symbol_code("XPR") && sc != symbol_code("XMD") &&
-                  sc != symbol_code("LOAN"),
+                  sc != symbol_code("LOAN") && (issuer == get_self() ||
+                  (sc != symbol_code("FLEX") && sc != symbol_code("FOREX") && sc != symbol_code("INDEX") && sc != symbol_code("HEDGE"))),
               "⟁ EASY, GRAMS, MEME, WON, XPR, XMD, and LOAN are reserved");
     }
 
@@ -252,22 +253,26 @@ ACTION easyflex::transfer(const name& from, const name& to, const asset& quantit
         asset reflection_fee{(quantity.amount * conf.reflection_rate) / 10000, quantity.symbol};
         asset burn_fee{(quantity.amount * conf.burn_rate) / 10000, quantity.symbol};
 
-        total_deduction = from_alcor ? quantity : quantity + reflection_fee + burn_fee;
-        if(from_row.balance.amount < total_deduction.amount) {
-            total_deduction = from_row.balance;
-            int64_t rem = total_deduction.amount - reflection_fee.amount - burn_fee.amount;
-            actual_transfer = asset{rem > 0 ? rem : 0, quantity.symbol};
-        } else if(from_alcor) {
-            actual_transfer = asset{quantity.amount - reflection_fee.amount - burn_fee.amount, quantity.symbol};
+        // - Short balance into swap.alcor: full quantity, no fee. A pool deposit is never shrunk.
+        if(to != SWAP_ALCOR || from_alcor ||
+           from_row.balance.amount >= quantity.amount + reflection_fee.amount + burn_fee.amount) {
+            total_deduction = from_alcor ? quantity : quantity + reflection_fee + burn_fee;
+            if(to != SWAP_ALCOR && from_row.balance.amount < total_deduction.amount) {
+                total_deduction = from_row.balance;
+                int64_t rem = total_deduction.amount - reflection_fee.amount - burn_fee.amount;
+                actual_transfer = asset{rem > 0 ? rem : 0, quantity.symbol};
+            } else if(from_alcor) {
+                actual_transfer = asset{quantity.amount - reflection_fee.amount - burn_fee.amount, quantity.symbol};
+            }
+
+            add_balance(get_self(), reflection_fee, get_self());
+            if(burn_fee.amount > 0) add_balance(get_self(), burn_fee, get_self());
+
+            statstable.modify(st, same_payer, [&](auto& s) {
+                s.reflection_pool += reflection_fee;
+                s.burn_pool += burn_fee;
+            });
         }
-
-        add_balance(get_self(), reflection_fee, get_self());
-        if(burn_fee.amount > 0) add_balance(get_self(), burn_fee, get_self());
-
-        statstable.modify(st, same_payer, [&](auto& s) {
-            s.reflection_pool += reflection_fee;
-            if(!from_alcor) s.burn_pool += burn_fee;
-        });
     }
 
     sub_balance(from, total_deduction);
@@ -417,6 +422,13 @@ ACTION easyflex::makeitrain(const string& token_symbol, const name& sender,
 
     asset std_paid{0, sym};
 
+    {
+        int64_t reserve = partner.amount + (std_pay >= one ? std_pay : 0);
+        check(st->reflection_pool.amount >= reserve, "⟁ reflection pool too small");
+        if(reserve > 0)
+            statstable.modify(st, same_payer, [&](auto& s) { s.reflection_pool.amount -= reserve; });
+    }
+
     if(partner.amount > 0) {
         if(nyra.amount > 0) {
             open_holder_ram("nyra"_n, sym, sender);
@@ -465,7 +477,7 @@ ACTION easyflex::makeitrain(const string& token_symbol, const name& sender,
                         if(prec) min_amount.insert(1, ".");
                         memo = "swapexactin#" + std::to_string(oid) + "#" + itr->owner.to_string() + "#" +
                                min_amount + " " + out->code().to_string() + "@" +
-                               ocon.to_string() + "#0#reflections";
+                               ocon.to_string() + "#0#flex.for3x";
                         to = "swap.alcor"_n;
                     }
                     check(memo.size() <= 256, "⟁ memo has more than 256 bytes");
@@ -481,14 +493,12 @@ ACTION easyflex::makeitrain(const string& token_symbol, const name& sender,
         }
     }
 
-    asset debit = partner + std_paid;
     st = statstable.find(code.raw());
     asset burn_qty = st->burn_pool;
 
-    if(debit.amount > 0)
+    if(std_pay >= one && std_paid.amount < std_pay)
         statstable.modify(st, same_payer, [&](auto& s) {
-            if(s.reflection_pool.amount >= debit.amount) s.reflection_pool -= debit;
-            else s.reflection_pool.amount = 0;
+            s.reflection_pool.amount += std_pay - std_paid.amount;
         });
 
     if(std_pay >= one) {
@@ -532,7 +542,8 @@ ACTION easyflex::startlaunch(const string& token_symbol, const extended_asset& q
     const bool flex_q = (quote.contract == "mon3y"_n && qcode == symbol_code("EASY")) ||
                         (quote.contract == "w3won"_n && qcode == symbol_code("WON")) ||
                         (quote.contract == "m3m3"_n && qcode == symbol_code("MEME")) ||
-                        (quote.contract == "gold.mon3y"_n && qcode == symbol_code("GRAMS"));
+                        (quote.contract == "gold.mon3y"_n && qcode == symbol_code("GRAMS")) ||
+                        (quote.contract == XPR_COMPLEXFLEX && qcode == symbol_code("GEASY"));
     if(flex_q) check(xtoken_proof_pool_id == 0, "⟁ flex quotes do not use xtoken_proof_pool_id");
     else {
         check(quote.contract == XTOKENS ||
@@ -649,18 +660,32 @@ ACTION easyflex::liftoff(const string& token_symbol, uint64_t pool_id, int32_t t
             asset    balance;
             uint64_t primary_key() const { return balance.symbol.code().raw(); }
         };
-        const symbol easy("EASY", 6);
-        multi_index<"accounts"_n, easy_account> easy_ac(MON3Y, st.issuer.value);
-        auto eit = easy_ac.find(easy.code().raw());
-        const int64_t full = LAUNCH_EASY_MIN * static_cast<int64_t>(prior + 1);
-        const uint32_t nowsec = current_time_point().sec_since_epoch();
-        const uint32_t promo_start = 1788912000; // 2026-09-09 00:00:00 UTC
-        int32_t months = nowsec >= promo_start ? static_cast<int32_t>((nowsec - promo_start) / (30 * 86400)) : 0;
-        int32_t off = 90 - 10 * months;
-        if(off < 0) off = 0;
-        const int64_t need = full * (100 - off) / 100;
-        check(eit != easy_ac.end() && eit->balance.symbol == easy && eit->balance.amount >= need,
-              "⟁ Hold " + std::to_string(need / 1000000) + " EASY on mon3y to launch");
+        bool waived = false;
+        if(!prior && launch_it->quote.contract == XPR_COMPLEXFLEX &&
+           launch_it->quote.quantity.symbol.code() == symbol_code("GEASY")) {
+            struct proton_userinfo {
+                name acc; std::string name; std::string avatar; bool verified;
+                uint64_t primary_key() const { return acc.value; }
+            };
+            multi_index<"usersinfo"_n, proton_userinfo> proton_users("eosio.proton"_n, "eosio.proton"_n.value);
+            auto user_itr = proton_users.find(st.issuer.value);
+            waived = user_itr != proton_users.end() && user_itr->verified;
+        }
+        if(!waived) {
+            const symbol easy("EASY", 6);
+            multi_index<"accounts"_n, easy_account> easy_ac(MON3Y, st.issuer.value);
+            auto eit = easy_ac.find(easy.code().raw());
+            const int64_t full = LAUNCH_EASY_MIN * static_cast<int64_t>(prior + 1);
+            const uint32_t nowsec = current_time_point().sec_since_epoch();
+            const uint32_t promo_start = 1788912000; // 2026-09-09 00:00:00 UTC
+            int32_t months = nowsec >= promo_start ? static_cast<int32_t>((nowsec - promo_start) / (30 * 86400)) : 0;
+            int32_t off = 90 - 10 * months;
+            if(off < 0) off = 0;
+            if(launch_it->flex_quote && launch_it->quote.quantity.symbol.code() != symbol_code("GEASY")) off = 90;
+            const int64_t need = full * (100 - off) / 100;
+            check(eit != easy_ac.end() && eit->balance.symbol == easy && eit->balance.amount >= need,
+                  "⟁ Hold " + std::to_string(need / 1000000) + " EASY on mon3y to launch");
+        }
     }
 
     auto pool = alcor::get_pool(SWAP_ALCOR, pool_id);

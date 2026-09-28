@@ -3,6 +3,10 @@ import type { FlexProgram } from "@/config/launch";
 export type ContractDoc = {
   codeName: string;
   tag: string;
+  /** Popup heading. for3x replaces the token@account title. */
+  title: string;
+  /** Short pitch under the title. The action list stays behind contract documentation. */
+  lead: string;
   intro: string;
   pitch: string;
   traits: { k: string; v: string }[];
@@ -34,6 +38,8 @@ export const CONTRACT_DOCS: Record<FlexProgram, ContractDoc> = {
   easyflex: {
     codeName: "easyflex",
     tag: "most trusted",
+    title: "",
+    lead: "You'll be using the trusted tech that started it all, the one behind meme and easy. This has simple reflections, burn and that's it. Sometimes less is more.",
     intro: "Behind the only altcoin averaging over 500K in 30d swap volume on Alcor.",
     pitch: "Rain and burn. No heir, no project cut, no luck pots.",
     traits: [
@@ -62,6 +68,8 @@ export const CONTRACT_DOCS: Record<FlexProgram, ContractDoc> = {
   complexflex: {
     codeName: "complexflex",
     tag: "Advanced Functions",
+    title: "",
+    lead: "Our v2 tech with the Heir ability, so your token can make daily deposits like a savings account for your kids while keeping your investment in your account. Project fee is added, letting you collect a budget.",
     intro: "Project tax and an heir on your rain.",
     pitch: "Rain, a project cut, and an heir on your rain.",
     traits: [
@@ -91,6 +99,8 @@ export const CONTRACT_DOCS: Record<FlexProgram, ContractDoc> = {
   flexforex: {
     codeName: "flexforex",
     tag: "Advanced & Luck",
+    title: "Angel numbers and a jackpot over the rainbow.",
+    lead: "The latest flex tech, for3x adds Angel Numbers and jackpots. A Jackpot gives one or a few people all the pending reward (you choose the number of people) so less people get more tokens.",
     intro: "Angel numbers and a jackpot sit next to rain.",
     pitch: "Full stack. Rain, project, heir, plus angel and jackpot pots. Keeper can take a tip.",
     traits: [

@@ -421,7 +421,7 @@ export default function Preview() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
-              <span className="chip-muted">skim dev 0.25% · club 0.25%</span>
+              <span className="chip-muted">skim dev 0.25% · Contributor's Club 0.25%</span>
               <span className="chip-muted">LP unlock Dec 2026</span>
               <span className="chip-muted">reflect → EASY</span>
               <span className="chip-primary">angel pot 420</span>

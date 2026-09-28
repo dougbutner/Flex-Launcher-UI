@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { easyHoldNeed, flexAccount, flexMeta, holdEasyToLaunch } from "@/config/launch";
+import { easyHoldNeed, easyHoldOffPercent, flexAccount, flexMeta, geasyQuoteAllowed, QUOTE_PRESETS } from "@/config/launch";
 import { MANAGER_RESUME_KEY, useLaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { Stepper, type WizardStep } from "@/components/launch/Stepper";
@@ -13,6 +13,8 @@ import { ExecuteStep } from "@/components/launch/ExecuteStep";
 import { LiftoffModal } from "@/components/launch/LiftoffModal";
 import { LaunchPreview } from "@/components/launch/LaunchPreview";
 import { EasyHoldNotice } from "@/components/launch/EasyHoldNotice";
+import { InfoPanel } from "@/components/launch/LaunchFees";
+import { LAUNCH_PROCESS_PARAS } from "@/content/launchGuide";
 import { quoteStepValid, rangeStepValid, taxStepValid, tokenStepValid } from "@/components/launch/draftPlan";
 import { insidersStepValid } from "@/services/insidersClub";
 import { hasProjectTax } from "@/services/taxRates";
@@ -24,6 +26,7 @@ export default function Launch() {
   const { isLoggedIn, actor } = useWallet();
   const [step, setStep] = useState(0);
   const [celebrate, setCelebrate] = useState(false);
+  const [processOpen, setProcessOpen] = useState(false);
   const tokenOk = !tokenStepValid(draft);
   const taxOk = !taxStepValid(draft);
   const started = Boolean(draft.createTx);
@@ -47,6 +50,17 @@ export default function Launch() {
   useEffect(() => {
     if (draft.addpoolTx) setCelebrate(true);
   }, [draft.addpoolTx]);
+
+  useEffect(() => {
+    if (draft.createTx || geasyQuoteAllowed(draft.program) || draft.quoteId !== "geasy") return;
+    const easy = QUOTE_PRESETS.find((q) => q.id === "easy");
+    patch({
+      quoteId: "easy",
+      priceLower: easy?.priceLower ?? draft.priceLower,
+      priceUpper: easy?.priceUpper ?? draft.priceUpper,
+      proofPoolId: "0",
+    });
+  }, [draft.createTx, draft.program, draft.quoteId, draft.priceLower, draft.priceUpper, patch]);
 
   const steps: WizardStep[] = useMemo(
     () => [
@@ -103,6 +117,11 @@ export default function Launch() {
     [draft, tokenOk, taxOk]
   );
 
+  const holdBase = flexMeta(draft.program).launchEasyMin;
+  const holdOff = easyHoldOffPercent();
+  const flexHold = easyHoldNeed(holdBase);
+  const otherHold = easyHoldNeed(holdBase, 0, Date.now(), "other");
+
   const dismissLiftoff = () => {
     setCelebrate(false);
     reset();
@@ -115,12 +134,28 @@ export default function Launch() {
         <h1 className="text-3xl font-black tracking-tight">
           Deploy a <span className="text-primary">Flex token</span> (flexible rewards)
         </h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Only on <span className="font-mono">XPR Network</span>. Create on {flexAccount(draft.program)}, then setfees,
-          seed one-sided Alcor liquidity, then liftoff. Non-flex backings (XPR / XMD / LOAN / xtoken) need to prove
-          enough liquidity to be used. {holdEasyToLaunch(easyHoldNeed(flexMeta(draft.program).launchEasyMin))} this
-          month for every backing, including xtokens. No fee charged to launch, just gated by holding EASY.
-        </p>
+        <div className="mt-1 max-w-2xl text-sm text-muted-foreground">
+          <p>
+            Only on <span className="font-mono">XPR Network</span>. Create on {flexAccount(draft.program)}, then setfees,
+            seed one-sided Alcor liquidity, then liftoff. Non-flex backings (XPR, XMD, LOAN, xtoken) need to prove
+            enough liquidity to be used. Flex quotes stay at 90% off the EASY hold ({flexHold.toLocaleString()} EASY).
+            {geasyQuoteAllowed(draft.program) ? " GEASY has no EASY hold on a verified first launch." : ""}{" "}
+            {holdOff > 0
+              ? `Other backings are ${holdOff}% off this month (${otherHold.toLocaleString()} EASY).`
+              : `Other backings are at the full EASY hold (${otherHold.toLocaleString()} EASY).`}{" "}
+            No fee is charged to launch.{" "}
+            <button
+              type="button"
+              className="link text-[11px] font-semibold uppercase tracking-wider"
+              onClick={() => setProcessOpen((v) => !v)}
+            >
+              {processOpen ? "hide" : "more info"}
+            </button>
+          </p>
+          <div className="mt-3">
+            <InfoPanel open={processOpen} paras={LAUNCH_PROCESS_PARAS} />
+          </div>
+        </div>
       </div>
 
       {!isLoggedIn ? (

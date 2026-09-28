@@ -95,10 +95,10 @@ namespace eosio {
          static constexpr name SWAP_ALCOR = "swap.alcor"_n;
          static constexpr name XTOKENS = "xtokens"_n;
          static constexpr name MON3Y = "mon3y"_n;
-         // XPR mainnet launch accounts: easyflex@3asy, complexflex@fl3x, flexforex@flex
+         // XPR mainnet launch accounts: easyflex@3asy, complexflex@fl3x, flexforex@for3x
          static constexpr name XPR_EASYFLEX = "3asy"_n;
          static constexpr name XPR_COMPLEXFLEX = "fl3x"_n;
-         static constexpr name XPR_FLEXFOREX = "flex"_n;
+         static constexpr name XPR_FLEXFOREX = "for3x"_n;
          static constexpr int64_t LAUNCH_EASY_MIN = 5000000000; // 5000.000000 EASY per already-launched token + 1
          static constexpr uint32_t MIN_LOCK_SECS = 90 * 24 * 60 * 60;
          static constexpr int32_t MIN_TICK = -443636;

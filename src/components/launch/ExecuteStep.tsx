@@ -269,8 +269,9 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
     if (!actor || draft.createTx) return;
     setGatesBusy(true);
     try {
-      const flexQuote = Boolean(QUOTE_PRESETS.find((q) => q.id === draft.quoteId)?.flexQuote);
-      setGates(await runCreateGates(draft.program, draft.symbol, actor, flexQuote));
+      const picked = QUOTE_PRESETS.find((q) => q.id === draft.quoteId);
+      const kind = picked?.id === "geasy" ? "geasy" : picked?.flexQuote ? "flex" : "other";
+      setGates(await runCreateGates(draft.program, draft.symbol, actor, kind));
     } catch {
       setGates(null);
     } finally {

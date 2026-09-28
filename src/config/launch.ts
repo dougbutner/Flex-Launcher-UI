@@ -83,6 +83,7 @@ export function hasSetmin(program: FlexProgram): boolean {
 }
 
 export function holdEasyToLaunch(amount: number) {
+  if (amount <= 0) return "No EASY hold";
   return `Hold ${amount.toLocaleString()} EASY to launch`;
 }
 
@@ -105,20 +106,53 @@ export function easyHoldFull(baseWhole: number, prior = 0): number {
   return baseWhole * (prior + 1);
 }
 
+/** How liftoff prices the EASY hold. `true` is flex, `false` is other. */
+export type HoldKind = "flex" | "geasy" | "other";
+
+export function holdKindOf(quoteId: string, flexQuote: boolean): HoldKind {
+  if (quoteId === "geasy") return "geasy";
+  return flexQuote ? "flex" : "other";
+}
+
+export function holdKindFromQuote(symbol: string, contract: string): HoldKind {
+  if (symbol === "GEASY" && contract === COMPLEXFLEX_CONTRACT) return "geasy";
+  if (isFlexQuoteToken(symbol, contract)) return "flex";
+  return "other";
+}
+
+/** GEASY is a flex quote on-chain for every program. The launcher hides it on for3x. */
+export function geasyQuoteAllowed(program: FlexProgram): boolean {
+  return program !== "flexforex";
+}
+
 /**
- * EASY hold liftoff actually checks. The promo applies to every backing,
- * including XPR, XMD, LOAN, and xtokens. `flexQuote` is ignored.
+ * EASY hold liftoff checks, whole tokens.
+ * Flex quotes (EASY, WON, GRAMS, MEME) stay at 90% off.
+ * GEASY is 0 on the first launch when `verified`. Later GEASY launches use the monthly promo.
+ * Other quotes use only the monthly promo: 90% off from 2026-09-09, then 10 points less every 30 days.
  */
-export function easyHoldNeed(baseWhole: number, prior = 0, nowMs = Date.now(), _flexQuote = true): number {
+export function easyHoldNeed(
+  baseWhole: number,
+  prior = 0,
+  nowMs = Date.now(),
+  quote: boolean | HoldKind = "flex",
+  verified = true,
+): number {
+  const kind: HoldKind = quote === true ? "flex" : quote === false ? "other" : quote;
+  if (kind === "geasy" && prior === 0 && verified) return 0;
   const full = easyHoldFull(baseWhole, prior);
-  // Integer division, same as the liftoff check (`full * (100 - off) / 100`).
-  return Math.floor((full * (100 - easyHoldOffPercent(nowMs))) / 100);
+  let off = easyHoldOffPercent(nowMs);
+  if (kind === "flex") off = 90;
+  return Math.floor((full * (100 - off)) / 100);
 }
 
 export function easyHoldPromoCopy(nowMs = Date.now()): string | null {
   const off = easyHoldOffPercent(nowMs);
-  if (off <= 0) return null;
-  return `${off}% off the EASY hold this month for every backing, including xtokens. Gated by holding EASY, not spent.`;
+  const other =
+    off > 0
+      ? `XPR, XMD, LOAN, and xtokens are ${off}% off the EASY hold this month.`
+      : "XPR, XMD, LOAN, and xtokens are at the full EASY hold.";
+  return `EASY, WON, GRAMS, and MEME stay at 90% off the EASY hold. GEASY on 3asy and fl3x has no EASY hold on a verified first launch. ${other}`;
 }
 
 /**
@@ -229,7 +263,7 @@ export const START_MCAP_MORE_ROWS = [
 ] as const;
 
 export type QuotePreset = {
-  id: "easy" | "won" | "grams" | "meme" | "xpr" | "xmd" | "loan" | "xtoken";
+  id: "easy" | "won" | "grams" | "meme" | "geasy" | "xpr" | "xmd" | "loan" | "xtoken";
   symbol: string;
   contract: string;
   precision: number;
@@ -248,8 +282,9 @@ export const PROJECT_CORE_TOKENS = [
   { symbol: "MEME", contract: "m3m3", rainAction: "distribute" as const },
 ] as const;
 
-/** True when quote is one of the four project flex tokens. */
+/** True when quote is a flex quote (0% skim, proof id 0), including GEASY@fl3x. */
 export function isFlexQuoteToken(symbol: string, contract: string): boolean {
+  if (symbol === "GEASY" && contract === COMPLEXFLEX_CONTRACT) return true;
   return PROJECT_CORE_TOKENS.some((t) => t.symbol === symbol && t.contract === contract);
 }
 
@@ -294,6 +329,16 @@ export const QUOTE_PRESETS: QuotePreset[] = [
     priceUpper: "100000000000",
     flexQuote: true,
     label: "MEME",
+  },
+  {
+    id: "geasy",
+    symbol: "GEASY",
+    contract: COMPLEXFLEX_CONTRACT,
+    precision: 6,
+    priceLower: "0.000001",
+    priceUpper: "1000000",
+    flexQuote: true,
+    label: "GEASY",
   },
   {
     id: "xpr",

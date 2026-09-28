@@ -3,6 +3,7 @@ import {
   FEE_TIERS,
   SWAP_ALCOR,
   easyHoldNeed,
+  holdKindOf,
   flexAccount,
   flexMeta,
   hasAngelChannels,
@@ -10,7 +11,7 @@ import {
 } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { fmtPrice, planFromDraft, presetFromDraft, quoteFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
-import { FlexPairHoldTip } from "@/components/launch/FlexPairHoldTip";
+import { FlexPairHoldTip, useEasyHoldStanding } from "@/components/launch/FlexPairHoldTip";
 import { InfoBody, InfoLink, StepShell } from "@/components/launch/ui";
 import { REVIEW_GUIDE_PARAS } from "@/content/launchGuide";
 import { formatSupplyCommas } from "@/services/assets";
@@ -67,12 +68,25 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
     month: "short",
     day: "numeric",
   });
-  const skimLabel = preset.flexQuote ? "0%" : "0.25% dev + 0.25% club";
+  const skimLabel = preset.flexQuote ? "0%" : "0.25% dev + 0.25% Contributor's Club";
   const tax = taxFromDraft(draft);
   const overall = taxSum(tax, draft.program);
   const meta = flexMeta(draft.program);
-  const holdNeed = easyHoldNeed(meta.launchEasyMin);
-  const holdLine = `${holdEasyToLaunch(holdNeed)} (promo, every backing). More after each prior launch.`;
+  const standing = useEasyHoldStanding(draft.program);
+  const holdKind = holdKindOf(draft.quoteId, Boolean(preset.flexQuote));
+  const holdNeed = easyHoldNeed(
+    meta.launchEasyMin,
+    standing.prior ?? 0,
+    Date.now(),
+    holdKind,
+    standing.verified !== false,
+  );
+  const holdLine =
+    holdNeed <= 0
+      ? "No EASY hold on a verified first launch."
+      : holdKind === "flex"
+        ? `${holdEasyToLaunch(holdNeed)}. Flex quotes stay at 90% off. More after each prior launch.`
+        : `${holdEasyToLaunch(holdNeed)} this month. The discount steps down every 30 days. More after each prior launch.`;
   const invites = parseInviteAccounts(draft.presaleInviteList);
   const nftOn = Boolean(draft.presaleCollection.trim() || draft.presaleSchema.trim() || draft.presaleNftMin);
   const holdGateOn = Boolean(draft.presaleMinTokenQty.trim() || draft.presaleMinTokenContract.trim());

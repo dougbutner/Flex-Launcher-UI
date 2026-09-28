@@ -1,4 +1,12 @@
-import { flexAccount, quoteNeedsProof, QUOTE_PRESETS, RANGE_WIDTH_PRESETS, XTOKENS, type RangeWidthId } from "@/config/launch";
+import {
+  flexAccount,
+  geasyQuoteAllowed,
+  quoteNeedsProof,
+  QUOTE_PRESETS,
+  RANGE_WIDTH_PRESETS,
+  XTOKENS,
+  type RangeWidthId,
+} from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { validSymbol } from "@/services/assets";
 import { formatNiceNumber } from "@/services/money";
@@ -109,6 +117,7 @@ export function taxStepValid(draft: LaunchDraft): string | null {
 
 export function quoteStepValid(draft: LaunchDraft): string | null {
   const preset = presetFromDraft(draft);
+  if (preset.id === "geasy" && !geasyQuoteAllowed(draft.program)) return "Pick another quote.";
   if (preset.id === "xtoken") {
     if (!validSymbol(draft.xtokenSymbol.trim().toUpperCase())) return "Enter a valid xtoken symbol.";
   }

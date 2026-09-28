@@ -12,6 +12,7 @@ import {
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber } from "@/services/assets";
 import { readAccounts } from "@/services/flexTables";
+import { readProtonVerified } from "@/services/protonProfile";
 import { countIssuerLaunched } from "@/services/preflight";
 
 export function useEasyHoldStanding(program: FlexProgram) {
@@ -19,12 +20,16 @@ export function useEasyHoldStanding(program: FlexProgram) {
   const [tip, setTip] = useState<string | null>(null);
   const [fullNeed, setFullNeed] = useState<number | null>(null);
   const [flexNeed, setFlexNeed] = useState<number | null>(null);
+  const [prior, setPrior] = useState<number | null>(null);
+  const [verified, setVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!actor) {
       setTip(null);
       setFullNeed(null);
       setFlexNeed(null);
+      setPrior(null);
+      setVerified(null);
       return;
     }
     let cancel = false;
@@ -33,7 +38,8 @@ export function useEasyHoldStanding(program: FlexProgram) {
     void Promise.all([
       readAccounts(MON3Y, actor, EASY_SYMBOL).catch(() => ({ rows: [] as Record<string, unknown>[] })),
       countIssuerLaunched(code, actor),
-    ]).then(([easyAcct, prior]) => {
+      readProtonVerified(actor),
+    ]).then(([easyAcct, prior, isVerified]) => {
       if (cancel) return;
       const row = easyAcct.rows[0];
       const easyBal = assetAmountNumber(String(row?.balance ?? "0"));
@@ -41,6 +47,8 @@ export function useEasyHoldStanding(program: FlexProgram) {
       const flex = easyHoldNeed(base, prior, Date.now(), true);
       setFullNeed(full);
       setFlexNeed(flex);
+      setPrior(prior);
+      setVerified(isVerified);
       setTip(easyHoldFlexAltTip({ easyBal, fullNeed: full, flexNeed: flex }));
     });
     return () => {
@@ -48,7 +56,7 @@ export function useEasyHoldStanding(program: FlexProgram) {
     };
   }, [actor, program]);
 
-  return { tip, fullNeed, flexNeed };
+  return { tip, fullNeed, flexNeed, prior, verified };
 }
 
 /** Small line when this wallet is short of the full (non-flex) EASY hold. */

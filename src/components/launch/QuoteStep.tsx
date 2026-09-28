@@ -3,7 +3,9 @@ import { DecimalText } from "@/components/Amount";
 import { TokenIcon } from "@/components/TokenIcon";
 import {
   easyHoldNeed,
+  easyHoldOffPercent,
   flexMeta,
+  geasyQuoteAllowed,
   holdEasyToLaunch,
   quoteNeedsProof,
   QUOTE_PRESETS,
@@ -42,11 +44,13 @@ function QuoteCard({
   selected,
   onSelect,
   unavailable,
+  holdNote,
 }: {
   preset: QuotePreset;
   selected: boolean;
   onSelect: () => void;
   unavailable?: boolean;
+  holdNote?: string;
 }) {
   return (
     <button
@@ -74,7 +78,10 @@ function QuoteCard({
       <div className="mt-2 text-xs text-muted-foreground">
         Cap: {preset.priceLower} - {preset.priceUpper} {preset.symbol} / token
       </div>
-      <p className="mt-2 text-[10px] text-muted-foreground">{preset.flexQuote ? "0% skim" : "0.5-1% skim"}</p>
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        {preset.flexQuote ? "0% skim" : "0.5% skim, 1% after the lock"}
+        {holdNote ? ` · ${holdNote}` : ""}
+      </p>
     </button>
   );
 }
@@ -95,7 +102,11 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const [proofBusy, setProofBusy] = useState(false);
   const standing = useEasyHoldStanding(draft.program);
   const launchMin = flexMeta(draft.program).launchEasyMin;
-  const flexHold = standing.flexNeed ?? easyHoldNeed(launchMin);
+  const prior = standing.prior ?? 0;
+  const flexHold = easyHoldNeed(launchMin, prior, Date.now(), "flex");
+  const otherHold = easyHoldNeed(launchMin, prior, Date.now(), "other");
+  const geasyHold = easyHoldNeed(launchMin, prior, Date.now(), "geasy", standing.verified !== false);
+  const holdOff = easyHoldOffPercent();
 
   const invalid = quoteStepValid(draft);
   const preset = presetFromDraft(draft);
@@ -103,7 +114,14 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const isXtoken = draft.quoteId === "xtoken";
   const quote = quoteFromDraft(draft);
 
-  const flexPresets = useMemo(() => QUOTE_PRESETS.filter((p) => FLEX_IDS.has(p.id)), []);
+  const flexPresets = useMemo(
+    () =>
+      QUOTE_PRESETS.filter((p) => {
+        if (p.id === "geasy") return geasyQuoteAllowed(draft.program);
+        return FLEX_IDS.has(p.id);
+      }),
+    [draft.program],
+  );
   const chainPresets = useMemo(() => QUOTE_PRESETS.filter((p) => CHAIN_IDS.has(p.id)), []);
   const xtokenPreset = QUOTE_PRESETS.find((p) => p.id === "xtoken")!;
 
@@ -260,7 +278,10 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       <div>
         <p className="label">Flex quotes</p>
         <p className="mb-2 text-xs text-muted-foreground">
-          EASY hold promo applies to every backing, including xtokens: {holdEasyToLaunch(flexHold)} this month.
+          EASY, WON, GRAMS, and MEME stay at 90% off: {holdEasyToLaunch(flexHold)}.
+          {geasyQuoteAllowed(draft.program)
+            ? ` GEASY: ${geasyHold <= 0 ? "no EASY hold on a verified first launch" : holdEasyToLaunch(geasyHold)}.`
+            : ""}
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {flexPresets.map((p) => (
@@ -269,6 +290,9 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
               preset={p}
               selected={draft.quoteId === p.id}
               unavailable={locked || live[p.contract] === false}
+              holdNote={
+                p.id === "geasy" ? (geasyHold <= 0 ? "No EASY hold" : holdEasyToLaunch(geasyHold)) : undefined
+              }
               onSelect={() => selectPreset(p)}
             />
           ))}
@@ -278,7 +302,11 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       <div>
         <p className="label">Chain quotes</p>
         <div className="mb-2 text-xs text-muted-foreground">
-          <p>Same EASY hold: {holdEasyToLaunch(flexHold)}.</p>
+          <p>
+            {holdOff > 0
+              ? `${holdOff}% off this month: ${holdEasyToLaunch(otherHold)}. The discount steps down every 30 days.`
+              : `Full EASY hold: ${holdEasyToLaunch(otherHold)}.`}
+          </p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {chainPresets.map((p) => (
@@ -297,8 +325,11 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
         <p className="label">xtokens</p>
         <div className="mb-2 text-xs text-muted-foreground">
           <p>
-            Bridged majors on xtokens (XBTC, XXRP, and friends). Same EASY hold as every other backing:{" "}
-            {holdEasyToLaunch(flexHold)}. Top {XTOKEN_TOP_N} by Alcor market activity; expand for the full list. Logos
+            Bridged majors on xtokens (XBTC, XXRP, and friends).{" "}
+            {holdOff > 0
+              ? `${holdOff}% off this month: ${holdEasyToLaunch(otherHold)}.`
+              : `Full EASY hold: ${holdEasyToLaunch(otherHold)}.`}{" "}
+            Top {XTOKEN_TOP_N} by Alcor market activity; expand for the full list. Logos
             are the on-chain token.proton icons, served from this app.
           </p>
         </div>
@@ -312,7 +343,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
                 <div className="min-w-0 flex-1">
                   <div className="font-mono text-lg font-bold">{draft.xtokenSymbol}</div>
                   <div className="text-xs text-muted-foreground">
-                    @{xtokenPreset.contract} · {draft.xtokenPrecision} decimals · 0.5-1% skim
+                    @{xtokenPreset.contract} · {draft.xtokenPrecision} decimals · 0.5% skim, 1% after the lock
                     {selectedRow?.usdPrice ? ` · ${fmtUsd(selectedRow.usdPrice)}` : ""}
                   </div>
                 </div>
@@ -346,7 +377,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
                 <div className="mt-2 text-xs text-muted-foreground">
                   Click to load XBTC, XXRP, XETH, and the rest.
                 </div>
-                <p className="mt-2 text-[10px] text-muted-foreground">0.5-1% skim</p>
+                <p className="mt-2 text-[10px] text-muted-foreground">0.5% skim, 1% after the lock</p>
               </button>
             )}
           </div>
@@ -470,7 +501,8 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       </div>
 
       <p className="text-xs text-muted-foreground">
-        0% is a flex quote. 0.5-1% starts at 0.25% dev + 0.25% club, then can rise once after the Alcor lock expires.
+        0% is a flex quote, including GEASY on 3asy and fl3x. Other quotes start at 0.25% dev + 0.25% Contributor's Club,
+        then each can rise once after the Alcor lock ends.
       </p>
 
       <label className="flex cursor-pointer items-start gap-3 rounded-2xl border p-4">

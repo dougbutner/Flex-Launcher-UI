@@ -1133,6 +1133,34 @@ body > [id*="anchor-link"] {
   color: #22c55e;
 }
 
+.shadow-line {
+  height: 0;
+  margin: 1.35rem 0 1.1rem;
+  border: 0;
+  box-shadow: 0 1px 0 hsl(var(--border)), 0 8px 12px -6px rgba(0, 0, 0, 0.85);
+}
+
+.fee-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.fee-table th,
+.fee-table td {
+  padding: 0.45rem 0.35rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.fee-table th {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 @keyframes insiders-up-pop {
   from {
     opacity: 1;

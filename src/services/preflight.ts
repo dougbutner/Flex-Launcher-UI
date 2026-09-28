@@ -9,10 +9,13 @@ import {
   flexAccount,
   flexMeta,
   holdEasyToLaunch,
+  holdKindFromQuote,
   isFlexQuoteToken,
   type FlexProgram,
+  type HoldKind,
 } from "@/config/launch";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
+import { readProtonVerified } from "@/services/protonProfile";
 import type { LaunchPlan } from "@/services/launchMath";
 import {
   readAlcorBalance,
@@ -122,21 +125,30 @@ export function createGateItems(args: {
   ];
 }
 
+function asHoldKind(quote: boolean | HoldKind): HoldKind {
+  if (quote === true) return "flex";
+  if (quote === false) return "other";
+  return quote;
+}
+
 export async function runCreateGates(
   program: FlexProgram,
   symbol: string,
   issuer: string,
-  flexQuote = true
+  quote: boolean | HoldKind = "flex"
 ): Promise<PreflightItem[]> {
   const code = flexAccount(program);
   const meta = flexMeta(program);
-  const [stat, easyAcct, prior] = await Promise.all([
+  const kind = asHoldKind(quote);
+  const [stat, easyAcct, prior, verified] = await Promise.all([
     readStat(code, symbol).catch(() => null),
     readAccounts(MON3Y, issuer, EASY_SYMBOL).catch(() => ({ rows: [] as Record<string, unknown>[] })),
     countIssuerLaunched(code, issuer),
+    kind === "geasy" ? readProtonVerified(issuer) : Promise.resolve(true),
   ]);
-  const need = easyHoldNeed(meta.launchEasyMin, prior);
-  const flexNeed = need;
+  const need = easyHoldNeed(meta.launchEasyMin, prior, Date.now(), kind, verified);
+  const flexNeed = easyHoldNeed(meta.launchEasyMin, prior, Date.now(), "flex");
+  const flexQuote = kind !== "other";
   const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
   return createGateItems({ stat, easyBal, need, symbol, prior, flexQuote, flexNeed });
 }
@@ -254,9 +266,11 @@ export async function runPreflight(
   const launchFlex = pick(launch, "flex_quote");
   const flexQuote =
     launchFlex != null ? Boolean(launchFlex) : isFlexQuoteToken(plan.quote.symbol, plan.quote.contract);
+  const kind = holdKindFromQuote(plan.quote.symbol, plan.quote.contract);
+  const verified = kind === "geasy" ? await readProtonVerified(issuer) : true;
   const base = flexMeta(program).launchEasyMin;
-  const need = easyHoldNeed(base, prior);
-  const flexNeed = need;
+  const need = easyHoldNeed(base, prior, Date.now(), kind, verified);
+  const flexNeed = easyHoldNeed(base, prior, Date.now(), "flex");
   const easyBal = assetAmountNumber(String(pick(easyAcct.rows[0], "balance") ?? "0"));
   const easyPass = easyBal + 1e-12 >= need;
   items.push({

@@ -171,7 +171,7 @@ easyflex: `issue`. Others: `mint`. `to` **must** be issuer.
 ```
 
 - `token_symbol` = **code string only**. Quote amount **0**.
-- Flex quotes: `(mon3y, EASY)`, `(w3won, WON)`, `(m3m3, MEME)`, `(gold.mon3y, GRAMS)` → `xtoken_proof_pool_id = 0`.
+- Flex quotes: `(mon3y, EASY)`, `(w3won, WON)`, `(m3m3, MEME)`, `(gold.mon3y, GRAMS)`, `(fl3x, GEASY)` → `xtoken_proof_pool_id = 0`. Hide GEASY on for3x in the wizard.
 - Else quote may be `xtokens`, `XPR@eosio.token`, `XMD@xmd.token`, or `LOAN@loan.token`, with **proof pool id &gt; 0** vs XUSDC or XPR; inventory ≥ 10 XUSDC or 1000 XPR.
 - `swap_underlying_default`: unpaid holders (`flex_reward_pool_id == 0`) get makeitrain swapped into the launch quote. Wizard default true.
 - `fee` ∈ {500→10, 3000→60, 10000→200}. Repeatable until `liftoff`.
@@ -221,7 +221,7 @@ Optional **`setpresale`** before liftoff: if a `presales` row exists, liftoff le
 | `setmin` | issuer | easyflex + complexflex (live 3asy / fl3x) |
 | `inheritance` / `inheritmemo` | flexer or contract | not easyflex |
 
-Flex payout memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#reflections`
+Flex payout memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#flex.for3x`
 
 Wallet→wallet tax is **on top of** `quantity`; Alcor inbound tax is **taken from** `quantity`.
 

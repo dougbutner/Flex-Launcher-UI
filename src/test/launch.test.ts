@@ -323,16 +323,21 @@ describe("launch plan", () => {
     expect(easyHoldOffPercent(Date.UTC(2026, 9, 8))).toBe(90);
     expect(easyHoldOffPercent(Date.UTC(2026, 9, 9))).toBe(80);
     expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 8, 10))).toBe(1_000);
-    expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 9, 9))).toBe(2_000);
+    expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 9, 9))).toBe(1_000);
+    expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 9, 9), false)).toBe(2_000);
     expect(easyHoldNeed(50_000, 0, Date.UTC(2026, 8, 10))).toBe(5_000);
     expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 8, 10), false)).toBe(1_000);
     expect(easyHoldNeed(50_000, 0, Date.UTC(2026, 8, 10), false)).toBe(5_000);
+    expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 8, 10), "geasy")).toBe(0);
+    expect(easyHoldNeed(10_000, 0, Date.UTC(2026, 8, 10), "geasy", false)).toBe(1_000);
+    expect(easyHoldNeed(10_000, 1, Date.UTC(2026, 9, 9), "geasy")).toBe(4_000);
+    expect(easyHoldNeed(10_000, 1, Date.UTC(2026, 9, 9), "flex")).toBe(2_000);
     expect(easyHoldFull(10_000, 2)).toBe(30_000);
     expect(easyHoldOffPercent(Date.UTC(2026, 8, 9) + 6 * 30 * 86400 * 1000)).toBe(30);
     expect(easyHoldOffPercent(Date.UTC(2026, 8, 9) + 9 * 30 * 86400 * 1000)).toBe(0);
     expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9))).toMatch(/90%/);
     expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9))).toMatch(/xtokens/);
-    expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9) + 9 * 30 * 86400 * 1000)).toBeNull();
+    expect(easyHoldPromoCopy(Date.UTC(2026, 8, 9) + 9 * 30 * 86400 * 1000)).toMatch(/full EASY hold/);
     expect(
       easyHoldFlexAltTip({
         easyBal: 5_000,
@@ -355,6 +360,8 @@ describe("launch plan", () => {
       })
     ).toBeNull();
     expect(isFlexQuoteToken("EASY", MON3Y)).toBe(true);
+    expect(isFlexQuoteToken("GEASY", COMPLEXFLEX_CONTRACT)).toBe(true);
+    expect(isFlexQuoteToken("GEASY", FLEXFOREX_CONTRACT)).toBe(false);
     expect(isFlexQuoteToken("XPR", "eosio.token")).toBe(false);  });
 
   it("matches GEASY@fl3x mainnet issuer liquidity and 2x walk", () => {
