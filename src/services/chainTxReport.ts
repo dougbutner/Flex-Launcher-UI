@@ -1,4 +1,5 @@
 import { PROJECT_CORE_TOKENS } from "@/config/launch";
+import { flexApi } from "@/services/flexApi";
 import { txIdFromResult } from "@/services/txParse";
 
 const RAIN_ACTIONS = new Set(["makeitrain", "distribute", "radiate", "reflect"]);
@@ -48,7 +49,7 @@ export async function reportChainTx(actor: string | null, actions: SignedAction[
   if (!actor) return;
   const body = chainTxBody(actor, actions, result);
   if (!/^[0-9a-f]{64}$/.test(body.txId)) return;
-  await fetch("/api/txs", {
+  await fetch(flexApi("/api/txs"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

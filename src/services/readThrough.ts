@@ -1,4 +1,5 @@
 import { canonCacheKey } from "@/services/cacheKeys";
+import { flexApi } from "@/services/flexApi";
 import { siteSandboxFlag } from "@/services/siteSandbox";
 
 export type SiteStatus = {
@@ -28,7 +29,7 @@ export async function siteStatus(force = false): Promise<SiteStatus> {
   const now = Date.now();
   if (!force && sitePromise && now - siteAt < 15_000) return sitePromise;
   siteAt = now;
-  sitePromise = fetch("/api/site")
+  sitePromise = fetch(flexApi("/api/site"))
     .then(async (res) => {
       if (!res.ok) return { live: false, db: false };
       const body = (await res.json()) as SiteStatus;
@@ -41,7 +42,7 @@ export async function siteStatus(force = false): Promise<SiteStatus> {
 async function fetchCache<T>(key: string, force?: boolean): Promise<{ ok: true; data: T } | { ok: false }> {
   const q = new URLSearchParams({ key });
   if (force) q.set("force", "1");
-  const res = await fetch(`/api/cache?${q}`);
+  const res = await fetch(flexApi("/api/cache", q.toString()));
   let body: CacheBody<T> = {};
   try {
     body = (await res.json()) as CacheBody<T>;
@@ -77,14 +78,14 @@ export async function forceServerCache<T>(key: string): Promise<T> {
   const canon = canonCacheKey(key);
   if (!canon) throw new Error("Unknown cache key.");
   const q = new URLSearchParams({ key: canon, force: "1" });
-  const res = await fetch(`/api/cache?${q}`);
+  const res = await fetch(flexApi("/api/cache", q.toString()));
   const body = (await res.json().catch(() => ({}))) as CacheBody<T>;
   if (!res.ok || !body || !("data" in body)) throw new Error(body.error || "Cache refresh failed.");
   return body.data as T;
 }
 
 export async function setSiteLive(account: string, live: boolean): Promise<SiteStatus> {
-  const res = await fetch("/api/admin/live", {
+  const res = await fetch(flexApi("/api/admin/live"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ account, live }),
@@ -96,7 +97,7 @@ export async function setSiteLive(account: string, live: boolean): Promise<SiteS
 }
 
 export async function clearServerCaches(account: string): Promise<void> {
-  const res = await fetch("/api/admin/rebuild", {
+  const res = await fetch(flexApi("/api/admin/rebuild"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ account }),

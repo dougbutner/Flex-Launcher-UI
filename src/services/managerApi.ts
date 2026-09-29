@@ -1,3 +1,4 @@
+import { flexApi } from "@/services/flexApi";
 import { managerFromDraft } from "@/services/managerDraft";
 import { parseManagerToken, type ManagerToken } from "@/services/managerStore";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
@@ -22,7 +23,7 @@ export async function listManagerTokens(q: { issuer?: string; contract?: string 
   if (q.issuer) params.set("issuer", q.issuer);
   if (q.contract) params.set("contract", q.contract);
   if (![...params.keys()].length) return [];
-  const res = await fetch(`/api/manager?${params}`);
+  const res = await fetch(flexApi("/api/manager", params.toString()));
   const body = (await readJson(res)) as { tokens?: unknown; error?: string };
   if (!res.ok) throw new Error(issuerError(body.error || "", "Could not load saved copy."));
   const tokens = Array.isArray(body.tokens) ? body.tokens : [];
@@ -30,7 +31,7 @@ export async function listManagerTokens(q: { issuer?: string; contract?: string 
 }
 
 export async function upsertManagerToken(token: ManagerToken): Promise<ManagerToken> {
-  const res = await fetch("/api/manager", {
+  const res = await fetch(flexApi("/api/manager"), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(token),

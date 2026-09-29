@@ -120,8 +120,7 @@ export function AdminDatabase({ account }: { account: string }) {
       </p>
       {db ? null : (
         <p className="mt-2 text-xs text-muted-foreground">
-          On Cloudflare Pages set MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, and MYSQL_DATABASE. Import sql/schema.sql,
-          then sql/data.sql. MYSQL_PORT defaults to 3306. Set MYSQL_SSL=1 only if the host requires TLS.
+          MySQL runs on api.flex.forex. Fill api/config.php on Namecheap and import sql/schema.sql, then sql/data.sql.
         </p>
       )}
       <div className="mt-3 flex flex-wrap gap-2">

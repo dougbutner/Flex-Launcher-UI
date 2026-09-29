@@ -31,5 +31,8 @@ data/*.sqlite
 data/*.sqlite-*
 functions/generated/
 
+# Namecheap API secrets
+api/config.php
+
 # Live flex token contracts (local source of truth, not this UI repo).
 src/Project Contracts/

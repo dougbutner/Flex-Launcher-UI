@@ -1,3 +1,4 @@
+import { flexApi } from "@/services/flexApi";
 import type { ListingGithubTarget } from "@/services/listingHelper";
 
 export type ListingPrResult = {
@@ -20,7 +21,7 @@ async function readJson(res: Response): Promise<ListingPrResult> {
 }
 
 export async function syncListingForks(): Promise<ListingPrResult> {
-  const res = await fetch("/api/listing-pr", {
+  const res = await fetch(flexApi("/api/listing-pr"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "sync" }),
@@ -42,7 +43,7 @@ export async function openListingPr(args: {
   iconurl: string;
   pngBase64?: string;
 }): Promise<ListingPrResult> {
-  const res = await fetch("/api/listing-pr", {
+  const res = await fetch(flexApi("/api/listing-pr"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "pr", ...args }),

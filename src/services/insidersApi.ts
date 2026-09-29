@@ -1,3 +1,4 @@
+import { flexApi } from "@/services/flexApi";
 import type { FeedRange } from "@/services/insidersRules";
 import { loadSiteSandbox, siteSandboxFlag } from "@/services/siteSandbox";
 
@@ -64,7 +65,7 @@ function asPost(raw: unknown): InsiderPost | null {
 }
 
 export async function fetchCaptcha(): Promise<{ id: string; prompt: string }> {
-  const res = await fetch("/api/insiders/captcha");
+  const res = await fetch(flexApi("/api/insiders/captcha"));
   const body = (await readJson(res)) as { id?: string; prompt?: string; error?: string };
   if (!res.ok || !body.id || !body.prompt) throw new Error(clubError(body.error, "Captcha failed to load."));
   return { id: body.id, prompt: body.prompt };
@@ -89,7 +90,7 @@ export async function fetchFeed(
     range: opts?.range ?? "day",
   };
   try {
-    const res = await fetch(`/api/insiders/feed?${q}`);
+    const res = await fetch(flexApi("/api/insiders/feed", q.toString()));
     const body = (await readJson(res)) as {
       posts?: unknown[];
       activity?: Record<string, number>;
@@ -123,7 +124,7 @@ export async function createPost(input: {
   giphyUrl?: string;
   authorScore?: number;
 }): Promise<{ id: number }> {
-  const res = await fetch("/api/insiders/post", {
+  const res = await fetch(flexApi("/api/insiders/post"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -140,7 +141,7 @@ export async function recordUp(input: {
   quantity: string;
   txid: string;
 }): Promise<void> {
-  const res = await fetch("/api/insiders/up", {
+  const res = await fetch(flexApi("/api/insiders/up"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
