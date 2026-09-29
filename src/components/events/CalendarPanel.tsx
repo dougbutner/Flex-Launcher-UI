@@ -13,8 +13,6 @@ import {
   calendarTokenMarks,
   calTokenKey,
   fromCalEvents,
-  mergeTokenEvents,
-  sampleTokenEvents,
   type TokenCalEvent,
 } from "@/components/cal/tokenCalEvents";
 
@@ -82,7 +80,7 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
   }, []);
 
   const tokenEvents = useMemo(
-    () => mergeTokenEvents(fromCalEvents(clubDateEvents(events), board), sampleTokenEvents()),
+    () => fromCalEvents(clubDateEvents(events), board),
     [events, board]
   );
   const marks = useMemo(() => calendarTokenMarks(tokenEvents), [tokenEvents]);
@@ -215,14 +213,9 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
             {open.map((r) => (
               <li key={`${r.contract}:${r.symbol}`} className="flex items-center justify-between gap-3 px-3 py-3">
                 <TokenGlyph contract={r.contract} symbol={r.symbol} />
-                <div className="flex gap-2">
-                  <Link className="btn btn-outline btn-sm" to={`/token/${r.contract}/${r.symbol}`}>
-                    Token
-                  </Link>
-                  <Link className="btn btn-ghost btn-sm" to={`/insiders/${r.contract}/${r.symbol}`}>
-                    Chat
-                  </Link>
-                </div>
+                <Link className="btn btn-outline btn-sm" to={`/token/${r.contract}/${r.symbol}`}>
+                  Token
+                </Link>
               </li>
             ))}
           </ul>

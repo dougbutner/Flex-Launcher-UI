@@ -110,7 +110,7 @@ const HINTS: Array<[string, string]> = [
   ["1000 XPR", "Pick a deeper xtoken market."],
   ["pool is not active", "Pay activeFee with memo activepool#id."],
   ["ticks must match", "Same ticks as startlaunch / addliquid / lockpos."],
-  ["100% of supply must sit on swap.alcor", "Deposit the full supply; nothing left in the wallet."],
+  ["100% of supply must sit on swap.alcor", "This supply is no longer all on the pool. Set up a new contract on Alcor."],
   ["unused Alcor balance must be 0", "addliquid did not consume the deposit."],
   ["lock ≥ 90 days", "Increase unlockTime."],
   ["fee must be 500, 3000, or 10000", "Invalid fee tier."],

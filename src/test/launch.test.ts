@@ -826,6 +826,40 @@ describe("execute gates and pool id", () => {
     expect(items.find((i) => i.id === "no-leftover")?.detail).toBe("clean");
   });
 
+  it("treats dust on the token contract as still 100% on the pool", () => {
+    const supply = 1_100_000_000_000;
+    const items = alcorInventoryItems({
+      program: "flexforex",
+      contract: FLEXFOREX_CONTRACT,
+      symbol: "FALA",
+      precision: 2,
+      supply,
+      swapBal: 1_099_999_948_181.35,
+      contractBal: 51_818.65,
+      issuerBal: 0,
+      leftover: 0,
+    });
+    const row = items.find((i) => i.id === "supply-on-alcor");
+    expect(row?.pass).toBe(true);
+    expect(row?.label).toBe("100% of supply sits on swap.alcor");
+    expect(row?.hint).toBeUndefined();
+
+    const short = alcorInventoryItems({
+      program: "flexforex",
+      contract: FLEXFOREX_CONTRACT,
+      symbol: "FALA",
+      precision: 2,
+      supply,
+      swapBal: supply * 0.99,
+      contractBal: 0,
+      issuerBal: supply * 0.01,
+      leftover: 0,
+    });
+    const fail = short.find((i) => i.id === "supply-on-alcor");
+    expect(fail?.pass).toBe(false);
+    expect(fail?.hint).toMatch(/new contract on Alcor/);
+  });
+
   it("keeps inventory rows strict for other programs and tickers", () => {
     const bad = {
       precision: 6,

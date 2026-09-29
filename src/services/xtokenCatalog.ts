@@ -147,6 +147,7 @@ export async function fetchXtokensByPopularity(): Promise<XtokenRow[]> {
     if (t.contract !== XTOKENS || t.is_scam || !t.symbol) continue;
     const symbol = t.symbol.toUpperCase();
     if (!/^[A-Z]{1,7}$/.test(symbol)) continue;
+    if (symbol === "FOOBAR") continue;
     rows.push({
       symbol,
       precision: Math.max(0, Math.min(8, Number(t.decimals ?? 6))),

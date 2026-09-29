@@ -1,12 +1,11 @@
 import { useEffect } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-dom";
 import { WalletProvider } from "@/hooks/useWallet";
 import { Layout } from "@/components/Layout";
 import { appendWharfDialogElement } from "@/services/wharfSessionKit";
 import Admin from "./pages/Admin.tsx";
 import Events from "./pages/Events.tsx";
 import Home from "./pages/Home.tsx";
-import Insiders from "./pages/Insiders.tsx";
 import Launch from "./pages/Launch.tsx";
 import Leaderboard from "./pages/Leaderboard.tsx";
 import Reflections from "./pages/Reflections.tsx";
@@ -15,6 +14,11 @@ import Token from "./pages/Token.tsx";
 import Preview from "./pages/Preview.tsx";
 import Manager from "./pages/Manager.tsx";
 import NotFound from "./pages/NotFound.tsx";
+
+function InsidersToken() {
+  const { contract = "", symbol = "" } = useParams();
+  return <Navigate to={`/token/${contract}/${symbol}`} replace />;
+}
 
 export default function App() {
   useEffect(() => {
@@ -72,8 +76,8 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/launch" element={<Launch />} />
             <Route path="/events" element={<Events />} />
-            <Route path="/insiders" element={<Insiders />} />
-            <Route path="/insiders/:contract/:symbol" element={<Insiders />} />
+            <Route path="/insiders" element={<Navigate to="/events" replace />} />
+            <Route path="/insiders/:contract/:symbol" element={<InsidersToken />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/reflections" element={<Reflections />} />
             <Route path="/portfolio" element={<Portfolio />} />

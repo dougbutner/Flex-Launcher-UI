@@ -121,17 +121,6 @@ function RowMenu({ token }: { token: BoardToken }) {
           >
             Copy symbol
           </button>
-          <button
-            type="button"
-            className="block w-full px-3 py-1.5 text-left hover:bg-muted"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/insiders/${token.contract}/${token.symbol}`);
-              setOpen(false);
-            }}
-          >
-            Open launch
-          </button>
         </div>
       ) : null}
     </div>
@@ -370,7 +359,7 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                             className="h-6 border border-success/60 px-2 text-[11px] uppercase tracking-wide text-success hover:bg-success/10"
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/insiders/${t.contract}/${t.symbol}`);
+                              navigate(`/token/${t.contract}/${t.symbol}`);
                             }}
                           >
                             INSIDE

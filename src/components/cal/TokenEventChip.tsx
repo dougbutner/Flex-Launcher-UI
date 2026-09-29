@@ -89,18 +89,6 @@ function DotsMenu({ event, onDone }: { event: TokenCalEvent; onDone?: () => void
           >
             Copy symbol
           </button>
-          <button
-            type="button"
-            className="block w-full px-3 py-1.5 text-left hover:bg-muted"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/insiders/${event.contract}/${event.symbol}`);
-              setOpen(false);
-              onDone?.();
-            }}
-          >
-            Open launch page
-          </button>
         </div>
       ) : null}
     </div>

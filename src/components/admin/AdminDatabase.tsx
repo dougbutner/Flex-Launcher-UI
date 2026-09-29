@@ -110,7 +110,7 @@ export function AdminDatabase({ account }: { account: string }) {
     <div className="mt-4 rounded-xl border border-border bg-background/40 p-4">
       <p className="text-sm font-semibold">Database</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        Visitors keep reading the chain until you go live. After that, Winners, Events, Make it rain, and token pages
+        Visitors keep reading the chain until you go live. After that, Tokens, Events, Make it rain, and token pages
         share MySQL snapshots. A snapshot is reused for 15 seconds, then one refresh updates it for everyone. A rain
         transaction refreshes that rain pool immediately.
       </p>

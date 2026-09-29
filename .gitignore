@@ -30,3 +30,6 @@ dist-ssr
 data/*.sqlite
 data/*.sqlite-*
 functions/generated/
+
+# Live flex token contracts (local source of truth, not this UI repo).
+src/Project Contracts/

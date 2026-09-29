@@ -1,5 +1,4 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { ClubTimeField } from "@/components/launch/ClubTimeField";
 import { DecimalText } from "@/components/Amount";
 import { Field, TxLink } from "@/components/launch/ui";
@@ -25,11 +24,22 @@ function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]
   return undefined;
 }
 
-function fmtUnix(unix: number): string {
+function waitLabel(unix: number, nowSec: number): string {
+  const sec = Math.max(0, unix - nowSec);
+  const days = Math.floor(sec / 86400);
+  const hours = Math.floor((sec % 86400) / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  if (days > 0) return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  if (hours > 0) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  if (mins > 0) return `${mins}m`;
+  return "under a minute";
+}
+
+function fmtUnix(unix: number, nowSec: number): string {
   if (!unix) return "-";
-  const d = new Date(unix * 1000);
-  const days = Math.max(0, Math.ceil((unix - Date.now() / 1000) / 86400));
-  return `${d.toLocaleString()} · ${days}d`;
+  const when = new Date(unix * 1000).toLocaleString();
+  if (nowSec >= unix) return `${when} · started`;
+  return `${when} · in ${waitLabel(unix, nowSec)}`;
 }
 
 type Props = {
@@ -71,7 +81,11 @@ export function PresalePanel({
   transact,
   onDone,
 }: Props) {
-  const now = Math.floor(Date.now() / 1000);
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
   const insiderTime = Number(pick(presale, "insider_time") ?? 0);
   const launchTime = Number(pick(presale, "launch_time") ?? 0);
   const mode = Number(pick(presale, "mode") ?? 0);
@@ -142,18 +156,21 @@ export function PresalePanel({
         <div>
           <h3 className="text-sm font-bold tracking-tight">Insiders</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Buy & LP early. {mode === 0 ? "Frozen." : "Open."} Insider Max {insiderBps / 100}% of supply
+            Buy & LP early.{" "}
+            {mode === 0
+              ? "Frozen."
+              : joinOpen
+                ? "Insider window is open."
+                : `Presale starts in ${waitLabel(insiderTime, now)}.`}{" "}
+            Insider Max {insiderBps / 100}% of supply
             {lockedBps > insiderBps ? ` (${lockedBps / 100}% LP provider bonus)` : ""}.
           </p>
         </div>
-        <Link to={`/insiders/${contract}/${symbol}`} className="link text-xs">
-          Room chat
-        </Link>
       </div>
 
       <div className="flex flex-wrap gap-2 text-xs">
-        <span className="chip-muted">insider buys {fmtUnix(insiderTime)}</span>
-        <span className="chip-muted">public launch {fmtUnix(launchTime)}</span>
+        <span className="chip-muted">insider buys {fmtUnix(insiderTime, now)}</span>
+        <span className="chip-muted">public launch {fmtUnix(launchTime, now)}</span>
         {approved ? <span className="chip-success">approved</span> : <span className="chip-muted">not on list</span>}
         {lockedPos > 0 ? <span className="chip-success">lock pos {lockedPos}</span> : null}
       </div>
@@ -177,7 +194,13 @@ export function PresalePanel({
             disabled={disabled || approved || !joinOpen}
             onClick={() => void run(reginsiderAction(contract, actor, symbol))}
           >
-            {signing ? "Signing…" : approved ? "Already joined" : joinOpen ? "Join" : "Opens at insider buys start"}
+            {signing
+              ? "Signing…"
+              : approved
+                ? "Already joined"
+                : joinOpen
+                  ? "Join"
+                  : `Wait ${waitLabel(insiderTime, now)} for presale`}
           </button>
           {(lockedLpMin > 0 || lockSecs > 0) && poolId > 0 ? (
             <>
@@ -209,7 +232,7 @@ export function PresalePanel({
             </a>
           ) : (
             <span className="self-center text-xs text-muted-foreground">
-              {buysOpen ? "Join first to buy" : "Buys open at public launch"}
+              {buysOpen ? "Join first to buy" : `Buys open in ${waitLabel(launchTime, now)}`}
             </span>
           )}
         </div>

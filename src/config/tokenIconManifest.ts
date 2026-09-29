@@ -7,7 +7,6 @@ export const TOKEN_ICON_SRC: Record<string, string> = {
   "mon3y:EASY": "/tokens/easy.png",
   "w3won:WON": "/tokens/won.png",
   "xmd.token:XMD": "/tokens/xmd.token/XMD.png",
-  "xtokens:FOOBAR": "/tokens/xtokens/FOOBAR.png",
   "xtokens:METAL": "/tokens/xtokens/METAL.png",
   "xtokens:XADA": "/tokens/xtokens/XADA.png",
   "xtokens:XBCH": "/tokens/xtokens/XBCH.png",

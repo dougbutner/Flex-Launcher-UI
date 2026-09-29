@@ -23,6 +23,9 @@ export type Dryland = {
   poolRaw: number;
   floorRaw: number;
   usd: number;
+  px: number;
+  angel: number;
+  jackpot: number;
   rainAction?: string;
 };
 
@@ -42,7 +45,14 @@ async function drylandFromStat(
     readSettings(contract, symbol).catch(() => null),
   ]);
   const poolAsset = parseAsset(String(pick(stat, "reflection_pool") ?? ""));
-  const precision = poolAsset?.precision ?? QUOTE_PRESETS.find((q) => q.symbol === symbol)?.precision ?? 4;
+  const angelAsset = parseAsset(String(pick(stat, "angel_numbers_pool") ?? ""));
+  const jackAsset = parseAsset(String(pick(stat, "jackpot_pool") ?? ""));
+  const precision =
+    poolAsset?.precision ??
+    angelAsset?.precision ??
+    jackAsset?.precision ??
+    QUOTE_PRESETS.find((q) => q.symbol === symbol)?.precision ??
+    4;
   const pool = poolAsset ? Number(poolAsset.amount) : 0;
   const poolRaw = poolAsset ? amountToRaw(poolAsset.amount, precision) : 0;
   const floorRaw = reflectionPayFloorRaw(pick(settings, "reflect_min"), precision);
@@ -56,6 +66,9 @@ async function drylandFromStat(
     poolRaw,
     floorRaw,
     usd: 0,
+    px: 0,
+    angel: angelAsset ? Number(angelAsset.amount) : 0,
+    jackpot: jackAsset ? Number(jackAsset.amount) : 0,
     rainAction: extra.rainAction,
   };
 }
@@ -87,7 +100,7 @@ export async function loadDrylandsFresh(): Promise<Dryland[]> {
       return Promise.all(
         items.map(async ({ code, program, symbol }) => {
           const row = await drylandFromStat(code, symbol, { program });
-          if (!row || !(row.pool > 0)) return null;
+          if (!row || !(row.pool > 0 || row.angel > 0 || row.jackpot > 0)) return null;
           return row;
         })
       );
@@ -99,7 +112,8 @@ export async function loadDrylandsFresh(): Promise<Dryland[]> {
   await Promise.all(
     rows.map(async (row) => {
       const usdPrice = await fetchAlcorUsdPrice(row.contract, row.symbol).catch(() => 0);
-      row.usd = usdPrice > 0 ? row.pool * usdPrice : 0;
+      row.px = usdPrice > 0 ? usdPrice : 0;
+      row.usd = row.px * row.pool;
     })
   );
   const ready = sortDrylandGroup(rows.filter((r) => r.poolRaw >= r.floorRaw));

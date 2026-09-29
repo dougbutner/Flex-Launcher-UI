@@ -5,6 +5,7 @@ import { RainSkeleton } from "@/components/ui/PageSkeletons";
 import { TxLink } from "@/components/launch/ui";
 import { flexMeta } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
+import { pullangelAction, pulljackpotAction } from "@/services/launchActions";
 import { loadDrylands, type Dryland } from "@/services/rainBoard";
 import { storedPayoutAction } from "@/services/rainDefaults";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
@@ -36,25 +37,33 @@ export default function Reflections() {
     }
   }, []);
 
-  const rain = async (d: Dryland) => {
-    if (d.poolRaw < d.floorRaw) return;
+  const rain = async (d: Dryland, kind: "rain" | "angel" | "jackpot" = "rain") => {
+    if (kind === "rain" && d.poolRaw < d.floorRaw) return;
+    if (kind === "angel" && !(d.angel > 0)) return;
+    if (kind === "jackpot" && !(d.jackpot > 0)) return;
     if (!isLoggedIn || !actor) {
       void addWebAuthWallet();
       return;
     }
-    setRaining(d.key);
-    setRainMsg((m) => ({ ...m, [d.key]: {} }));
+    const id = `${kind}:${d.key}`;
+    setRaining(id);
+    setRainMsg((m) => ({ ...m, [id]: {} }));
     try {
-      const action = d.rainAction
-        ? { account: d.contract, name: d.rainAction, data: {} }
-        : await storedPayoutAction(d.contract, d.symbol, actor, flexMeta(d.program ?? "easyflex").payoutSigner);
+      const action =
+        kind === "angel"
+          ? pullangelAction(d.contract, d.symbol)
+          : kind === "jackpot"
+            ? pulljackpotAction(d.contract, d.symbol)
+            : d.rainAction
+              ? { account: d.contract, name: d.rainAction, data: {} }
+              : await storedPayoutAction(d.contract, d.symbol, actor, flexMeta(d.program ?? "easyflex").payoutSigner);
       const res = await transact([action]);
-      setRainMsg((m) => ({ ...m, [d.key]: { tx: txIdFromResult(res) || "ok" } }));
+      setRainMsg((m) => ({ ...m, [id]: { tx: txIdFromResult(res) || "ok" } }));
       await load();
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
-      setRainMsg((m) => ({ ...m, [d.key]: { err: hint ? `${msg} - ${hint}` : msg } }));
+      setRainMsg((m) => ({ ...m, [id]: { err: hint ? `${msg} - ${hint}` : msg } }));
     } finally {
       setRaining(null);
     }
@@ -86,17 +95,20 @@ export default function Reflections() {
         </p>
         {drylands == null && busy ? (
           <RainSkeleton />
-        ) : !drylands?.length ? (
+        ) : !drylands?.some((d) => d.pool > 0 || d.program == null) ? (
           <div className="card mt-4 p-8 text-center text-sm text-muted-foreground">
             No pending reflection pools. After tax accrues, unpaid rain shows here.
           </div>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {drylands.map((d) => {
+            {drylands
+              .filter((d) => d.pool > 0 || d.program == null)
+              .map((d) => {
               const below = d.poolRaw < d.floorRaw;
               const splash = d.pool * DIST_BPS;
               const splashUsd = d.usd * DIST_BPS;
-              const msg = rainMsg[d.key];
+              const id = `rain:${d.key}`;
+              const msg = rainMsg[id];
               return (
                 <article
                   key={d.key}
@@ -126,7 +138,7 @@ export default function Reflections() {
                       {d.symbol}
                     </span>
                     <span className="mt-1 h-5 text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-                      {below ? "" : raining === d.key ? "Signing…" : "Make it rain"}
+                      {below ? "" : raining === id ? "Signing…" : "Make it rain"}
                     </span>
                   </div>
                   <div className="relative min-h-[4.75rem] px-2 pb-3 text-center">
@@ -171,6 +183,131 @@ export default function Reflections() {
           </div>
         )}
       </section>
+
+      {drylands == null ? null : (
+        <>
+          <PotSection
+            title="Angels"
+            empty="No angel pots waiting."
+            label="Call angels"
+            tone="white"
+            rows={drylands.filter((d) => d.angel > 0)}
+            raining={raining}
+            rainMsg={rainMsg}
+            onCall={(d) => void rain(d, "angel")}
+          />
+          <PotSection
+            title="Jackpot"
+            empty="No jackpot pots waiting."
+            label="Call jackpot"
+            tone="gold"
+            rows={drylands.filter((d) => d.jackpot > 0)}
+            raining={raining}
+            rainMsg={rainMsg}
+            onCall={(d) => void rain(d, "jackpot")}
+          />
+        </>
+      )}
     </div>
+  );
+}
+
+function PotSection({
+  title,
+  empty,
+  label,
+  tone,
+  rows,
+  raining,
+  rainMsg,
+  onCall,
+}: {
+  title: string;
+  empty: string;
+  label: string;
+  tone: "white" | "gold";
+  rows: Dryland[];
+  raining: string | null;
+  rainMsg: Record<string, { tx?: string; err?: string }>;
+  onCall: (d: Dryland) => void;
+}) {
+  const kind = tone === "white" ? "angel" : "jackpot";
+  const hot =
+    tone === "white"
+      ? "hover:border-white hover:bg-white focus:border-white focus:bg-white"
+      : "hover:border-[#d4af37] hover:bg-[#d4af37] focus:border-[#d4af37] focus:bg-[#d4af37]";
+  return (
+    <section className="mt-10">
+      <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {kind === "angel" ? (
+          <>
+            Unpaid <span className="font-mono">angel_numbers_pool</span>. Anyone can call{" "}
+            <span className="font-mono">pullangel</span>.
+          </>
+        ) : (
+          <>
+            Unpaid <span className="font-mono">jackpot_pool</span>. Anyone can call{" "}
+            <span className="font-mono">pulljackpot</span>.
+          </>
+        )}
+      </p>
+      {!rows.length ? (
+        <div className="card mt-4 p-8 text-center text-sm text-muted-foreground">{empty}</div>
+      ) : (
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {rows.map((d) => {
+            const amount = kind === "angel" ? d.angel : d.jackpot;
+            const usd = d.px * amount;
+            const id = `${kind}:${d.key}`;
+            const msg = rainMsg[id];
+            return (
+              <article
+                key={d.key}
+                role="button"
+                tabIndex={0}
+                aria-label={`${label} ${d.symbol}`}
+                className={`group card flex min-h-[13.5rem] cursor-pointer flex-col transition-colors focus:outline-none ${hot}`}
+                onClick={() => onCall(d)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onCall(d);
+                  }
+                }}
+              >
+                <div className="flex flex-1 flex-col items-center justify-center px-2 pt-3">
+                  <TokenIcon contract={d.contract} symbol={d.symbol} size={36} />
+                  <span className="mt-2 font-mono text-xl font-black tracking-tight text-foreground group-hover:text-neutral-950 group-focus:text-neutral-950 sm:text-2xl">
+                    {d.symbol}
+                  </span>
+                  <span className="mt-1 h-5 text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:text-neutral-950 group-hover:opacity-100 group-focus:text-neutral-950 group-focus:opacity-100">
+                    {raining === id ? "Signing…" : label}
+                  </span>
+                </div>
+                <div className="px-2 pb-3 text-center">
+                  <span className="break-all font-mono text-[11px] leading-tight text-muted-foreground group-hover:text-neutral-800 group-focus:text-neutral-800">
+                    <DecimalText text={fmtPool(amount, d.precision)} /> {d.symbol}
+                  </span>
+                  <span className="mt-0.5 block font-mono text-sm font-semibold text-primary group-hover:text-neutral-950 group-focus:text-neutral-950">
+                    <Amount value={usd} kind="usd" />
+                  </span>
+                </div>
+                {msg?.tx ? (
+                  <p className="px-2 pb-2 text-center">
+                    <TxLink tx={msg.tx} prefix="tx " />
+                  </p>
+                ) : null}
+                {msg?.err ? (
+                  <p className="px-2 pb-2 text-center text-[10px] font-medium text-red-200 group-hover:text-red-700 group-focus:text-red-700">
+                    {msg.err}
+                  </p>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }

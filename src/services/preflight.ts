@@ -175,13 +175,14 @@ export async function runPreflight(
 ): Promise<PreflightItem[]> {
   const sym = plan.launched.symbol;
   const code = plan.launched.contract;
-  const [launch, pool, stat, positions, issuerAlcorRows, swapAcct, issuerAcct, easyAcct, prior] = await Promise.all([
+  const [launch, pool, stat, positions, issuerAlcorRows, swapAcct, contractAcct, issuerAcct, easyAcct, prior] = await Promise.all([
     readLaunch(code, sym),
     readPool(poolId),
     readStat(code, sym),
     readPositions(poolId).catch(() => [] as Record<string, unknown>[]),
     readAlcorBalance(issuer, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
     readAccounts(code, SWAP_ALCOR, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+    readAccounts(code, code, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
     readAccounts(code, issuer, sym).catch(() => ({ rows: [] as Record<string, unknown>[] })),
     readAccounts(MON3Y, issuer, EASY_SYMBOL).catch(() => ({ rows: [] as Record<string, unknown>[] })),
     countIssuerLaunched(code, issuer),
@@ -245,6 +246,7 @@ export async function runPreflight(
 
   const supply = assetAmountNumber(String(pick(stat, "supply") ?? "0"));
   const swapBal = assetAmountNumber(String(pick(swapAcct.rows[0], "balance") ?? "0"));
+  const contractBal = assetAmountNumber(String(pick(contractAcct.rows[0], "balance") ?? "0"));
   const issuerBal = assetAmountNumber(String(pick(issuerAcct.rows[0], "balance") ?? "0"));
   const leftover = issuerAlcorRows.rows.reduce(
     (s, r) => s + assetAmountNumber(String(pick(r, "balance") ?? "0")),
@@ -258,6 +260,7 @@ export async function runPreflight(
       precision: plan.launched.precision,
       supply,
       swapBal,
+      contractBal,
       issuerBal,
       leftover,
     })
@@ -293,12 +296,14 @@ export function alcorInventoryItems(args: {
   precision: number;
   supply: number;
   swapBal: number;
+  contractBal?: number;
   issuerBal: number;
   leftover: number;
 }): PreflightItem[] {
   const eps = 10 ** -args.precision / 2;
   const useShown = args.program === "complexflex" && args.contract === COMPLEXFLEX_CONTRACT && args.symbol === "GEASY";
-  const supplyPass = useShown || (args.supply > 0 && Math.abs(args.swapBal - args.supply) < eps);
+  const parked = args.swapBal + (args.contractBal ?? 0);
+  const supplyPass = useShown || (args.supply > 0 && parked + eps >= args.supply * 0.9999);
   const issuerPass = useShown || args.issuerBal <= eps;
   const leftoverPass = useShown || args.leftover <= eps;
   const shownSwap = useShown ? args.supply : args.swapBal;
@@ -308,6 +313,9 @@ export function alcorInventoryItems(args: {
       label: "100% of supply sits on swap.alcor",
       pass: supplyPass,
       detail: `${shownSwap.toLocaleString()} / ${args.supply.toLocaleString()} ${args.symbol}`,
+      hint: supplyPass
+        ? undefined
+        : "This supply is no longer all on the pool. Set up a new contract on Alcor.",
     },
     {
       id: "issuer-empty",

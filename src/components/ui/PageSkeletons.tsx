@@ -109,25 +109,6 @@ export function FeedSkeleton() {
   );
 }
 
-export function InsidersSkeleton() {
-  return (
-    <div aria-busy="true">
-      <ul className="insiders-rail flex flex-wrap gap-2">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <li key={i} className="flex items-center gap-1.5">
-            <Pulse className="h-4 w-4 rounded-full" />
-            <Pulse className="h-3 w-12" />
-          </li>
-        ))}
-      </ul>
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-        <FeedSkeleton />
-        <Pulse className="h-24 w-full" />
-      </div>
-    </div>
-  );
-}
-
 export function TokenPageSkeleton() {
   return (
     <div className="mt-6" aria-busy="true">

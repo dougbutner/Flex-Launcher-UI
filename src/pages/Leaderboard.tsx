@@ -102,7 +102,7 @@ export default function Leaderboard() {
   return (
     <div className={`mx-auto px-4 py-8 sm:px-6 ${state.view === "board" ? "max-w-[90rem]" : "max-w-7xl"}`}>
       <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
-        <h1 className="text-3xl font-black tracking-tight">Winners</h1>
+        <h1 className="text-3xl font-black tracking-tight">Top tokens</h1>
         {WINNER_VIEWS.map((v) => (
           <WinnerTextLink key={v.id} label={v.label} active={state.view === v.id} onClick={() => setView({ view: v.id })} />
         ))}
