@@ -129,9 +129,9 @@ export function holdKindFromQuote(symbol: string, contract: string): HoldKind {
   return "other";
 }
 
-/** GEASY is a flex quote on-chain for every program. The launcher hides it on for3x. */
-export function geasyQuoteAllowed(program: FlexProgram): boolean {
-  return program !== "flexforex";
+/** GEASY@fl3x is a flex quote on every program. A verified first launch waives the EASY hold. */
+export function geasyQuoteAllowed(_program: FlexProgram): boolean {
+  return true;
 }
 
 /**
@@ -161,7 +161,7 @@ export function easyHoldPromoCopy(nowMs = Date.now()): string | null {
     off > 0
       ? `XPR, XMD, LOAN, and xtokens are ${off}% off the EASY hold this month.`
       : "XPR, XMD, LOAN, and xtokens are at the full EASY hold.";
-  return `EASY, WON, GRAMS, and MEME always use the 10% EASY hold, not the full hold. That price does not rise. GEASY on 3asy and fl3x has no EASY hold on a verified first launch. ${other}`;
+  return `EASY, WON, GRAMS, and MEME always use the 10% EASY hold, not the full hold. That price does not rise. GEASY on 3asy, fl3x, and for3x has no EASY hold on a verified first launch. ${other}`;
 }
 
 /**
@@ -202,7 +202,9 @@ export const ALCOR_CHART_WIDGET = "https://alcor.exchange/v/xpr/chart-widget";
 export const ALCOR_ANALYTICS = "https://alcor.exchange/v/xpr/analytics/tokens";
 
 export const LOCK_MIN_SECONDS = 7_776_000;
+/** On-chain remaining lock. The wizard asks for one extra day so a 90-day pick does not fail later. */
 export const LOCK_MIN_DAYS = 90;
+export const LOCK_UI_MIN_DAYS = 91;
 /** Default slider end. Typing a larger day count stretches this, up to EOSIO_MAX_TIME_SEC. */
 export const LOCK_SLIDER_MAX_DAYS = 730;
 /** uint32 / time_point_sec max. 2106-02-07T06:28:15Z. Alcor lockpos.unlockTime. */
@@ -272,7 +274,7 @@ export const START_MCAP_MORE_ROWS = [
 ] as const;
 
 export type QuotePreset = {
-  id: "easy" | "won" | "grams" | "meme" | "geasy" | "xpr" | "xmd" | "loan" | "xtoken";
+  id: "easy" | "won" | "grams" | "meme" | "geasy" | "xpr" | "xmd" | "loan" | "metal" | "xtoken";
   symbol: string;
   contract: string;
   precision: number;
@@ -378,6 +380,16 @@ export const QUOTE_PRESETS: QuotePreset[] = [
     priceUpper: "1000000",
     flexQuote: false,
     label: "LOAN",
+  },
+  {
+    id: "metal",
+    symbol: "METAL",
+    contract: XTOKENS,
+    precision: 8,
+    priceLower: "0.000001",
+    priceUpper: "100000",
+    flexQuote: false,
+    label: "METAL",
   },
   {
     id: "xtoken",

@@ -5,8 +5,8 @@ import { readInsiders } from "@/services/flexTables";
 import { liveOr } from "@/services/readThrough";
 import { addinsidersAction, setpresaleAction, type ChainAction, type SetPresaleArgs } from "@/services/launchActions";
 
-/** lock_secs + 3d must stay ≤ 90d main lock. */
-export const PRESALE_LOCK_MAX_SECS = 87 * 24 * 60 * 60;
+/** lock_secs + 3d must stay under the 91-day wizard lock. */
+export const PRESALE_LOCK_MAX_SECS = 88 * 24 * 60 * 60;
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
@@ -116,7 +116,7 @@ export function presaleAdjustError(form: PresaleAdjust): string | null {
     return "Min Hold contract is not a valid account.";
   }
   if ((form.lockedLpMin > 0 || form.lockSecs > 0) && form.lockSecs > PRESALE_LOCK_MAX_SECS) {
-    return "Insider LP lock days must be at least 3 days shorter than the 90d main lock.";
+    return "Insider LP lock days must be at least 3 days shorter than the 91-day main lock.";
   }
   return inviteListError(form.inviteList);
 }
@@ -143,7 +143,7 @@ export function insidersStepValid(draft: LaunchDraft): string | null {
   if (minQty && !minContract) return "Min Hold quantity needs a contract.";
   if (minContract && !validAccount(minContract)) return "Min Hold contract is not a valid account.";
   if (draft.presaleLockSecs > PRESALE_LOCK_MAX_SECS) {
-    return "Insider LP lock days must be at least 3 days shorter than the 90d main lock.";
+    return "Insider LP lock days must be at least 3 days shorter than the 91-day main lock.";
   }
   if ((draft.presaleLockedLpMin > 0 || draft.presaleLockedInsiderBps > 0) && draft.presaleLockSecs <= 0) {
     return "LP provider bonus needs Insider LP lock days.";

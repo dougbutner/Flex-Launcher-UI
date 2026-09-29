@@ -1,6 +1,6 @@
 export const LAUNCH_PROCESS_PARAS = [
   "Your token rains on holders. You choose how much of each transfer rains, burns, or, on fl3x and for3x, funds the project. Holders can opt out of the tax, or flex their rain into another token. fl3x and for3x can name an heir who receives rain like a savings deposit while the balance stays in the holder account. for3x can also split some rain into angel numbers and a jackpot.",
-  "You lock 100% of the pool for at least 90 days, then liftoff. Insiders are optional: a short early window for people you invite or who qualify, shown on the drops calendar. Skip it and everyone starts together.",
+  "You lock 100% of the pool for at least 91 days, then liftoff. Insiders are optional: a short early window for people you invite or who qualify, shown on the drops calendar. Skip it and everyone starts together.",
   "You buy your own token, same as everyone else. There is no team allocation at the start. Pick a price range that feels fair, or a tight cheap one you can refill later. After launch, a ranked board and dev tools open up.",
   "Flex quotes take no skim. Other backings take a skim from the reflection pool. Your own transfer tax is separate, and you set that on Flexonomics.",
 ];
@@ -26,7 +26,7 @@ export const FLEXONOMICS_GUIDE_PARAS = [
 
 export const QUOTE_GUIDE_PARAS = [
   "This is what people pay with when they buy your token. Pick a coin your community already knows.",
-  "EASY, WON, GRAMS, MEME, and GEASY keep the house cut at zero. GEASY is on 3asy and fl3x, with no EASY hold on a verified first launch.",
+  "EASY, WON, GRAMS, MEME, and GEASY keep the house cut at zero. GEASY is on 3asy, fl3x, and for3x. A verified first launch needs KYC only, no EASY hold.",
   "Other coins work too if you want a bigger market. A skim on those pairs goes to dev and Contributor's Club.",
 ];
 

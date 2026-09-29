@@ -91,7 +91,7 @@ export function draftFromManager(row: ManagerToken): LaunchDraft {
     rainMinPool: row.rainMinPool ?? 0,
     priceLower: row.priceLower || base.priceLower,
     priceUpper: row.priceUpper || base.priceUpper,
-    lockDays: row.lockDays,
+    lockDays: Math.max(91, row.lockDays || 91),
     createTx: row.createTx === "onchain" ? "onchain" : row.createTx,
     feesTx: row.feesTx,
     mintTx: row.mintTx,

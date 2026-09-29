@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FEE_TIERS, LOCK_MIN_DAYS, LOCK_SLIDER_MAX_DAYS, RANGE_WIDTH_PRESETS, START_MCAP_MORE_ROWS, START_MCAP_PRESETS } from "@/config/launch";
+import { FEE_TIERS, LOCK_SLIDER_MAX_DAYS, LOCK_UI_MIN_DAYS, RANGE_WIDTH_PRESETS, START_MCAP_MORE_ROWS, START_MCAP_PRESETS } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import {
   applyRangeWidth,
@@ -63,7 +63,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const [quoteUsd, setQuoteUsd] = useState(0);
   const eosioMaxDays = maxLockDays();
   const sliderMax = Math.min(eosioMaxDays, Math.max(LOCK_SLIDER_MAX_DAYS, draft.lockDaysMax || 0, draft.lockDays));
-  const days = Math.min(sliderMax, Math.max(LOCK_MIN_DAYS, draft.lockDays));
+  const days = Math.min(sliderMax, Math.max(LOCK_UI_MIN_DAYS, draft.lockDays));
   const [moreMcap, setMoreMcap] = useState(false);
   const [moreInfo, setMoreInfo] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -112,7 +112,7 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const commitLock = (raw: string) => {
     const n = Math.floor(Number(String(raw).replace(/[^\d]/g, "")));
     const next =
-      Number.isFinite(n) && n > 0 ? Math.min(eosioMaxDays, Math.max(LOCK_MIN_DAYS, n)) : days;
+      Number.isFinite(n) && n > 0 ? Math.min(eosioMaxDays, Math.max(LOCK_UI_MIN_DAYS, n)) : days;
     patch({ lockDays: next, lockDaysMax: Math.min(eosioMaxDays, Math.max(LOCK_SLIDER_MAX_DAYS, next)) });
     setEditLock(false);
   };
@@ -332,12 +332,12 @@ export function RangeStep({ draft, patch, onNext, onBack, locked = false }: Prop
 
       <Field
         label="Liquidity lock (days)"
-        hint="Minimum 90. Double-click the days to type a longer lock. Caps at 7 Feb 2106 (EOSIO time_point_sec max)."
+        hint="Minimum 91. Double-click the days to type a longer lock. Caps at 7 Feb 2106 (EOSIO time_point_sec max)."
       >
         <div className="flex items-center gap-4">
           <input
             type="range"
-            min={LOCK_MIN_DAYS}
+            min={LOCK_UI_MIN_DAYS}
             max={sliderMax}
             step={1}
             value={Math.min(sliderMax, days)}

@@ -22,7 +22,7 @@ export function DonePanel({ draft, onReset }: { draft: LaunchDraft; onReset: () 
         {draft.swapUnderlyingDefault
           ? ` (rain comes as ${quote.symbol} unless a holder flexes into another reward)`
           : ""}
-        . After the 90-day lock ends, anyone can call checklock to apply the extra protocol skim.
+        . After the 91-day lock ends, anyone can call checklock to apply the extra protocol skim.
         {draft.program === "flexforex"
           ? " Open Manage to lock setdist / ratios and add flex reward pools."
           : " Open Manage to add flex reward pools and holder prefs."}

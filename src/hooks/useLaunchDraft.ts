@@ -1,5 +1,5 @@
 import { randomPlaceholderToken } from "@/components/launch/randomTokenName";
-import { LOCK_MIN_DAYS, LOCK_SLIDER_MAX_DAYS, QUOTE_PRESETS, type FeeTier, type FlexProgram, type RangeWidthId } from "@/config/launch";
+import { LOCK_SLIDER_MAX_DAYS, LOCK_UI_MIN_DAYS, QUOTE_PRESETS, type FeeTier, type FlexProgram, type RangeWidthId } from "@/config/launch";
 import { defaultTaxDraft } from "@/services/taxRates";
 import { useCallback, useEffect, useState } from "react";
 
@@ -140,7 +140,7 @@ export const emptyDraft = (): LaunchDraft => {
     priceLower: easy.priceLower,
     priceUpper: easy.priceUpper,
     rangeWidthId: null,
-    lockDays: LOCK_MIN_DAYS,
+    lockDays: LOCK_UI_MIN_DAYS,
     lockDaysMax: LOCK_SLIDER_MAX_DAYS,
     createTx: "",
     feesTx: "",
@@ -200,6 +200,7 @@ function load(): LaunchDraft {
       angelNumbersBps: parsed.angelNumbersBps ?? tax.angelNumbersBps,
       jackpotBps: parsed.jackpotBps ?? tax.jackpotBps,
       swapUnderlyingDefault: fromLegacy && !parsed.startTx ? false : Boolean(parsed.swapUnderlyingDefault),
+      lockDays: Math.max(LOCK_UI_MIN_DAYS, Math.floor(Number(parsed.lockDays) || LOCK_UI_MIN_DAYS)),
     });
   } catch {
     return seedIfBlank(emptyDraft());

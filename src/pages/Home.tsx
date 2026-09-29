@@ -45,7 +45,7 @@ const BENEFITS = [
   {
     id: "lock",
     title: "Locked Pools",
-    body: "The pool stays locked at least 90 days, and we hope you choose longer to show you community the liquidity they put in is here for them.",
+    body: "The pool stays locked at least 91 days, and we hope you choose longer to show you community the liquidity they put in is here for them.",
     image: "/home/locked-pools.jpg",
   },
   {

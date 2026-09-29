@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { tokenStepValid } from "@/components/launch/draftPlan";
@@ -21,6 +21,82 @@ type Props = {
   patch: (p: Partial<LaunchDraft>) => void;
   onNext: () => void;
 };
+
+function MaxSupplyField({
+  value,
+  disabled,
+  onCommit,
+}: {
+  value: string;
+  disabled?: boolean;
+  onCommit: (next: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const committed = useRef(value);
+
+  useEffect(() => {
+    if (value === committed.current) return;
+    committed.current = value;
+    setText(value);
+    setEditing(false);
+  }, [value]);
+
+  useEffect(() => {
+    if (!editing) return;
+    const el = inputRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [editing]);
+
+  if (disabled || !editing) {
+    return (
+      <button
+        type="button"
+        className="input w-full cursor-text text-left font-mono"
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          setText(value);
+          setEditing(true);
+        }}
+      >
+        {formatSupplyCommas(value) || "0"}
+      </button>
+    );
+  }
+
+  const commit = () => {
+    const next = parseSupplyInput(text);
+    if (!(Number(next) > 0)) return;
+    committed.current = next;
+    onCommit(next);
+    setEditing(false);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        ref={inputRef}
+        className="input font-mono"
+        inputMode="decimal"
+        autoComplete="off"
+        value={text}
+        onChange={(e) => setText(parseSupplyInput(e.target.value))}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          commit();
+        }}
+      />
+      <button type="button" className="btn btn-primary shrink-0" onClick={commit}>
+        Save
+      </button>
+    </div>
+  );
+}
 
 export function TokenDetailsStep({ draft, patch, onNext }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -290,13 +366,10 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
           hint="100% is issued or minted to you, then deposited into the pool."
           aside={programLocked ? undefined : <SupplyShortcuts value={draft.maxSupply} onPick={(maxSupply) => patch({ maxSupply })} />}
         >
-          <input
-            className="input font-mono"
-            inputMode="decimal"
-            placeholder="1,000,000"
-            value={formatSupplyCommas(draft.maxSupply)}
+          <MaxSupplyField
+            value={draft.maxSupply}
             disabled={programLocked}
-            onChange={(e) => patch({ maxSupply: parseSupplyInput(e.target.value) })}
+            onCommit={(maxSupply) => patch({ maxSupply })}
           />
         </Field>
         <Field label="Decimal places" hint="0-8. Flex tokens default to 6.">

@@ -64,7 +64,7 @@ Issuer sets `swap_underlying_default` at `startlaunch` (wizard checkbox, default
 | Flex quote | EASY/WON/MEME/GRAMS/GEASY@fl3x | 0% | must be 0 |
 | Non-flex | xtoken, XPR, XMD, LOAN | 0.25%+0.25% | id **> 0** vs XUSDC or XPR |
 
-GEASY@fl3x is a flex quote. Liftoff waives the EASY hold when the issuer has no prior launch on that contract and `eosio.proton` `usersinfo.verified` is true. Other flex quotes force a 90% hold discount (they do not follow the decaying promo). GEASY after the first launch, and every non-flex quote, use the decaying promo. The launcher does not offer GEASY on for3x.
+GEASY@fl3x is a flex quote. Liftoff waives the EASY hold when the issuer has no prior launch on that contract and `eosio.proton` `usersinfo.verified` is true. Other flex quotes force a 90% hold discount (they do not follow the decaying promo). GEASY after the first launch, and every non-flex quote, use the decaying promo. The launcher offers GEASY on 3asy, fl3x, and for3x.
 
 Alcor market `flex.for3x` keeps 1% of a flexed rain swap as the token (not sold). The UI calls that the market fee.
 

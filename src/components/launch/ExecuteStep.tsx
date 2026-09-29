@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EASY_SYMBOL,
   EOSIO_TOKEN,
-  LOCK_MIN_DAYS,
+  LOCK_UI_MIN_DAYS,
   MON3Y,
   QUOTE_PRESETS,
   SWAP_ALCOR,
@@ -227,7 +227,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
     {
       id: "lockpos",
       label: "Lock position",
-      detail: `≥ ${LOCK_MIN_DAYS} days - collect still works, subliquid fails`,
+      detail: `≥ ${LOCK_UI_MIN_DAYS} days - collect still works, subliquid fails`,
       sig: `${SWAP_ALCOR}::lockpos`,
       txOf: (d) => d.lockTx,
       build: async ({ actor, plan, draft: d }) => {

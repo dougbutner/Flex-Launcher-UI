@@ -188,7 +188,7 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
             </>
           ) : null}
           <Row k="Deposit" v={`100% of supply → ${SWAP_ALCOR}`} mono />
-          <Row k="Lock" v={`${Math.max(90, draft.lockDays)} days · until ~${unlockDate}`} />
+          <Row k="Lock" v={`${Math.max(91, draft.lockDays)} days · until ~${unlockDate}`} />
         </Group>
 
         <Group tone="club" title="Insiders">

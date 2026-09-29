@@ -446,7 +446,7 @@ export function ManagerPresale({ contract, symbol, actor, transact }: Props) {
               />
               <Field
                 label="Insider LP lock days"
-                hint="When set, must be at least 3 days shorter than the 90d main lock."
+                hint="When set, must be at least 3 days shorter than the 91-day main lock."
                 sentence
               >
                 <input

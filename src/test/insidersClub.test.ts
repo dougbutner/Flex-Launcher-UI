@@ -41,7 +41,7 @@ describe("insidersClub", () => {
     expect(insidersStepValid(base)).toBeNull();
     expect(insidersStepValid({ ...base, presaleLaunchTime: "2026-09-19T12:00" })).toMatch(/Public launch/);
     expect(insidersStepValid({ ...base, presaleInviteList: "not a name!!" })).toMatch(/Bad account/);
-    expect(insidersStepValid({ ...base, presaleLockSecs: 88 * 86400 })).toMatch(/90d/);
+    expect(insidersStepValid({ ...base, presaleLockSecs: 89 * 86400 })).toMatch(/91-day/);
     expect(insidersStepValid({ ...base, presaleLockedInsiderBps: 250 })).toMatch(/Insider LP lock days/);
     expect(insidersStepValid({ ...base, presaleLockedInsiderBps: 50 })).toMatch(/Insider Max/);
   });
@@ -75,7 +75,7 @@ describe("insidersClub", () => {
     expect(presaleAdjustError(form)).toBeNull();
     expect(presaleAdjustError({ ...form, launchTime: "2020-01-01T00:00:00" })).toMatch(/Public launch/);
     expect(presaleAdjustError({ ...form, lockedInsiderBps: 50 })).toMatch(/Insider Max/);
-    expect(presaleAdjustError({ ...form, lockSecs: 88 * 86400 })).toMatch(/90d/);
+    expect(presaleAdjustError({ ...form, lockSecs: 89 * 86400 })).toMatch(/91-day/);
     expect(presaleAdjustError({ ...form, lockedLpMin: 10, lockSecs: 0 })).toBeNull();
   });
 

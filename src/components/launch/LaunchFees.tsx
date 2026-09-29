@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { easyHoldNeed, easyHoldOffPercent, FLEX_PROGRAMS, type HoldKind } from "@/config/launch";
 
 function holdCell(programId: (typeof FLEX_PROGRAMS)[number]["id"], kind: HoldKind): string {
-  if (kind === "geasy" && programId === "flexforex") return "not available";
   const base = FLEX_PROGRAMS.find((p) => p.id === programId)?.launchEasyMin ?? 0;
   const need = easyHoldNeed(base, 0, Date.now(), kind, true);
   if (need <= 0) return "No EASY hold";
@@ -65,7 +64,7 @@ export function FeeTable() {
           ? ` Only XPR, XMD, LOAN, and xtokens rise over time: ${off}% off this month, then 10 points less every 30 days.`
           : " XPR, XMD, LOAN, and xtokens are at the full hold."}{" "}
         GEASY skips the EASY hold on your first launch when your WebAuth account is verified. A later launch on the
-        same contract follows that monthly promo. GEASY is not offered on for3x.
+        same contract follows that monthly promo. GEASY is available on 3asy, fl3x, and for3x.
       </p>
     </div>
   );

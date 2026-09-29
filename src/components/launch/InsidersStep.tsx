@@ -293,7 +293,7 @@ export function InsidersStep({ draft, patch, onNext, onBack }: Props) {
               />
               <Field
                 label="Insider LP lock days"
-                hint="Unlock remaining must beat this. At least 3 days shorter than the 90d main lock."
+                hint="Unlock remaining must beat this. At least 3 days shorter than the 91-day main lock."
                 sentence
               >
                 <input

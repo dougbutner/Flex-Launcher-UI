@@ -24,7 +24,6 @@ import {
   fetchXtokensByPopularity,
   findProofPoolId,
   XTOKEN_FALLBACK,
-  XTOKEN_TOP_N,
   type XtokenRow,
 } from "@/services/xtokenCatalog";
 
@@ -37,7 +36,7 @@ type Props = {
 };
 
 const FLEX_IDS = new Set(["easy", "won", "grams", "meme"]);
-const CHAIN_IDS = new Set(["xpr", "xmd", "loan"]);
+const CHAIN_IDS = new Set(["xpr", "xmd", "loan", "metal"]);
 
 function QuoteCard({
   preset,
@@ -95,8 +94,6 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const [xtokenLoading, setXtokenLoading] = useState(false);
   /** Picker open: show the xtoken grid. Closed after pick (or never opened). */
   const [xtokenPickerOpen, setXtokenPickerOpen] = useState(false);
-  /** Show all rows vs top N. */
-  const [xtokenShowAll, setXtokenShowAll] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [proofHint, setProofHint] = useState("");
   const [proofBusy, setProofBusy] = useState(false);
@@ -114,16 +111,10 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const isXtoken = draft.quoteId === "xtoken";
   const quote = quoteFromDraft(draft);
 
-  const flexPresets = useMemo(
-    () =>
-      QUOTE_PRESETS.filter((p) => {
-        if (p.id === "geasy") return geasyQuoteAllowed(draft.program);
-        return FLEX_IDS.has(p.id);
-      }),
-    [draft.program],
-  );
+  const flexPresets = useMemo(() => QUOTE_PRESETS.filter((p) => FLEX_IDS.has(p.id)), []);
   const chainPresets = useMemo(() => QUOTE_PRESETS.filter((p) => CHAIN_IDS.has(p.id)), []);
   const xtokenPreset = QUOTE_PRESETS.find((p) => p.id === "xtoken")!;
+  const geasyPreset = QUOTE_PRESETS.find((p) => p.id === "geasy")!;
 
   useEffect(() => {
     const contracts = [...new Set(QUOTE_PRESETS.map((p) => p.contract))];
@@ -204,7 +195,6 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       proofPoolId: draft.proofPoolId || "",
     });
     setXtokenPickerOpen(true);
-    setXtokenShowAll(false);
     loadXtokens();
   };
 
@@ -220,14 +210,12 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       proofPoolId: draft.proofPoolId || "",
     });
     setXtokenPickerOpen(false);
-    setXtokenShowAll(false);
     autofillProof(row.symbol, XTOKENS);
   };
 
   const selectPreset = (p: QuotePreset) => {
     if (locked) return;
     setXtokenPickerOpen(false);
-    setXtokenShowAll(false);
     patch({
       quoteId: p.id,
       priceLower: p.priceLower,
@@ -245,9 +233,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const quoteMissing = Boolean(selected && live[selected.contract] === false);
   const blocked = Boolean(invalid) || quoteMissing || (needsProof && !proof?.ok);
 
-  const catalog = xtokens ?? [];
-  const visibleDogs = xtokenShowAll ? catalog : catalog.slice(0, XTOKEN_TOP_N);
-  const hasMore = catalog.length > XTOKEN_TOP_N;
+  const catalog = (xtokens ?? []).filter((r) => r.symbol !== "METAL");
   const selectedRow =
     catalog.find((r) => r.symbol === draft.xtokenSymbol) ??
     XTOKEN_FALLBACK.find((r) => r.symbol === draft.xtokenSymbol) ??
@@ -279,9 +265,6 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
         <p className="label">Flex quotes</p>
         <p className="mb-2 text-xs text-muted-foreground">
           EASY, WON, GRAMS, and MEME always use the 10% hold, not the full hold: {holdEasyToLaunch(flexHold)}. That price does not rise.
-          {geasyQuoteAllowed(draft.program)
-            ? ` GEASY: ${geasyHold <= 0 ? "no EASY hold on a verified first launch" : holdEasyToLaunch(geasyHold)}.`
-            : ""}
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {flexPresets.map((p) => (
@@ -290,9 +273,6 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
               preset={p}
               selected={draft.quoteId === p.id}
               unavailable={locked || live[p.contract] === false}
-              holdNote={
-                p.id === "geasy" ? (geasyHold <= 0 ? "No EASY hold" : holdEasyToLaunch(geasyHold)) : undefined
-              }
               onSelect={() => selectPreset(p)}
             />
           ))}
@@ -308,7 +288,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
               : `Full EASY hold: ${holdEasyToLaunch(otherHold)}.`}
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {chainPresets.map((p) => (
             <QuoteCard
               key={p.id}
@@ -322,16 +302,30 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       </div>
 
       <div>
-        <p className="label">xtokens</p>
+        <p className="label">Xtokens</p>
         <div className="mb-2 text-xs text-muted-foreground">
           <p>
-            Bridged majors on xtokens (XBTC, XXRP, and friends).{" "}
+            GEASY plus bridged majors (XBTC, XXRP, and friends).{" "}
+            {geasyQuoteAllowed(draft.program)
+              ? `GEASY: ${geasyHold <= 0 ? "no EASY hold on a verified first launch" : holdEasyToLaunch(geasyHold)}. `
+              : ""}
             {holdOff > 0
-              ? `${holdOff}% off this month: ${holdEasyToLaunch(otherHold)}.`
-              : `Full EASY hold: ${holdEasyToLaunch(otherHold)}.`}{" "}
-            Top {XTOKEN_TOP_N} by Alcor market activity; expand for the full list. Logos
-            are the on-chain token.proton icons, served from this app.
+              ? `Other xtokens are ${holdOff}% off this month: ${holdEasyToLaunch(otherHold)}.`
+              : `Other xtokens use the full EASY hold: ${holdEasyToLaunch(otherHold)}.`}{" "}
+            Expand once for the full list. Logos are the on-chain token.proton icons, served from this app.
           </p>
+        </div>
+
+        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <QuoteCard
+            preset={geasyPreset}
+            selected={draft.quoteId === "geasy"}
+            unavailable={locked || live[geasyPreset.contract] === false}
+            holdNote={
+              geasyHold <= 0 ? "KYC only. No EASY hold" : holdEasyToLaunch(geasyHold)
+            }
+            onSelect={() => selectPreset(geasyPreset)}
+          />
         </div>
 
         {/* Collapsed selection or category entry */}
@@ -352,7 +346,6 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
                   className="link text-sm"
                   onClick={() => {
                     setXtokenPickerOpen(true);
-                    setXtokenShowAll(false);
                     loadXtokens();
                   }}
                 >
@@ -371,7 +364,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
                 disabled={locked || live[xtokenPreset.contract] === false}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-base font-bold">xtokens</span>
+                  <span className="font-mono text-base font-bold">Xtokens</span>
                 </div>
                 <div className="mt-1 font-mono text-xs text-muted-foreground">@{xtokenPreset.contract}</div>
                 <div className="mt-2 text-xs text-muted-foreground">
@@ -389,17 +382,14 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
                 <div className="text-xs text-muted-foreground">
                   {xtokenLoading
                     ? "Fetching Alcor ranking…"
-                    : `Showing ${visibleDogs.length} of ${catalog.length || "…"}`}
+                    : `Showing ${catalog.length || "…"}`}
                 </div>
               </div>
               {isXtoken && draft.xtokenSymbol ? (
                 <button
                   type="button"
                   className="link text-sm"
-                  onClick={() => {
-                    setXtokenPickerOpen(false);
-                    setXtokenShowAll(false);
-                  }}
+                  onClick={() => setXtokenPickerOpen(false)}
                 >
                   collapse
                 </button>
@@ -416,7 +406,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                {visibleDogs.map((row) => {
+                {catalog.map((row) => {
                   const selectedDog = isXtoken && draft.xtokenSymbol === row.symbol;
                   return (
                     <button
@@ -440,16 +430,6 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
                 })}
               </div>
             )}
-
-            {hasMore ? (
-              <button
-                type="button"
-                className="link text-sm"
-                onClick={() => setXtokenShowAll((v) => !v)}
-              >
-                {xtokenShowAll ? "show top 10" : "expand"}
-              </button>
-            ) : null}
 
             <Field label="Custom xtoken" hint="Not in the list? Type a symbol (1-7 A-Z).">
               <div className="flex flex-wrap gap-2">
@@ -501,7 +481,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
       </div>
 
       <p className="text-xs text-muted-foreground">
-        0% is a flex quote, including GEASY on 3asy and fl3x. Other quotes start at 0.25% dev + 0.25% Contributor's Club,
+        0% is a flex quote, including GEASY on 3asy, fl3x, and for3x. Other quotes start at 0.25% dev + 0.25% Contributor's Club,
         then each can rise once after the Alcor lock ends.
       </p>
 

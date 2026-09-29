@@ -133,7 +133,7 @@ export function rangeStepValid(draft: LaunchDraft): string | null {
   const hi = Number(draft.priceUpper);
   if (!(lo > 0) || !(hi > 0)) return "Both prices must be greater than zero.";
   if (lo === hi) return "Lower and upper prices must differ.";
-  if (draft.lockDays < 90) return "Lock must be at least 90 days.";
+  if (draft.lockDays < 91) return "Lock must be at least 91 days.";
   return null;
 }
 
