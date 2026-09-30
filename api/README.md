@@ -16,12 +16,12 @@ After cPanel says the `flex.forex` domain was created: ignore the nameserver war
 
 ## Upload
 
-1. Document root for `api.flex.forex` should be this folder (the one that contains `index.php`), not a nested `api` directory.
+1. Document root for `api.flex.forex` should be this folder (the one that contains `index.php`). The public path is `/site`, not `/api/site`. Do not nest another `api` directory.
 2. Copy every file here into that document root via File Manager (include `lib/` and `sql/`).
 3. Copy `config.example.php` to `config.php`. Fill MySQL for **localhost** (same cPanel account). Do not use a remote host.
 4. In phpMyAdmin, import `sql/schema.sql`, then `sql/data.sql`.
 5. PHP needs curl. cPanel: Select PHP Version, enable curl if it is off.
-6. DNS: A or CNAME `api` to Namecheap hosting. Grey-cloud (DNS only) on Cloudflare is the simple choice for this origin. An orange-cloud `api` record that cannot TCP to cPanel shows as browser CORS plus Cloudflare **522**. PHP never runs, so no `Access-Control-Allow-Origin`. Fix the A record to the cPanel shared IP, grey cloud, then wait for DNS. After that, `https://api.flex.forex/api/site` should JSON, not `error code: 522`.
+6. DNS: A or CNAME `api` to Namecheap hosting. Grey-cloud (DNS only) on Cloudflare is the simple choice for this origin. An orange-cloud `api` record that cannot TCP to cPanel shows as browser CORS plus Cloudflare **522**. PHP never runs, so no `Access-Control-Allow-Origin`. Fix the A record to the cPanel shared IP, grey cloud, then wait for DNS. After that, `https://api.flex.forex/site` should JSON, not `error code: 522`.
 
 ## config.php
 
@@ -32,6 +32,6 @@ After cPanel says the `flex.forex` domain was created: ignore the nameserver war
 
 ## Check
 
-Open `https://api.flex.forex/api/site`. You want `{"live":false,"db":true,...}`.
+Open `https://api.flex.forex/site`. You want `{"live":false,"db":true,...}`. Do not use `/api/site` on this host: the document root already is the `api/` folder.
 
-From the Pages site, club chat, Manager, and Admin listing/pin should hit this host, not `/api` on Pages.
+From the Pages site, club chat, Manager, and Admin listing/pin should hit `https://api.flex.forex/site` (and `/manager`, `/cache`, `/insiders/...`), not `/api` on Pages.

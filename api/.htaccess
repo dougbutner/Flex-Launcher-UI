@@ -3,6 +3,7 @@ Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+  RewriteRule ^api/(.*)$ $1 [QSA]
   RewriteRule ^sql/ - [F,L]
   RewriteRule ^lib/ - [F,L]
   RewriteRule ^config\.example\.php$ - [F,L]

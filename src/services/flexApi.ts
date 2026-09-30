@@ -6,8 +6,18 @@ export function flexApiOrigin(): string {
   return "";
 }
 
+/** Namecheap docroot is the `api/` folder, so `/api/site` there is a nested `/api/api/site`. */
+export function pathOnApiHost(origin: string, path: string): string {
+  let p = path.startsWith("/") ? path : `/${path}`;
+  const host = origin.replace(/^https?:\/\//i, "").split("/")[0].toLowerCase();
+  if (host === "api.flex.forex" && (p === "/api" || p.startsWith("/api/"))) {
+    p = p.slice(4) || "/";
+  }
+  return p;
+}
+
 export function joinFlexApi(origin: string, path: string, query?: string): string {
-  const p = path.startsWith("/") ? path : `/${path}`;
+  const p = pathOnApiHost(origin, path);
   const q = query
     ? p.includes("?")
       ? `&${query}`
