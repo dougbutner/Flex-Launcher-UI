@@ -4,6 +4,9 @@
 --
 -- The Pages app calls https://api.flex.forex/api/... (see api/ on the subdomain).
 -- Snapshots in cache_entries are reused for 15 seconds.
+-- PHP also runs this file if site_settings is missing (empty database).
+-- Table set is unchanged: site_settings, manager_tokens, posts, tips, ups,
+-- captcha, cache_entries, chain_txs.
 
 CREATE TABLE IF NOT EXISTS site_settings (
   id TINYINT UNSIGNED NOT NULL,

@@ -1,18 +1,22 @@
 <?php
 
 header_remove("X-Powered-By");
+@set_time_limit(20);
+@ini_set("default_socket_timeout", "8");
 
 $root = __DIR__;
+require $root . "/lib/http.php";
+
+$allowed = [];
+send_cors($allowed);
+
 $configFile = $root . "/config.php";
 if (!is_file($configFile)) {
-    http_response_code(503);
-    header("Content-Type: application/json; charset=utf-8");
-    echo json_encode(["error" => "Copy config.example.php to config.php and fill in MySQL.", "db" => false]);
+    send_json(503, ["error" => "Copy config.example.php to config.php and fill in MySQL.", "db" => false]);
     exit;
 }
 
 require $configFile;
-require $root . "/lib/http.php";
 require $root . "/lib/db.php";
 require $root . "/lib/accounts.php";
 require $root . "/lib/manager.php";
@@ -39,7 +43,6 @@ $cfg = [
     "GITHUB_LOGIN" => isset($GITHUB_LOGIN) ? strval($GITHUB_LOGIN) : "dougbutner",
 ];
 $allowed = isset($ALLOWED_ORIGINS) && is_array($ALLOWED_ORIGINS) ? $ALLOWED_ORIGINS : [];
-
 send_cors($allowed);
 
 $method = isset($_SERVER["REQUEST_METHOD"]) ? strtoupper($_SERVER["REQUEST_METHOD"]) : "GET";

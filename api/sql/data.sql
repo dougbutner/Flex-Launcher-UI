@@ -5,5 +5,5 @@
 -- cache_entries and captcha are omitted: they expire on their own.
 
 INSERT INTO site_settings (id, live, updated_at, updated_by)
-VALUES (1, 0, 0, '')
+VALUES (1, 1, 0, '')
 ON DUPLICATE KEY UPDATE id = id;

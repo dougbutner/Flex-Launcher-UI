@@ -12,6 +12,7 @@ $ALLOWED_ORIGINS = [
   "http://localhost:8080",
   "http://127.0.0.1:8080",
 ];
+/** CORS also allows these hosts if this list is empty. Host is localhost, not a remote MySQL hostname. */
 
 $CACHE_REFRESH_URL = "https://flex.forex/api/refresh";
 $REFRESH_SECRET = "";

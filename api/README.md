@@ -21,7 +21,7 @@ After cPanel says the `flex.forex` domain was created: ignore the nameserver war
 3. Copy `config.example.php` to `config.php`. Fill MySQL for **localhost** (same cPanel account). Do not use a remote host.
 4. In phpMyAdmin, import `sql/schema.sql`, then `sql/data.sql`.
 5. PHP needs curl. cPanel: Select PHP Version, enable curl if it is off.
-6. DNS: A or CNAME `api` to Namecheap hosting. Grey-cloud (DNS only) on Cloudflare is the simple choice for this origin.
+6. DNS: A or CNAME `api` to Namecheap hosting. Grey-cloud (DNS only) on Cloudflare is the simple choice for this origin. An orange-cloud `api` record that cannot TCP to cPanel shows as browser CORS plus Cloudflare **522**. PHP never runs, so no `Access-Control-Allow-Origin`. Fix the A record to the cPanel shared IP, grey cloud, then wait for DNS. After that, `https://api.flex.forex/api/site` should JSON, not `error code: 522`.
 
 ## config.php
 
