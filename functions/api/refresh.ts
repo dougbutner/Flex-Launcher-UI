@@ -1,4 +1,4 @@
-import { refreshCacheKey } from "../../generated/cacheRefresh.js";
+import { refreshCacheKey } from "../generated/cacheRefresh.js";
 
 type PagesContext = {
   request: Request;
