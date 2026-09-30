@@ -30,7 +30,6 @@ dist-ssr
 # Issuer manager sqlite (dev / preview). MySQL is the store now.
 data/*.sqlite
 data/*.sqlite-*
-functions/generated/
 
 # Namecheap API secrets
 api/config.php
