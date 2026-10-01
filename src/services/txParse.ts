@@ -86,7 +86,7 @@ const HINTS: Array<[string, string]> = [
   ["already lifted off", "Cannot set the club after the token is live. Use launch only if liftoff left launched false."],
   ["already launched", "Launch finished."],
   ["liftoff first", "Run liftoff before launch."],
-  ["presale not open", "Wait until insider buys start (or public launch for buys)."],
+  ["presale not open", "Wait until insider buys start. Approved accounts can buy from then."],
   ["presale freeze", "Freeze blocks gated transfers until you unfreeze or launch."],
   ["presale gates", "Pass an NFT, Min Hold, or LP gate, then join."],
   ["not an insider", "Join the list, or ask the issuer to invite you."],

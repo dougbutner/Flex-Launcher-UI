@@ -147,7 +147,7 @@ export function PresalePanel({
     }
   };
 
-  const buysOpen = now >= launchTime;
+  const buysOpen = now >= insiderTime;
   const joinOpen = now >= insiderTime;
 
   return (
@@ -232,7 +232,7 @@ export function PresalePanel({
             </a>
           ) : (
             <span className="self-center text-xs text-muted-foreground">
-              {buysOpen ? "Join first to buy" : `Buys open in ${waitLabel(launchTime, now)}`}
+              {buysOpen ? "Join first to buy" : `Buys open in ${waitLabel(insiderTime, now)}`}
             </span>
           )}
         </div>

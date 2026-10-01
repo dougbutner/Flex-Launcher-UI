@@ -684,7 +684,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
             </label>
           ) : (
             <p className="text-xs text-muted-foreground">
-              First-buy is off during the club window. Alcor cannot send out until launch_time, and buyers must be approved.
+              First-buy is off during the club window. Approved insiders can buy from insider buys start.
             </p>
           )}
           {!presaleOn && buyFirst ? (
