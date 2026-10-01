@@ -1,9 +1,13 @@
-/** Production Pages talks to Namecheap. Local `npm run dev` leaves this empty and uses the Vite /api plugin. */
+/** Local `npm run dev` leaves this empty and uses the Vite /api plugin. */
 export function flexApiOrigin(): string {
-  const raw = String(import.meta.env.VITE_FLEX_API_URL ?? "").trim().replace(/\/$/, "");
-  if (raw) return raw;
-  if (import.meta.env.PROD) return "https://api.flex.forex";
-  return "";
+  return String(import.meta.env.VITE_FLEX_API_URL ?? "").trim().replace(/\/$/, "");
+}
+
+/** Namecheap AutoSSL is missing, so production uses /php (Pages fetch over HTTP). */
+export function pagesPhpPath(path: string): string {
+  let p = path.startsWith("/") ? path : `/${path}`;
+  if (p === "/api" || p.startsWith("/api/")) p = `/php${p.slice(4) || "/site"}`;
+  return p;
 }
 
 /** Namecheap docroot is the `api/` folder, so `/api/site` there is a nested `/api/api/site`. */
@@ -13,6 +17,7 @@ export function pathOnApiHost(origin: string, path: string): string {
   if (host === "api.flex.forex" && (p === "/api" || p.startsWith("/api/"))) {
     p = p.slice(4) || "/";
   }
+  if (!origin && import.meta.env.PROD) p = pagesPhpPath(p);
   return p;
 }
 

@@ -26,7 +26,7 @@ export type FeedResponse = {
 
 function clubError(message: string | undefined, fallback: string) {
   const text = (message || "").trim();
-  if (!text || /mysql|MYSQL_|not configured/i.test(text)) return fallback;
+  if (!text || /mysql|MYSQL_|not configured|config\.example/i.test(text)) return fallback;
   return text;
 }
 
@@ -98,15 +98,16 @@ export async function fetchFeed(
       range?: FeedRange;
       error?: string;
     };
-    if (!res.ok) throw new Error(clubError(body.error, "Feed is unavailable."));
-    const posts = (Array.isArray(body.posts) ? body.posts : []).map(asPost).filter((p): p is InsiderPost => Boolean(p));
-    empty.posts = posts;
-    empty.activity = body.activity && typeof body.activity === "object" ? body.activity : {};
-    empty.upsEasy = body.upsEasy && typeof body.upsEasy === "object" ? body.upsEasy : {};
-    empty.range =
-      body.range === "week" || body.range === "month" || body.range === "year" || body.range === "all" ? body.range : "day";
-  } catch (err) {
-    if (!siteSandboxFlag()) throw err;
+    if (res.ok) {
+      const posts = (Array.isArray(body.posts) ? body.posts : []).map(asPost).filter((p): p is InsiderPost => Boolean(p));
+      empty.posts = posts;
+      empty.activity = body.activity && typeof body.activity === "object" ? body.activity : {};
+      empty.upsEasy = body.upsEasy && typeof body.upsEasy === "object" ? body.upsEasy : {};
+      empty.range =
+        body.range === "week" || body.range === "month" || body.range === "year" || body.range === "all" ? body.range : "day";
+    }
+  } catch {
+    /* empty room while the club host is down */
   }
   if (!siteSandboxFlag()) return empty;
   const overlay = await loadSiteSandbox();

@@ -214,6 +214,7 @@ export function ClubFeed({
       </div>
 
       <div className="mt-2">
+        {!busy && !posts.length ? <p className="insiders-muted">No posts yet.</p> : null}
         {posts.map((p) => (
           <FeedPost
             key={p.id}
