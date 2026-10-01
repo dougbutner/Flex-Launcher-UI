@@ -121,6 +121,16 @@ export default function Launch() {
   const holdOff = easyHoldOffPercent();
   const flexHold = easyHoldNeed(holdBase);
   const otherHold = easyHoldNeed(holdBase, 0, Date.now(), "other");
+  const holdPara = [
+    `Only on XPR Network. Create on ${flexAccount(draft.program)}, then setfees, seed one-sided Alcor liquidity, then liftoff.`,
+    `Non-flex backings (XPR, XMD, LOAN, xtoken) need to prove enough liquidity to be used. EASY, WON, GRAMS, and MEME always use the 10% EASY hold (${flexHold.toLocaleString()} EASY), not the full hold. That price does not rise.${
+      geasyQuoteAllowed(draft.program) ? " GEASY has no EASY hold on a verified first launch." : ""
+    } ${
+      holdOff > 0
+        ? `Only XPR, XMD, LOAN, and xtokens rise over time. This month that hold is ${otherHold.toLocaleString()} EASY.`
+        : `XPR, XMD, LOAN, and xtokens are at the full EASY hold (${otherHold.toLocaleString()} EASY).`
+    } No fee is charged to launch.`,
+  ];
 
   const dismissLiftoff = () => {
     setCelebrate(false);
@@ -136,15 +146,9 @@ export default function Launch() {
         </h1>
         <div className="mt-1 max-w-2xl text-sm text-muted-foreground">
           <p>
-            Only on <span className="font-mono">XPR Network</span>. Create on {flexAccount(draft.program)}, then setfees,
-            seed one-sided Alcor liquidity, then liftoff. Non-flex backings (XPR, XMD, LOAN, xtoken) need to prove
-            enough liquidity to be used. EASY, WON, GRAMS, and MEME always use the 10% EASY hold (
-            {flexHold.toLocaleString()} EASY), not the full hold. That price does not rise.
-            {geasyQuoteAllowed(draft.program) ? " GEASY has no EASY hold on a verified first launch." : ""}{" "}
-            {holdOff > 0
-              ? `Only XPR, XMD, LOAN, and xtokens rise over time. This month that hold is ${otherHold.toLocaleString()} EASY.`
-              : `XPR, XMD, LOAN, and xtokens are at the full EASY hold (${otherHold.toLocaleString()} EASY).`}{" "}
-            No fee is charged to launch.{" "}
+            Collect holders and get paid when people trade. You set how much of each transfer rains on them, burns, or funds
+            the project. Pick 3asy, fl3x, or for3x for the extras you want: flex-to rewards (all), inheritance (latter 2), angel numbers,
+            jackpot (for3x). Supply and range you set show market cap, so you can pick a the best price range.{" "}
             <button
               type="button"
               className="link text-[11px] font-semibold uppercase tracking-wider"
@@ -154,7 +158,7 @@ export default function Launch() {
             </button>
           </p>
           <div className="mt-3">
-            <InfoPanel open={processOpen} paras={LAUNCH_PROCESS_PARAS} />
+            <InfoPanel open={processOpen} paras={[...holdPara, ...LAUNCH_PROCESS_PARAS]} />
           </div>
         </div>
       </div>
