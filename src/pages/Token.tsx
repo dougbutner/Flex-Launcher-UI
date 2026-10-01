@@ -7,14 +7,16 @@ import { TokenIcon } from "@/components/TokenIcon";
 import { SanitySection } from "@/components/token/SanitySection";
 import { IssuerTools } from "@/components/token/IssuerTools";
 import { PresalePanel } from "@/components/token/PresalePanel";
+import { ProgramDots } from "@/components/token/ProgramDots";
 import { TokenListingCard } from "@/components/token/TokenListingCard";
 import { TokenTitleStats } from "@/components/token/TokenMarket";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { TokenPageSkeleton } from "@/components/ui/PageSkeletons";
-import { alcorAnalyticsUrl, explorerAccount, flexMeta, hasAngelChannels, isFlexContractActor, programFromAccount } from "@/config/launch";
+import { alcorAnalyticsUrl, coreTokenOf, explorerAccount, flexMeta, hasAngelChannels, isFlexContractActor, programFromAccount } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
-import { readAccounts, readFlexers, readInsiders } from "@/services/flexTables";
+import { fetchTopSwapPool, poolCounterparty } from "@/services/alcorMarket";
+import { readAccounts, readFlexer, readFlexers, readInsiders } from "@/services/flexTables";
 import { loadTokenPublic } from "@/services/tokenSnapshot";
 import {
   checklockAction,
@@ -41,7 +43,8 @@ export default function Token() {
   const { contract = "", symbol = "" } = useParams<{ contract: string; symbol: string }>();
   const code = contract.trim().toLowerCase();
   const sym = symbol.trim().toUpperCase();
-  const program = programFromAccount(code);
+  const core = coreTokenOf(code, sym);
+  const program = programFromAccount(code) ?? core?.program ?? null;
   const { actor, isLoggedIn, addWebAuthWallet, transact } = useWallet();
 
   const [busy, setBusy] = useState(true);
@@ -58,20 +61,22 @@ export default function Token() {
   const [pokeMsg, setPokeMsg] = useState<{ tx?: string; err?: string }>({});
   const [iconSrc, setIconSrc] = useState("");
   const [sanityEpoch, setSanityEpoch] = useState(0);
+  const [pair, setPair] = useState({ poolId: 0, quoteSymbol: "", quoteContract: "" });
 
   const load = useCallback(async (force = false) => {
     if (!code || !sym || !program) return;
     setBusy(true);
     setError("");
     try {
-      const [shared, flexers, ins] = await Promise.all([
+      const [shared, flexers, ins, top] = await Promise.all([
         loadTokenPublic(code, sym, { force }),
-        actor
+        actor && !core
           ? readFlexers(code, sym, 500).catch(() => [] as Record<string, unknown>[])
           : Promise.resolve([] as Record<string, unknown>[]),
-        actor
+        actor && !core
           ? readInsiders(code, sym, 500).catch(() => [] as Record<string, unknown>[])
           : Promise.resolve([] as Record<string, unknown>[]),
+        core ? fetchTopSwapPool(sym, code).catch(() => null) : Promise.resolve(null),
       ]);
       const l = shared.launch;
       const s = shared.stat;
@@ -80,7 +85,14 @@ export default function Token() {
       setSettings(shared.settings);
       setPools(shared.pools);
       setPresale(shared.presale);
-      setFlexer(actor ? (flexers.find((f) => String(pick(f, "owner")) === actor) ?? null) : null);
+      const other = top ? poolCounterparty(top, sym, code) : undefined;
+      setPair({
+        poolId: Number(top?.id ?? 0),
+        quoteSymbol: String(other?.symbol ?? "").toUpperCase(),
+        quoteContract: String(other?.contract ?? ""),
+      });
+      const owned = actor && core ? await readFlexer(code, sym, actor).catch(() => null) : null;
+      setFlexer(owned ?? (actor ? (flexers.find((f) => String(pick(f, "owner")) === actor) ?? null) : null));
       setInsider(actor ? (ins.find((r) => String(pick(r, "account")) === actor) ?? null) : null);
       if (actor) {
         try {
@@ -112,7 +124,7 @@ export default function Token() {
       setBusy(false);
       if (force) setSanityEpoch((n) => n + 1);
     }
-  }, [actor, code, program, sym]);
+  }, [actor, code, core, program, sym]);
 
   useEffect(() => {
     void load();
@@ -138,16 +150,16 @@ export default function Token() {
   const isContractAdmin = Boolean(actor && isFlexContractActor(actor) && actor === code);
   const precision = parseAsset(String(pick(stat, "supply") ?? ""))?.precision ?? 4;
   const quote = pick(launch, "quote") as { quantity?: string; contract?: string } | undefined;
-  const quoteSymbol = parseAsset(quote?.quantity ?? "")?.symbol ?? "";
-  const quoteContract = quote?.contract ?? "";
+  const quoteSymbol = parseAsset(quote?.quantity ?? "")?.symbol || pair.quoteSymbol;
+  const quoteContract = quote?.contract || pair.quoteContract;
   const reflectionPool = assetAmountNumber(String(pick(stat, "reflection_pool") ?? "0"));
   const angelPool = assetAmountNumber(String(pick(stat, "angel_numbers_pool") ?? "0"));
   const jackpotPool = assetAmountNumber(String(pick(stat, "jackpot_pool") ?? "0"));
-  const launched = Boolean(pick(launch, "launched"));
+  const launched = Boolean(core) || Boolean(pick(launch, "launched"));
   const inPresale = Boolean(presale) && !launched && Number(pick(launch, "pure_liquid_alcor_pool_id", "pool_id") ?? 0) > 0;
   const supplyAmt = assetAmountNumber(String(pick(stat, "supply") ?? "0"));
   const maxSupplyAmt = assetAmountNumber(String(pick(stat, "max_supply") ?? "")) || supplyAmt;
-  const launchPoolId = Number(pick(launch, "pure_liquid_alcor_pool_id", "pool_id") ?? 0);
+  const launchPoolId = Number(pick(launch, "pure_liquid_alcor_pool_id", "pool_id") ?? 0) || pair.poolId;
   const positionId = Number(pick(launch, "position_id") ?? 0);
 
   const poke = async (kind: "rain" | "checklock" | "pullangel" | "pulljackpot") => {
@@ -157,7 +169,9 @@ export default function Token() {
     try {
       const action =
         kind === "rain"
-          ? await storedPayoutAction(code, sym, actor, meta.payoutSigner)
+          ? core
+            ? { account: code, name: core.rainAction, data: {} }
+            : await storedPayoutAction(code, sym, actor, meta.payoutSigner)
           : kind === "checklock"
             ? checklockAction(code, sym)
             : kind === "pullangel"
@@ -195,6 +209,7 @@ export default function Token() {
           <div className="mt-1 flex items-center gap-3">
             <TokenIcon contract={code} symbol={sym} src={iconSrc} size={48} />
             <h1 className="font-mono text-3xl font-black tracking-tight">${sym}</h1>
+            <ProgramDots program={program} />
             {isLoggedIn && actor ? (
               <button
                 type="button"
@@ -213,7 +228,7 @@ export default function Token() {
             {quoteSymbol ? <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={28} /> : null}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {program} @{" "}
+            {core ? "" : `${program} @ `}
             <a href={explorerAccount(code)} target="_blank" rel="noopener noreferrer" className="link font-mono">
               {code}
             </a>
@@ -268,7 +283,7 @@ export default function Token() {
         {Boolean(pick(settings, "dist_locked")) ? <span className="chip-muted">dist locked</span> : null}
       </div>
 
-      {!launch && !busy ? (
+      {!launch && !core && !busy ? (
         <p className="mt-6 text-sm text-muted-foreground">No launches row for this symbol on {code}.</p>
       ) : (
         <div className="mt-6 grid items-start gap-4 md:grid-cols-3">
@@ -282,6 +297,7 @@ export default function Token() {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {isLoggedIn && actor ? (
                 <>
+                  {core ? null : (
                   <button
                     type="button"
                     className="btn btn-outline btn-sm"
@@ -290,6 +306,7 @@ export default function Token() {
                   >
                     {poking === "checklock" ? "Signing…" : "Check lock"}
                   </button>
+                  )}
                   {hasAngelChannels(program) ? (
                     <>
                       <button
@@ -378,7 +395,7 @@ export default function Token() {
         </div>
       ) : null}
 
-      {isLoggedIn && actor ? (
+      {isLoggedIn && actor && !core ? (
         <div className="mt-6">
           <HolderPrefs
             program={program}
@@ -398,7 +415,7 @@ export default function Token() {
         </div>
       ) : null}
 
-      {isLoggedIn && actor && isIssuer ? (
+      {isLoggedIn && actor && isIssuer && !core ? (
         <div className="mt-6 max-w-3xl">
           <IssuerTools
             program={program}

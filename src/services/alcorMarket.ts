@@ -207,6 +207,24 @@ export async function fetchSwapPoolsForToken(symbol: string, contract: string): 
   return [...byId.values()];
 }
 
+/** Deepest AMM pool for this token, either side. */
+export async function fetchTopSwapPool(symbol: string, contract: string): Promise<AlcorPoolRow | null> {
+  const rows = await fetchSwapPoolsForToken(symbol, contract).catch(() => [] as AlcorPoolRow[]);
+  let best: AlcorPoolRow | null = null;
+  for (const row of rows) {
+    if (!best || Number(row.tvlUSD || 0) > Number(best.tvlUSD || 0)) best = row;
+  }
+  return best;
+}
+
+export function poolCounterparty(
+  pool: AlcorPoolRow,
+  symbol: string,
+  contract: string
+): { symbol?: string; contract?: string; quantity?: number } | undefined {
+  return poolTokenIsA(pool, symbol, contract) ? pool.tokenB : pool.tokenA;
+}
+
 export async function loadAlcorMarketFresh(args: {
   poolId: number;
   tokenContract: string;

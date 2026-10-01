@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { DecimalText } from "@/components/Amount";
 import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
+import { ProgramDots } from "@/components/token/ProgramDots";
 import { BagsSkeleton } from "@/components/ui/PageSkeletons";
-import { FLEX_PROGRAMS, alcorAnalyticsUrl, alcorSwapUrl, flexAccount, type FlexProgram } from "@/config/launch";
+import { FLEX_PROGRAMS, PROJECT_CORE_TOKENS, alcorAnalyticsUrl, alcorSwapUrl, coreTokenOf, flexAccount, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
-import { readAccounts, readFlexers, readInsiders, readLaunches, readStat, readXprBalance } from "@/services/flexTables";
+import { fetchTopSwapPool, poolCounterparty } from "@/services/alcorMarket";
+import { readAccounts, readFlexer, readFlexers, readInsiders, readLaunches, readStat, readXprBalance } from "@/services/flexTables";
 import { actorClubMark, type ClubMark } from "@/services/insidersClub";
 import { checklockAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
 import { storedPayoutAction } from "@/services/rainDefaults";
@@ -195,6 +197,46 @@ export default function Portfolio() {
           );
         })
       );
+      await Promise.all(
+        PROJECT_CORE_TOKENS.map(async (t) => {
+          const [acct, stat, flexerRow] = await Promise.all([
+            readAccounts(t.contract, actor, t.symbol).catch(() => ({ rows: [] as Record<string, unknown>[] })),
+            readStat(t.contract, t.symbol).catch(() => null),
+            readFlexer(t.contract, t.symbol, actor).catch(() => null),
+          ]);
+          const balAsset = parseAsset(String(pick(acct.rows[0], "balance") ?? ""));
+          const flexBal = assetAmountNumber(String(pick(flexerRow, "balance") ?? "0"));
+          const balance = balAsset ? Number(balAsset.amount) : flexBal;
+          if (!(balance > 0)) return;
+          const top = await fetchTopSwapPool(t.symbol, t.contract).catch(() => null);
+          const other = top ? poolCounterparty(top, t.symbol, t.contract) : undefined;
+          const precision = balAsset?.precision ?? 4;
+          const supply = assetAmountNumber(String(pick(stat, "supply") ?? "0"));
+          const reflectionPool = assetAmountNumber(String(pick(stat, "reflection_pool") ?? "0"));
+          rows.push({
+            key: `${t.contract}:${t.symbol}`,
+            program: t.program,
+            contract: t.contract,
+            payoutSigner: "sender",
+            symbol: t.symbol,
+            precision,
+            quoteSymbol: String(other?.symbol ?? "").toUpperCase(),
+            quoteContract: String(other?.contract ?? ""),
+            swapUnderlyingDefault: false,
+            balance,
+            flexer: flexerRow
+              ? { ...flexerRow, fee_opted_out: Boolean(pick(flexerRow, "is_banned", "fee_opted_out")) }
+              : null,
+            reflectionPool,
+            angelPool: 0,
+            jackpotPool: 0,
+            estSplash:
+              balance > 0 && supply > 0 && reflectionPool > 0
+                ? reflectionPool * DIST_BPS * (balance / supply)
+                : null,
+          });
+        })
+      );
       rows.sort((a, b) => b.balance - a.balance);
       setHoldings(rows);
       setIssued(mine.sort((a, b) => a.symbol.localeCompare(b.symbol)));
@@ -223,9 +265,12 @@ export default function Portfolio() {
     setPoking(pokeKey);
     setPokeMsg((m) => ({ ...m, [h.key]: {} }));
     try {
+      const core = coreTokenOf(h.contract, h.symbol);
       const action =
         kind === "rain"
-          ? await storedPayoutAction(h.contract, h.symbol, actor, h.payoutSigner)
+          ? core
+            ? { account: h.contract, name: core.rainAction, data: {} }
+            : await storedPayoutAction(h.contract, h.symbol, actor, h.payoutSigner)
           : kind === "checklock"
             ? checklockAction(h.contract, h.symbol)
             : kind === "pullangel"
@@ -378,7 +423,8 @@ export default function Portfolio() {
                     <div>
                     <SymbolLinks contract={h.contract} symbol={h.symbol} large />
                     <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                      {h.program} @ {h.contract}
+                      <ProgramDots program={h.program} />
+                      {coreTokenOf(h.contract, h.symbol) ? h.contract : `${h.program} @ ${h.contract}`}
                       {h.quoteSymbol ? (
                         <>
                           {" · "}
@@ -445,6 +491,7 @@ export default function Portfolio() {
                   >
                     {poking === `${h.key}:rain` ? "Signing…" : "Make it rain"}
                   </button>
+                  {coreTokenOf(h.contract, h.symbol) ? null : (
                   <button
                     type="button"
                     className="btn btn-outline btn-sm"
@@ -454,6 +501,7 @@ export default function Portfolio() {
                   >
                     {poking === `${h.key}:checklock` ? "Signing…" : "Check lock"}
                   </button>
+                  )}
                   {h.program === "flexforex" ? (
                     <>
                       <button

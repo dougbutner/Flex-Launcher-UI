@@ -3,9 +3,10 @@ import {
   SWAP_ALCOR,
   XPR_SYMBOL,
   XTOKENS,
+  coreTokenOf,
 } from "@/config/launch";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
-import { symbolCodeToU64 } from "@/services/eosioName";
+import { nameToU64, symbolCodeToU64 } from "@/services/eosioName";
 import { getAllTableRows, getCurrencyBalance, getTableRows, getTransaction } from "@/services/rpc";
 import { logpoolIdFromResult, txIdFromResult } from "@/services/txParse";
 import type { LaunchPlan } from "@/services/launchMath";
@@ -32,6 +33,7 @@ export async function readAlcorSystem() {
 }
 
 export async function readLaunch(code: string, symbol: string) {
+  if (coreTokenOf(code, symbol)) return null;
   const { rows } = await getTableRows<Record<string, unknown>>({
     code,
     scope: code,
@@ -45,13 +47,15 @@ export async function readLaunch(code: string, symbol: string) {
 }
 
 export async function readSettings(code: string, symbol: string) {
+  const scope = coreTokenOf(code) ? code.trim().toLowerCase() : symbol;
+  const legacy = scope === code.trim().toLowerCase();
   const { rows } = await getTableRows<Record<string, unknown>>({
     code,
-    scope: symbol,
+    scope,
     table: "settings",
-    lower_bound: codeBound(symbol),
-    upper_bound: codeBound(symbol),
-    key_type: "i64",
+    lower_bound: legacy ? undefined : codeBound(symbol),
+    upper_bound: legacy ? undefined : codeBound(symbol),
+    key_type: legacy ? undefined : "i64",
     limit: 1,
   });
   return withSiteSandbox(rows[0] ?? null, (mod, live) => mod.mergeSettings(code, symbol, live));
@@ -77,10 +81,28 @@ export async function readLaunches(code: string, limit = 200) {
 
 export async function readFlexers(code: string, symbol: string, limit = 200) {
   const rows = await getAllTableRows<Record<string, unknown>>(
-    { code, scope: symbol, table: "flexers", limit: 100 },
+    { code, scope: coreTokenOf(code) ? code.trim().toLowerCase() : symbol, table: "flexers", limit: 100 },
     limit
   );
   return withSiteSandbox(rows, (mod, live) => mod.mergeFlexers(code, symbol, live));
+}
+
+/** One flexer row. Core contracts key this table by owner under the account scope. */
+export async function readFlexer(code: string, symbol: string, owner: string) {
+  const key = nameToU64(owner.trim()).toString();
+  if (key === "0") return null;
+  const { rows } = await getTableRows<Record<string, unknown>>({
+    code,
+    scope: coreTokenOf(code) ? code.trim().toLowerCase() : symbol,
+    table: "flexers",
+    lower_bound: key,
+    upper_bound: key,
+    key_type: "i64",
+    limit: 1,
+  });
+  const row = rows[0] ?? null;
+  if (!row || String(row.owner ?? "") !== owner) return null;
+  return withSiteSandbox(row, (mod, live) => mod.mergeFlexers(code, symbol, live ? [live] : [])[0] ?? null);
 }
 
 /** Scope = symbol code. PK = Alcor pool id. */

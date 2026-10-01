@@ -80,7 +80,8 @@ function walksFlexers(contract: string): boolean {
 
 /** Legacy single-token contracts scope flexers and settings by the account. Newer flex scopes by symbol. */
 export function holderTableScope(contract: string, symbol: string): string {
-  if (PROJECT_CORE_TOKENS.some((t) => t.contract === contract)) return contract;
+  const code = contract.trim().toLowerCase();
+  if (PROJECT_CORE_TOKENS.some((t) => t.contract === code)) return code;
   return symbol.trim().toUpperCase();
 }
 

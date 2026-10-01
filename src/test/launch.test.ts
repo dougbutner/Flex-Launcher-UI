@@ -757,6 +757,12 @@ describe("XPR mainnet launcher defaults", () => {
     expect(reflectionPayFloorRaw(0, 6)).toBe(1_000_000);
     expect(reflectionPayFloorRaw(5000, 4)).toBe(5000);
     expect(PROJECT_CORE_TOKENS.map((t) => t.symbol)).toEqual(["EASY", "WON", "GRAMS", "MEME"]);
+    expect(PROJECT_CORE_TOKENS.map((t) => t.program)).toEqual([
+      "easyflex",
+      "complexflex",
+      "complexflex",
+      "easyflex",
+    ]);
     expect(
       alcorSwapUrl("EASY", "mon3y", "FOO", "for3x")
     ).toBe("https://alcor.exchange/v/xpr/swap?input=easy-mon3y&output=foo-for3x");

@@ -285,13 +285,29 @@ export type QuotePreset = {
   label: string;
 };
 
-/** Core project tokens (not 3asy / fl3x / for3x launches). Rain actions match live ABIs. */
+/**
+ * Core project tokens. They are not 3asy / fl3x / for3x launches, but the
+ * board, token page, and bags treat them as live tokens.
+ * EASY and MEME wear one gold dot (easyflex). WON and GRAMS wear two (complexflex).
+ * Rain actions match the live ABIs.
+ */
 export const PROJECT_CORE_TOKENS = [
-  { symbol: "EASY", contract: MON3Y, rainAction: "distribute" as const },
-  { symbol: "WON", contract: "w3won", rainAction: "radiate" as const },
-  { symbol: "GRAMS", contract: "gold.mon3y", rainAction: "reflect" as const },
-  { symbol: "MEME", contract: "m3m3", rainAction: "distribute" as const },
+  { symbol: "EASY", contract: MON3Y, rainAction: "distribute" as const, program: "easyflex" as const },
+  { symbol: "WON", contract: "w3won", rainAction: "radiate" as const, program: "complexflex" as const },
+  { symbol: "GRAMS", contract: "gold.mon3y", rainAction: "reflect" as const, program: "complexflex" as const },
+  { symbol: "MEME", contract: "m3m3", rainAction: "distribute" as const, program: "easyflex" as const },
 ] as const;
+
+export function coreTokenOf(contract: string, symbol?: string) {
+  const code = contract.trim().toLowerCase();
+  const sym = symbol?.trim().toUpperCase();
+  for (const t of PROJECT_CORE_TOKENS) {
+    if (t.contract !== code) continue;
+    if (sym && t.symbol !== sym) continue;
+    return t;
+  }
+  return null;
+}
 
 /** True when quote is a flex quote (0% skim, proof id 0), including GEASY@fl3x. */
 export function isFlexQuoteToken(symbol: string, contract: string): boolean {

@@ -95,14 +95,14 @@ export default function Reflections() {
         </p>
         {drylands == null && busy ? (
           <RainSkeleton />
-        ) : !drylands?.some((d) => d.pool > 0 || d.program == null) ? (
+        ) : !drylands?.some((d) => d.pool > 0 || d.program == null || d.rainAction) ? (
           <div className="card mt-4 p-8 text-center text-sm text-muted-foreground">
             No pending reflection pools. After tax accrues, unpaid rain shows here.
           </div>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {drylands
-              .filter((d) => d.pool > 0 || d.program == null)
+              .filter((d) => d.pool > 0 || d.program == null || d.rainAction)
               .map((d) => {
               const below = d.poolRaw < d.floorRaw;
               const splash = d.pool * DIST_BPS;

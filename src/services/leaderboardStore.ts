@@ -1,9 +1,10 @@
-import { FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
+import { FLEX_PROGRAMS, PROJECT_CORE_TOKENS, flexAccount, type FlexProgram } from "@/config/launch";
 import { parseAsset } from "@/services/assets";
 import { CACHE_KEYS } from "@/services/cacheKeys";
 import { readFlexers, readLaunches, readStat } from "@/services/flexTables";
 import { symbolCodeOf } from "@/services/preflight";
 import { liveOr } from "@/services/readThrough";
+import { fetchTopSwapPool, poolCounterparty } from "@/services/alcorMarket";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
 import { loadSiteSandbox } from "@/services/siteSandbox";
 
@@ -111,7 +112,23 @@ export async function loadFreshBoard(): Promise<BoardToken[]> {
         .filter((item) => item.symbol);
     })
   );
-  const launched = groups.flat();
+  const cores = await Promise.all(
+    PROJECT_CORE_TOKENS.map(async (t) => {
+      const pool = await fetchTopSwapPool(t.symbol, t.contract).catch(() => null);
+      const other = pool ? poolCounterparty(pool, t.symbol, t.contract) : undefined;
+      return {
+        program: t.program,
+        contract: t.contract,
+        symbol: t.symbol,
+        quote: {
+          symbol: String(other?.symbol ?? "").toUpperCase(),
+          contract: String(other?.contract ?? ""),
+        },
+        poolId: Number(pool?.id ?? 0),
+      };
+    })
+  );
+  const launched = [...groups.flat(), ...cores];
   const overlay = await loadSiteSandbox();
   const skip = overlay?.mockKeys() ?? new Set();
   const chain = launched.filter((item) => !skip.has(`${item.contract}:${item.symbol}`));

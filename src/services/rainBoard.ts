@@ -87,7 +87,9 @@ function sortDrylandGroup(rows: Dryland[]) {
 
 export async function loadDrylandsFresh(): Promise<Dryland[]> {
   const core = await Promise.all(
-    PROJECT_CORE_TOKENS.map((t) => drylandFromStat(t.contract, t.symbol, { program: null, rainAction: t.rainAction }))
+    PROJECT_CORE_TOKENS.map((t) =>
+      drylandFromStat(t.contract, t.symbol, { program: t.program, rainAction: t.rainAction })
+    )
   );
   const groups = await Promise.all(
     FLEX_PROGRAMS.map(async (p) => {
