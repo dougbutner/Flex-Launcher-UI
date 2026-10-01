@@ -191,12 +191,16 @@ export async function fetchSwapPool(poolId: number): Promise<AlcorPoolRow | null
 export async function fetchSwapPoolsForToken(symbol: string, contract: string): Promise<AlcorPoolRow[]> {
   const id = alcorTokenId(symbol, contract);
   const load = async (side: "tokenA" | "tokenB") => {
-    const res = await fetch(`${ALCOR_POOL}?${side}=${encodeURIComponent(id)}`, {
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!res.ok) return [] as AlcorPoolRow[];
-    const data = (await res.json()) as AlcorPoolRow[];
-    return Array.isArray(data) ? data : [];
+    try {
+      const res = await fetch(`${ALCOR_POOL}?${side}=${encodeURIComponent(id)}`, {
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!res.ok) return [] as AlcorPoolRow[];
+      const data = (await res.json()) as AlcorPoolRow[];
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [] as AlcorPoolRow[];
+    }
   };
   const [asA, asB] = await Promise.all([load("tokenA"), load("tokenB")]);
   const byId = new Map<number, AlcorPoolRow>();

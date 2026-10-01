@@ -31,6 +31,7 @@ function Section({ title, blurb, tokens }: { title: string; blurb: string; token
             quoteSymbol={t.quoteSymbol}
             mcapUsd={t.mcapUsd}
             liqUsd={t.liqUsd}
+            pre={t.pre}
             src={tileSrc(t.symbol)}
           />
         ))}
@@ -43,7 +44,7 @@ export function TilesView({ tokens }: WinnerViewProps) {
   return (
     <>
       <Section title="Newcomers" blurb="Newest liftoffs. Fresh range, fresh book." tokens={sortNewcomers(tokens)} />
-      <Section title="Loudest" blurb="Highest 24h Alcor volume on the launch pair." tokens={sortLoudest(tokens)} />
+      <Section title="Loudest" blurb="Highest 24h Alcor volume across that token's pools." tokens={sortLoudest(tokens)} />
       <Section title="Large Cap" blurb="Biggest market cap among launched flex tokens." tokens={sortLargeCap(tokens)} />
       <Section title="Popular" blurb="Most holders on the flexer book." tokens={sortPopular(tokens)} />
     </>

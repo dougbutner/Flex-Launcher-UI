@@ -181,7 +181,7 @@ export function TokenEventChip({
     <div
       role="button"
       tabIndex={0}
-      className={`group/chip relative z-10 flex w-full origin-top-left cursor-pointer items-center gap-1 rounded-md border px-1 py-0.5 text-left transition-transform duration-150 hover:z-20 hover:scale-[1.06] hover:shadow-lg ${tone}`}
+      className={`group/chip relative z-10 flex min-h-8 w-full origin-top-left cursor-pointer items-center gap-1 rounded-md border px-1.5 py-1.5 text-left transition-transform duration-150 hover:z-20 hover:scale-[1.06] hover:shadow-lg ${tone}`}
       data-cal-chip={event.id}
       onClick={(e) => {
         e.stopPropagation();

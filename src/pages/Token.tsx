@@ -344,23 +344,6 @@ export default function Token() {
         </div>
       )}
 
-      {launch ? (
-        <SanitySection
-          contract={code}
-          symbol={sym}
-          quoteContract={quoteContract}
-          quoteSymbol={quoteSymbol}
-          poolId={launchPoolId}
-          positionId={positionId}
-          tickLower={Number(pick(launch, "tick_lower") ?? 0)}
-          tickUpper={Number(pick(launch, "tick_upper") ?? 0)}
-          sqrtStart={String(pick(launch, "sqrt_price_x64") ?? "0")}
-          maxSupply={maxSupplyAmt}
-          tokenPrecision={precision}
-          reloadKey={sanityEpoch}
-        />
-      ) : null}
-
       {presale && !launched ? (
         <PresalePanel
           contract={code}
@@ -380,6 +363,42 @@ export default function Token() {
           onConnect={() => void addWebAuthWallet()}
           transact={transact}
           onDone={() => void load(true)}
+        />
+      ) : null}
+
+      {presale && !launched && launch ? (
+        <SanitySection
+          contract={code}
+          symbol={sym}
+          quoteContract={quoteContract}
+          quoteSymbol={quoteSymbol}
+          poolId={launchPoolId}
+          positionId={positionId}
+          tickLower={Number(pick(launch, "tick_lower") ?? 0)}
+          tickUpper={Number(pick(launch, "tick_upper") ?? 0)}
+          sqrtStart={String(pick(launch, "sqrt_price_x64") ?? "0")}
+          maxSupply={maxSupplyAmt}
+          tokenPrecision={precision}
+          reloadKey={sanityEpoch}
+          part="roster"
+        />
+      ) : null}
+
+      {launch ? (
+        <SanitySection
+          contract={code}
+          symbol={sym}
+          quoteContract={quoteContract}
+          quoteSymbol={quoteSymbol}
+          poolId={launchPoolId}
+          positionId={positionId}
+          tickLower={Number(pick(launch, "tick_lower") ?? 0)}
+          tickUpper={Number(pick(launch, "tick_upper") ?? 0)}
+          sqrtStart={String(pick(launch, "sqrt_price_x64") ?? "0")}
+          maxSupply={maxSupplyAmt}
+          tokenPrecision={precision}
+          reloadKey={sanityEpoch}
+          part={presale && !launched ? "stats" : "all"}
         />
       ) : null}
 

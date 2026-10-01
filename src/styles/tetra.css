@@ -378,7 +378,7 @@ html {
 .tetra-cal__cell {
   appearance: none;
   width: 100%;
-  min-height: 4.5rem;
+  min-height: 8.5rem;
   color: inherit;
   border: 0;
   cursor: pointer;

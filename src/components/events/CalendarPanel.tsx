@@ -12,6 +12,7 @@ import { EventsSkeleton, TilesRowSkeleton } from "@/components/ui/PageSkeletons"
 import {
   calendarTokenMarks,
   calTokenKey,
+  attachChainSplits,
   fromCalEvents,
   type TokenCalEvent,
 } from "@/components/cal/tokenCalEvents";
@@ -79,10 +80,16 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
     };
   }, []);
 
-  const tokenEvents = useMemo(
-    () => fromCalEvents(clubDateEvents(events), board),
-    [events, board]
-  );
+  const [tokenEvents, setTokenEvents] = useState<TokenCalEvent[]>([]);
+  useEffect(() => {
+    let live = true;
+    void attachChainSplits(fromCalEvents(clubDateEvents(events), board)).then((rows) => {
+      if (live) setTokenEvents(rows);
+    });
+    return () => {
+      live = false;
+    };
+  }, [events, board]);
   const marks = useMemo(() => calendarTokenMarks(tokenEvents), [tokenEvents]);
   const lit = useMemo(() => {
     const all = new Set(marks.map((m) => m.key));

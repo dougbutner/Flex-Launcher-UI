@@ -14,6 +14,7 @@ type Props = {
   liqUsd?: number;
   src?: string;
   to?: string;
+  pre?: boolean;
 };
 
 /** Square token tile: quote logo, ticker, program dots, mcap + backing liq. */
@@ -27,6 +28,7 @@ export function TokenTile({
   liqUsd,
   src,
   to,
+  pre,
 }: Props) {
   const href = to ?? `/token/${contract}/${symbol}`;
   return (
@@ -56,6 +58,9 @@ export function TokenTile({
           <span className="truncate font-mono text-xl font-black tracking-tight text-foreground sm:text-2xl">
             {symbol}
           </span>
+          {pre ? (
+            <span className="text-[10px] font-bold uppercase leading-none tracking-[0.18em] text-primary">PRE</span>
+          ) : null}
         </span>
         <span className="flex items-end justify-between gap-2 font-mono text-[10px] leading-tight text-muted-foreground">
           <span>

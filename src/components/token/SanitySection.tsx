@@ -22,6 +22,8 @@ type Props = {
   maxSupply: number;
   tokenPrecision: number;
   reloadKey: number;
+  /** `roster` is the insider list only. `stats` hides that list. Default shows both. */
+  part?: "all" | "roster" | "stats";
 };
 
 const BACKING_COLOR: Record<string, string> = {
@@ -229,6 +231,63 @@ function SanitySkeleton() {
   );
 }
 
+function InsiderRows({
+  books,
+  openAccount,
+  setOpenAccount,
+  symbol,
+  precision,
+}: {
+  books: InsiderRow[];
+  openAccount: string;
+  setOpenAccount: (account: string) => void;
+  symbol: string;
+  precision: number;
+}) {
+  if (!books.length) return <p className="mt-2 text-xs text-muted-foreground">No insider rows yet.</p>;
+  return (
+    <ul className="divide-y divide-border">
+      {books.map((row) => {
+        const open = openAccount === row.account;
+        const liq = qty(row.liquidity, symbol, precision);
+        const held = qty(row.holdings, symbol, precision);
+        return (
+          <li key={row.account} className="py-2">
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <button
+                type="button"
+                className="truncate text-left font-mono underline"
+                onClick={() => setOpenAccount(open ? "" : row.account)}
+              >
+                {row.account}
+              </button>
+              <span className="truncate font-mono" title={liq.full}>{liq.display}</span>
+              <span className="truncate font-mono" title={held.full}>{held.display}</span>
+            </div>
+            {open ? (
+              <div className="mt-2 border border-border bg-background p-2 text-xs">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Top pools and tokens</p>
+                <ul className="mt-1 space-y-1 font-mono">
+                  <li>{held.display}</li>
+                  {row.pools.map((pool) => (
+                    <li key={pool.id}>
+                      <a className="underline" href={pool.href} target="_blank" rel="noreferrer">
+                        {pool.quote} pool {pool.id}
+                      </a>
+                      {" "}
+                      {qty(pool.tokens, symbol, precision).display}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function SanitySection(props: Props) {
   const [view, setView] = useState<SanityView | null>(null);
   const [busy, setBusy] = useState(props.poolId > 0);
@@ -291,6 +350,7 @@ export function SanitySection(props: Props) {
     props.reloadKey,
   ]);
 
+  const part = props.part ?? "all";
   const quote = props.quoteSymbol || "quote";
   const sym = props.symbol;
   const mid = view ? priceLine(view.midQuote, quote, view.midUsd) : null;
@@ -321,6 +381,30 @@ export function SanitySection(props: Props) {
   const degenHint = "Community LP paired with a quote that is not the launch token and not an ecosystem token.";
   const poolHref = `https://alcor.exchange/v/xpr/analytics/pools/${props.poolId}`;
   const posHref = `https://alcor.exchange/v/xpr/swap/positions/${props.positionId}`;
+
+  if (part === "roster") {
+    return (
+      <section className="mt-4 border border-border bg-background/40 p-4" aria-label="Insiders">
+        <h2 className="text-sm font-bold tracking-tight">Insiders</h2>
+        <div className="mt-3 grid grid-cols-3 gap-2 border-b border-border pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span>Insider</span>
+          <span>Liquidity</span>
+          <span>Holdings</span>
+        </div>
+        {busy && !books.length ? (
+          <p className="mt-2 text-xs text-muted-foreground">Reading insiders…</p>
+        ) : (
+          <InsiderRows
+            books={books}
+            openAccount={openAccount}
+            setOpenAccount={setOpenAccount}
+            symbol={sym}
+            precision={prec}
+          />
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className="mt-4 border border-border bg-background/40 p-4" aria-label="By the numbers">
@@ -440,55 +524,22 @@ export function SanitySection(props: Props) {
             />
           </div>
 
+          {part === "stats" ? null : (
           <div className="mt-4">
             <div className="grid grid-cols-3 gap-2 border-b border-border pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
               <span title="Approved insider account.">Insider</span>
               <span title="This token the insider has posted in pools.">Liquidity</span>
               <span title="This token the insider holds outside pools.">Holdings</span>
             </div>
-            {books.length === 0 ? (
-              <p className="mt-2 text-xs text-muted-foreground">No insider rows yet.</p>
-            ) : (
-              <ul className="divide-y divide-border">
-                {books.map((row) => {
-                  const open = openAccount === row.account;
-                  const liq = qty(row.liquidity, sym, prec);
-                  const held = qty(row.holdings, sym, prec);
-                  return (
-                    <li key={row.account} className="py-2">
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <button
-                          type="button"
-                          className="truncate text-left font-mono underline"
-                          onClick={() => setOpenAccount(open ? "" : row.account)}
-                        >
-                          {row.account}
-                        </button>
-                        <span className="truncate font-mono" title={liq.full}>{liq.display}</span>
-                        <span className="truncate font-mono" title={held.full}>{held.display}</span>
-                      </div>
-                      {open ? (
-                        <div className="mt-2 border border-border bg-background p-2 text-xs">
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Top pools and tokens</p>
-                          <ul className="mt-1 space-y-1 font-mono">
-                            <li>{held.display}</li>
-                            {row.pools.map((pool) => (
-                              <li key={pool.id}>
-                                <a className="underline" href={pool.href} target="_blank" rel="noreferrer">
-                                  {pool.quote} pool {pool.id}
-                                </a>
-                                {" "}
-                                {qty(pool.tokens, sym, prec).display}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            <InsiderRows
+              books={books}
+              openAccount={openAccount}
+              setOpenAccount={setOpenAccount}
+              symbol={sym}
+              precision={prec}
+            />
+          </div>
+          )}
             <button type="button" className="btn btn-outline btn-sm mt-3" onClick={() => setShowBubbles((on) => !on)}>
               {showBubbles ? "Hide bubbles" : "Show bubbles"}
             </button>
@@ -500,7 +551,6 @@ export function SanitySection(props: Props) {
                 symbol={sym}
               />
             ) : null}
-          </div>
 
           <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
             <Stat

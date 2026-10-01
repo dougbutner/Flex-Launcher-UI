@@ -22,7 +22,6 @@ import {
   fmtCover,
   fmtHolders,
   matchBoardQuery,
-  prettyTokenName,
   sortBoardRows,
   type BoardFilters,
   type BoardSortId,
@@ -310,7 +309,10 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                           />
                           <span className="min-w-0">
                             <span className="flex items-center gap-1">
-                              <span className="truncate font-semibold">${t.symbol}</span>
+                              <span className="truncate text-[21px] font-semibold leading-none">{t.symbol}</span>
+                              {t.pre ? (
+                                <span className="text-[9px] font-bold uppercase leading-none tracking-[0.16em] text-primary">PRE</span>
+                              ) : null}
                               {hasInsider(t.symbol) ? (
                                 <Handshake className="h-3 w-3 text-muted-foreground" aria-label="Insider" title="Insider" />
                               ) : null}
@@ -318,7 +320,6 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                                 <Rocket className="h-3 w-3 text-muted-foreground" aria-label="Launches today" title="Launches today" />
                               ) : null}
                             </span>
-                            <span className="block truncate text-[11px] text-muted-foreground">{prettyTokenName(t.symbol)}</span>
                           </span>
                           <span className="ml-auto flex items-center self-center">
                             <ProgramDots program={t.program} />

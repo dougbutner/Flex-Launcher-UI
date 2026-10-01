@@ -129,12 +129,12 @@ export default function Leaderboard() {
             ? state.size === "change"
               ? "Bubble size is absolute percent change. Green is up, red is down. Pick 24h, 7d, or month."
               : state.size === "volume"
-                ? "Bubble size is 24h Alcor volume on the launch pair."
+                ? "Bubble size is 24h Alcor volume across that token's pools."
                 : state.size === "mcap"
                   ? "Bubble size is market cap."
                   : state.size === "holders"
                     ? "Bubble size is holder count on the flexer book."
-                    : "Bubble size is locked liquidity in the launch pool."
+                    : "Bubble size is Alcor liquidity across that token's pools."
             : "Live flex launches ranked by freshness, volume, cap, and holders. Open a tile for the token page."}
         </p>
       ) : null}

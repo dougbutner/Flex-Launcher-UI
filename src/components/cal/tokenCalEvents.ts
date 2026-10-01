@@ -1,4 +1,5 @@
-import { flexAccount, type FlexProgram } from "@/config/launch";
+import { flexAccount, isFlexQuoteToken, type FlexProgram } from "@/config/launch";
+import { readSettings } from "@/services/flexTables";
 import type { CalEvent } from "@/services/launchEvents";
 import type { BoardToken } from "@/services/leaderboardStore";
 import { MOCK_CLUB_LOCKS, MOCK_SPECS, mockTokenLogo, unixMs, type MockClubLocks, type MockSpec } from "@/test/sandbox/data";
@@ -181,6 +182,43 @@ export function fromCalEvents(events: CalEvent[], board: BoardToken[] = []): Tok
         locks: locksFromClub(MOCK_CLUB_LOCKS[ev.symbol]),
       } satisfies TokenCalEvent;
     });
+}
+
+function num(row: Record<string, unknown> | null, key: string) {
+  const n = Number(row?.[key] ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Fill reflect / burn / project / angel / jackpot from the on-chain settings row. */
+export async function attachChainSplits(events: TokenCalEvent[]): Promise<TokenCalEvent[]> {
+  const keys = [...new Set(events.map((ev) => `${ev.contract}:${ev.symbol}`))];
+  const rows = new Map<string, Record<string, unknown> | null>();
+  await Promise.all(
+    keys.map(async (key) => {
+      const [contract, symbol] = key.split(":");
+      rows.set(key, await readSettings(contract, symbol).catch(() => null));
+    })
+  );
+  return events.map((ev) => {
+    const row = rows.get(`${ev.contract}:${ev.symbol}`) ?? null;
+    const program = ev.program === "core" ? "easyflex" : ev.program;
+    return {
+      ...ev,
+      splits: splitsFor(program, {
+        reflectionRate: num(row, "reflection_rate"),
+        burnRate: num(row, "burn_rate"),
+        projectRate: num(row, "project_rate"),
+        angelBps: num(row, "angel_numbers_bps"),
+        jackpotBps: num(row, "jackpot_bps"),
+        quote: {
+          symbol: ev.quoteSymbol,
+          contract: ev.quoteContract,
+          precision: 0,
+          flex: isFlexQuoteToken(ev.quoteSymbol, ev.quoteContract),
+        },
+      }),
+    };
+  });
 }
 
 export function mergeTokenEvents(live: TokenCalEvent[], sample: TokenCalEvent[]) {

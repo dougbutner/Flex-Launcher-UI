@@ -37,7 +37,7 @@ export function BubblesView({ tokens, size, chg, extras }: WinnerViewProps) {
     return {
       id: t.id,
       value: bubbleValue(t, size, extra, chg),
-      label: t.symbol,
+      label: t.pre ? `${t.symbol} PRE` : t.symbol,
       sub: formatSize(t, size, extra, chg),
       to: `/token/${t.contract}/${t.symbol}`,
       color: fillFor(t, extra, chg, size),

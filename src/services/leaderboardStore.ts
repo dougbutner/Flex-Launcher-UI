@@ -1,7 +1,8 @@
 import { FLEX_PROGRAMS, PROJECT_CORE_TOKENS, flexAccount, type FlexProgram } from "@/config/launch";
 import { parseAsset } from "@/services/assets";
 import { CACHE_KEYS } from "@/services/cacheKeys";
-import { readFlexers, readLaunches, readStat } from "@/services/flexTables";
+import { fetchSwapPoolsForToken } from "@/services/alcorMarket";
+import { readFlexers, readLaunches, readPresale, readStat } from "@/services/flexTables";
 import { symbolCodeOf } from "@/services/preflight";
 import { liveOr } from "@/services/readThrough";
 import { fetchTopSwapPool, poolCounterparty } from "@/services/alcorMarket";
@@ -27,6 +28,8 @@ export type BoardToken = {
   backingUsd: number;
   volumeUsd: number;
   holders: number;
+  /** Insider window: liftoff has not opened public transfers. */
+  pre?: boolean;
 };
 
 type AlcorPool = {
@@ -102,12 +105,11 @@ export async function loadFreshBoard(): Promise<BoardToken[]> {
       const code = flexAccount(p.id);
       const rows = await readLaunches(code, 200).catch(() => [] as Record<string, unknown>[]);
       return rows
-        .filter((r) => Boolean(pick(r, "launched")))
         .map((row) => {
           const symbol = symbolCodeOf(pick(row, "token_symbol", "symbol"));
           const quote = quoteOf(row);
           const poolId = Number(pick(row, "pure_liquid_alcor_pool_id", "pool_id", "poolId") ?? 0);
-          return { program: p.id, contract: code, symbol, quote, poolId, row };
+          return { program: p.id, contract: code, symbol, quote, poolId, launched: Boolean(pick(row, "launched")) };
         })
         .filter((item) => item.symbol);
     })
@@ -125,29 +127,42 @@ export async function loadFreshBoard(): Promise<BoardToken[]> {
           contract: String(other?.contract ?? ""),
         },
         poolId: Number(pool?.id ?? 0),
+        pre: false,
       };
     })
   );
-  const launched = [...groups.flat(), ...cores];
+  const live = (
+    await Promise.all(
+      groups.flat().map(async (item) => {
+        if (item.launched) return { ...item, pre: false };
+        if (!(item.poolId > 0) && !(await readPresale(item.contract, item.symbol).catch(() => null))) return null;
+        return { ...item, pre: true };
+      })
+    )
+  ).filter((item): item is NonNullable<typeof item> => item != null);
+  const launched = [...live, ...cores];
   const overlay = await loadSiteSandbox();
   const skip = overlay?.mockKeys() ?? new Set();
   const chain = launched.filter((item) => !skip.has(`${item.contract}:${item.symbol}`));
-  const tokens = await Promise.all(
-    chain.map(async (item) => {
-      const [stat, pool, usdPrice, quoteUsd] = await Promise.all([
+  const tokens = await mapLimit(chain, 2, async (item) => {
+      const [stat, listed, usdPrice, quoteUsd] = await Promise.all([
         readStat(item.contract, item.symbol).catch(() => null),
-        fetchPool(item.poolId),
+        fetchSwapPoolsForToken(item.symbol, item.contract).catch(() => []),
         fetchAlcorUsdPrice(item.contract, item.symbol).catch(() => 0),
         item.quote.contract
           ? fetchAlcorUsdPrice(item.quote.contract, item.quote.symbol).catch(() => 0)
           : Promise.resolve(0),
       ]);
+      const pool = listed.find((row) => Number(row.id) === item.poolId) ?? (await fetchPool(item.poolId));
       const supply = parseAsset(String(pick(stat, "supply") ?? ""));
       const mcapUsd = supply && usdPrice > 0 ? Number(supply.amount) * usdPrice : 0;
-      const tvl = Number(pool?.tvlUSD || 0);
+      const tvl = listed.reduce((sum, row) => sum + (Number(row.tvlUSD) || 0), 0) || Number(pool?.tvlUSD || 0);
       const quoteQty = sideQty(pool, item.quote.symbol, item.quote.contract);
       const liqUsd = tvl > 0 ? tvl : quoteUsd > 0 ? quoteQty * quoteUsd : 0;
       const backingUsd = quoteUsd > 0 && quoteQty > 0 ? quoteQty * quoteUsd : 0;
+      const volumeUsd = listed.length
+        ? listed.reduce((sum, row) => sum + (Number(row.volumeUSD24) || 0), 0)
+        : Number(pool?.volumeUSD24 || 0);
       const holders = await holdersOf(item.program, item.contract, item.symbol, stat);
       return {
         id: `${item.contract}:${item.symbol}`,
@@ -161,12 +176,25 @@ export async function loadFreshBoard(): Promise<BoardToken[]> {
         mcapUsd,
         liqUsd,
         backingUsd,
-        volumeUsd: Number(pool?.volumeUSD24 || 0),
+        volumeUsd,
         holders,
+        pre: "pre" in item ? item.pre : false,
       } satisfies BoardToken;
-    })
-  );
+    });
   return overlay ? overlay.mergeBoard(tokens) : tokens;
+}
+
+async function mapLimit<T, R>(items: T[], limit: number, run: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await run(items[i]);
+    }
+  });
+  await Promise.all(workers);
+  return out;
 }
 
 function loadBoardMemory(force?: boolean): Promise<BoardToken[]> {

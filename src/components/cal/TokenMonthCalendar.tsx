@@ -194,7 +194,7 @@ export function TokenMonthCalendar({
         <div
           key={`${year}-${month}`}
           className="token-cal-month grid h-full grid-cols-7"
-          style={{ gridTemplateRows: `repeat(${weekCount}, minmax(0, 1fr))` }}
+          style={{ gridTemplateRows: `repeat(${weekCount}, minmax(8.5rem, 1fr))` }}
         >
           {days.map((day) => {
             const key = ymd(day);
@@ -206,7 +206,7 @@ export function TokenMonthCalendar({
             return (
               <div
                 key={key}
-                className={`flex min-h-0 flex-col overflow-visible border-b border-r border-[#27272a] p-2 [&:nth-child(7n)]:border-r-0 ${
+                className={`flex min-h-[8.5rem] flex-col overflow-visible border-b border-r border-[#27272a] p-2 [&:nth-child(7n)]:border-r-0 ${
                   inMonth ? "" : "bg-muted/50 text-muted-foreground"
                 } ${key === picked ? "bg-primary/5" : ""}`}
                 onClick={() => onPick?.(key)}
