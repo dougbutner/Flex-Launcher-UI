@@ -129,6 +129,22 @@
     @apply btn border-0 bg-transparent text-[#3b82f6] shadow-none hover:bg-[#1e3a8a] hover:text-primary active:scale-[0.98];
   }
 
+  .btn-airdrop {
+    background-image: linear-gradient(108deg, #1d4ed8 0%, #38bdf8 46%, #fde047 54%, #facc15 100%);
+    color: #07111f;
+    font-size: 1.125rem;
+    font-weight: 800;
+    min-width: 16rem;
+    padding: 0.95rem 2.75rem;
+  }
+
+  .btn-airdrop:hover:not(:disabled),
+  .btn-airdrop:active:not(:disabled) {
+    background-color: #1d4ed8;
+    background-image: none;
+    color: #fff;
+  }
+
   .btn-sm {
     @apply h-9 px-3 text-xs;
   }

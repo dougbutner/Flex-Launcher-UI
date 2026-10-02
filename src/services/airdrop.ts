@@ -39,7 +39,7 @@ const SEND_EXTRAS = [
 ] as const;
 
 /** Plain transfers to these accounts fail or park the tokens. */
-export const SKIP_ACCOUNTS = ["swap.alcor", "alcor", "eosio", "eosio.token", "eosio.proton"] as const;
+export const SKIP_ACCOUNTS = ["swap.alcor", "alcor", "eosio", "eosio.token", "eosio.proton", "vibrrairdrop"] as const;
 
 const CORE_PRECISION = new Map<string, number>([
   ...QUOTE_PRESETS.filter((q) => q.flexQuote).map((q) => [`${q.contract}:${q.symbol}`, q.precision] as const),

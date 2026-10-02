@@ -298,6 +298,11 @@ export const PROJECT_CORE_TOKENS = [
   { symbol: "MEME", contract: "m3m3", rainAction: "distribute" as const, program: "easyflex" as const },
 ] as const;
 
+/** makeitrain share of the reflection pool. EASY, WON, GRAMS, and MEME splash 61.8%. Every other token, including new launches, splashes 38.2%. */
+export function splashShare(contract: string, symbol: string): number {
+  return coreTokenOf(contract, symbol) ? 0.618 : 0.382;
+}
+
 export function coreTokenOf(contract: string, symbol?: string) {
   const code = contract.trim().toLowerCase();
   const sym = symbol?.trim().toUpperCase();

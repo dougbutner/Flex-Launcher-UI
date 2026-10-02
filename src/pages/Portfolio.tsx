@@ -5,7 +5,7 @@ import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
 import { ProgramDots } from "@/components/token/ProgramDots";
 import { BagsSkeleton } from "@/components/ui/PageSkeletons";
-import { FLEX_PROGRAMS, PROJECT_CORE_TOKENS, alcorAnalyticsUrl, alcorSwapUrl, coreTokenOf, flexAccount, type FlexProgram } from "@/config/launch";
+import { FLEX_PROGRAMS, PROJECT_CORE_TOKENS, alcorAnalyticsUrl, alcorSwapUrl, coreTokenOf, flexAccount, splashShare, type FlexProgram } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { fetchTopSwapPool, poolCounterparty } from "@/services/alcorMarket";
@@ -16,8 +16,6 @@ import { storedPayoutAction } from "@/services/rainDefaults";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { loadProtonTokenTable } from "@/services/tokenProton";
-
-const DIST_BPS = 0.382;
 
 function SymbolLinks({ contract, symbol, large }: { contract: string; symbol: string; large?: boolean }) {
   return (
@@ -173,7 +171,7 @@ export default function Portfolio() {
                 : 0;
               const estSplash =
                 balance > 0 && denom > 0 && reflectionPool > 0
-                  ? reflectionPool * DIST_BPS * (balance / denom)
+                  ? reflectionPool * splashShare(code, symbol) * (balance / denom)
                   : null;
 
               rows.push({
@@ -232,7 +230,7 @@ export default function Portfolio() {
             jackpotPool: 0,
             estSplash:
               balance > 0 && supply > 0 && reflectionPool > 0
-                ? reflectionPool * DIST_BPS * (balance / supply)
+                ? reflectionPool * splashShare(t.contract, t.symbol) * (balance / supply)
                 : null,
           });
         })
@@ -464,7 +462,7 @@ export default function Portfolio() {
                     </>
                   ) : null}
                   {h.estSplash != null ? (
-                    <span className="chip-success" title="Your balance ÷ circulating supply × 38.2% of the pending pool">
+                    <span className="chip-success" title={`Your balance ÷ circulating supply × ${(splashShare(h.contract, h.symbol) * 100).toFixed(1)}% of the pending pool`}>
                       est. splash ~<DecimalText text={fmt(h.estSplash, h.precision)} /> {h.symbol}
                     </span>
                   ) : null}

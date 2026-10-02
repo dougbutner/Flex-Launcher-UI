@@ -14,6 +14,7 @@ import {
   clampMemo,
   corePrecision,
   debitForSend,
+  formatRaw,
   formatRawFace,
   formatRawPretty,
   holdersFitInRam,
@@ -123,6 +124,7 @@ export function AirdropPanel(props: {
   const [tax, setTax] = useState<TaxBps>(ZERO_TAX);
   const [optedOut, setOptedOut] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [testBusy, setTestBusy] = useState(false);
   const [tx, setTx] = useState("");
   const [msg, setMsg] = useState("");
   const [frozen, setFrozen] = useState<PlannedDrop[] | null>(null);
@@ -329,7 +331,12 @@ export function AirdropPanel(props: {
       setMsg("Enter an account name.");
       return;
     }
-    setSigning(true);
+    if (to === "vibrrairdrop" && memo.trim() !== "create_airdrop" && !/^airdrop_deposit:\d+$/.test(memo.trim())) {
+      setTx("");
+      setMsg("vibrrairdrop only accepts memo create_airdrop, or airdrop_deposit:<id>. Holder drops skip that account.");
+      return;
+    }
+    setTestBusy(true);
     setMsg("");
     setTx("");
     try {
@@ -343,14 +350,28 @@ export function AirdropPanel(props: {
         setMsg("Your balance does not cover a dust send.");
         return;
       }
-      const actions = airdropTransfers({
-        contract: drop.contract,
-        from: actor,
-        precision: drop.precision,
-        symbol: drop.symbol,
-        memo,
-        rows: [{ account: to, amountRaw }],
-      });
+      const actions =
+        to === "vibrrairdrop"
+          ? [
+              {
+                account: drop.contract,
+                name: "transfer",
+                data: {
+                  from: actor,
+                  to,
+                  quantity: formatRaw(amountRaw, drop.precision, drop.symbol),
+                  memo: clampMemo(memo.trim()),
+                },
+              },
+            ]
+          : airdropTransfers({
+              contract: drop.contract,
+              from: actor,
+              precision: drop.precision,
+              symbol: drop.symbol,
+              memo,
+              rows: [{ account: to, amountRaw }],
+            });
       if (!actions.length) {
         setMsg("That account cannot receive this drop.");
         return;
@@ -368,7 +389,7 @@ export function AirdropPanel(props: {
       const hint = hintForError(text);
       setMsg(hint ? `${text} - ${hint}` : text);
     } finally {
-      setSigning(false);
+      setTestBusy(false);
     }
   };
 
@@ -563,16 +584,15 @@ export function AirdropPanel(props: {
                 className="input max-w-[16rem] font-mono"
                 value={testTo}
                 placeholder="account"
-                disabled={frozen != null}
                 onChange={(e) => setTestTo(e.target.value.toLowerCase().replace(/[^a-z1-5.]/g, "").slice(0, 12))}
               />
               <button
                 type="button"
                 className="btn btn-sm"
-                disabled={signing || !drop || !actor || !validAccount(testTo.trim())}
+                disabled={testBusy || !drop || !actor || !validAccount(testTo.trim())}
                 onClick={() => void testSend()}
               >
-                {signing ? "Signing…" : "Send"}
+                {testBusy ? "Signing…" : "Send"}
               </button>
             </div>
           </div>
@@ -606,7 +626,7 @@ export function AirdropPanel(props: {
           <p>You sign each batch yourself. One transaction sends to the checked accounts, 100 at a time.</p>
           <p>Unchecking an account skips it. Simple sends the per account amount to each checked account. Proportional amounts stay fixed from the total and the list.</p>
           <p>Wallet to wallet transfers can add tax on top of what the receiver gets. Your balance has to cover the send plus that tax. Fee opt-out skips the tax.</p>
-          <p>Your own account, the token contract, and swap.alcor are left off. A transfer to yourself fails, and those accounts do not take a plain drop.</p>
+          <p>Your own account, the token contract, swap.alcor, and vibrrairdrop are left off. A transfer to yourself fails. vibrrairdrop only accepts memo create_airdrop, or airdrop_deposit:&lt;id&gt;.</p>
           <p>
             Balances, RAM, and tax are read from EOSUSA. Holder ranks come from the Light API, because EOSUSA does not publish that list. Flex holder rows past the Light API cap of 1,000 are filled from EOSUSA. Tokens without a flexer table stop at that cap. If the signature fails for CPU or NET, stake more on{" "}
             <a className="link" href={RESOURCES_URL} target="_blank" rel="noreferrer">
@@ -731,14 +751,15 @@ export function AirdropPanel(props: {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex justify-center">
         <button
           type="button"
-          className="btn btn-primary btn-sm"
+          className="btn btn-airdrop"
           disabled={signing || holdersBusy || !drop || !checked.length || shortBalance || count == null || budgetRaw == null}
           onClick={() => void sign()}
         >
-          {signing ? "Signing…" : `Airdrop ${checked.length}`}
+          <span>{signing ? "Signing…" : "Airdrop"}</span>
+          <span className="text-[0.62em] font-bold tabular-nums">{checked.length}/{visible.length || count || 0}</span>
         </button>
       </div>
       {tx ? (

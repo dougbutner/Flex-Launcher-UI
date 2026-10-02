@@ -3,14 +3,12 @@ import { Amount, DecimalText } from "@/components/Amount";
 import { TokenIcon } from "@/components/TokenIcon";
 import { RainSkeleton } from "@/components/ui/PageSkeletons";
 import { TxLink } from "@/components/launch/ui";
-import { flexMeta } from "@/config/launch";
+import { flexMeta, splashShare } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { pullangelAction, pulljackpotAction } from "@/services/launchActions";
 import { loadDrylands, type Dryland } from "@/services/rainBoard";
 import { storedPayoutAction } from "@/services/rainDefaults";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
-
-const DIST_BPS = 0.382;
 
 function fmtPool(n: number, precision: number): string {
   const digits = n >= 1000 ? Math.min(2, precision) : precision;
@@ -105,8 +103,9 @@ export default function Reflections() {
               .filter((d) => d.pool > 0 || d.program == null || d.rainAction)
               .map((d) => {
               const below = d.poolRaw < d.floorRaw;
-              const splash = d.pool * DIST_BPS;
-              const splashUsd = d.usd * DIST_BPS;
+              const share = splashShare(d.contract, d.symbol);
+              const splash = d.pool * share;
+              const splashUsd = d.usd * share;
               const id = `rain:${d.key}`;
               const msg = rainMsg[id];
               return (
@@ -158,7 +157,7 @@ export default function Reflections() {
                     {below ? null : (
                       <div className="pointer-events-none absolute inset-x-2 bottom-3 flex flex-col items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
                         <span className="text-[10px] font-medium uppercase tracking-wide text-primary">
-                          splash 38.2%
+                          splash {(share * 100).toFixed(1)}%
                         </span>
                         <span className="break-all font-mono text-base font-bold leading-tight text-white">
                           <DecimalText text={fmtPool(splash, d.precision)} /> {d.symbol}

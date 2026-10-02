@@ -158,7 +158,7 @@ export default function Launch() {
             </button>
           </p>
           <div className="mt-3">
-            <InfoPanel open={processOpen} paras={[...holdPara, ...LAUNCH_PROCESS_PARAS]} />
+            <InfoPanel open={processOpen} paras={[LAUNCH_PROCESS_PARAS[0], ...holdPara, ...LAUNCH_PROCESS_PARAS.slice(1)]} />
           </div>
         </div>
       </div>

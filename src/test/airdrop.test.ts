@@ -92,6 +92,7 @@ describe("airdrop", () => {
   it("skips the sender, contracts, and swap.alcor", () => {
     expect(keepHolder("alice", "alice", ["fl3x"])).toBe(false);
     expect(keepHolder("swap.alcor", "alice", ["fl3x"])).toBe(false);
+    expect(keepHolder("vibrrairdrop", "alice", ["fl3x"])).toBe(false);
     expect(keepHolder("fl3x", "alice", ["fl3x"])).toBe(false);
     expect(keepHolder("bob", "alice", ["fl3x"])).toBe(true);
   });

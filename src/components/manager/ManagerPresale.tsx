@@ -252,7 +252,7 @@ export function ManagerPresale({ contract, symbol, actor, transact }: Props) {
     <div className="space-y-4 border-t border-border pt-5">
       {state === "missed" ? (
         <p className="text-sm text-muted-foreground">
-          This token lifted off with no presale row, so launched is already true. A presale cannot be added.
+          This token had no presale, so nothing to do here.
         </p>
       ) : null}
       {state === "sealed" ? (
