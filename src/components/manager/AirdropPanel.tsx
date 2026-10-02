@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Field, TxLink } from "@/components/launch/ui";
 import { FormPanelSkeleton } from "@/components/ui/PageSkeletons";
 import { Pulse } from "@/components/ui/Pulse";
 import { PROJECT_CORE_TOKENS } from "@/config/launch";
+import { AIRDROP_AUDIENCES } from "@/data/airdropAudiences";
+import { validAccount } from "@/services/assets";
 import {
   AIRDROP_BATCH,
   airdropTransfers,
@@ -12,6 +14,7 @@ import {
   clampMemo,
   corePrecision,
   debitForSend,
+  formatRawFace,
   formatRawPretty,
   holdersFitInRam,
   isDroppableToken,
@@ -79,6 +82,11 @@ function buildAudience(issued: IssuedRef[], wallet: WalletDrop[]): Audience[] {
     if (!cur) map.set(key, { contract: row.contract, symbol: row.symbol, precision: row.precision, owned: row.owned });
     else if (row.owned) cur.owned = true;
   }
+  for (const row of AIRDROP_AUDIENCES) {
+    const key = tokenKey(row.contract, row.symbol);
+    if (map.has(key)) continue;
+    map.set(key, { contract: row.contract, symbol: row.symbol, precision: row.precision, owned: false });
+  }
   return sortOwnedFirst([...map.values()]);
 }
 
@@ -91,8 +99,9 @@ export function AirdropPanel(props: {
   actor: string;
   issued: IssuedRef[];
   transact: (actions: ChainAction[]) => Promise<unknown>;
+  onConnect: () => void;
 }) {
-  const { actor, issued, transact } = props;
+  const { actor, issued, transact, onConnect } = props;
   const [wallet, setWallet] = useState<WalletDrop[] | null>(null);
   const [walletError, setWalletError] = useState("");
   const [dropKey, setDropKey] = useState("");
@@ -117,6 +126,9 @@ export function AirdropPanel(props: {
   const [tx, setTx] = useState("");
   const [msg, setMsg] = useState("");
   const [frozen, setFrozen] = useState<PlannedDrop[] | null>(null);
+  const [testOpen, setTestOpen] = useState(false);
+  const [testTo, setTestTo] = useState("");
+  const listRef = useRef<HTMLUListElement>(null);
 
   const issuedKey = issued.map((row) => tokenKey(row.contract, row.symbol)).join("|");
 
@@ -155,12 +167,21 @@ export function AirdropPanel(props: {
   };
 
   useEffect(() => {
+    if (!actor) {
+      setWallet([]);
+      setWalletError("");
+      return;
+    }
     void loadWallet();
     // issuedKey tracks the issuer list. loadWallet closes over the matching issued rows.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actor, issuedKey]);
 
   useEffect(() => {
+    if (!actor) {
+      setFreeRam(null);
+      return;
+    }
     let live = true;
     void readFreeRam(actor)
       .then((free) => {
@@ -262,6 +283,13 @@ export function AirdropPanel(props: {
   const livePlan = useMemo(() => (holders ? planDrop(mode, budgetRaw ?? 0n, holders) : null), [holders, budgetRaw, mode]);
   const plan = frozen ?? livePlan;
   const priced = budgetRaw != null;
+  const rawSum = plan ? plan.reduce((sum, row) => sum + row.amountRaw, 0n) : 0n;
+  const shownSum =
+    !plan || mode === "uniform"
+      ? (plan?.[0]?.amountRaw ?? 0n) * BigInt(plan?.length ?? 0)
+      : budgetRaw != null && rawSum <= budgetRaw && budgetRaw - rawSum < BigInt(Math.max(plan.length, 1))
+        ? budgetRaw
+        : rawSum;
 
   const pages = plan ? batchCount(plan.length) : 0;
   const page = plan ? Math.min(batch, Math.max(0, pages - 1)) : 0;
@@ -285,6 +313,65 @@ export function AirdropPanel(props: {
     });
   };
 
+  const uncheckBatch = () => {
+    setExcluded((cur) => {
+      const next = new Set(cur);
+      for (const row of visible) next.add(row.account);
+      return next;
+    });
+  };
+
+  const testSend = async () => {
+    if (!drop || !actor) return;
+    const to = testTo.trim().toLowerCase();
+    if (!validAccount(to)) {
+      setTx("");
+      setMsg("Enter an account name.");
+      return;
+    }
+    setSigning(true);
+    setMsg("");
+    setTx("");
+    try {
+      const amountRaw = 1n;
+      const fresh = await readBalanceRaw(drop.contract, actor, drop.symbol, drop.precision);
+      const debit = debitForSend(amountRaw, tax, optedOut);
+      if (debit > fresh) {
+        setWallet((cur) =>
+          (cur ?? []).map((row) => (tokenKey(row.contract, row.symbol) === dropKey ? { ...row, balanceRaw: fresh } : row))
+        );
+        setMsg("Your balance does not cover a dust send.");
+        return;
+      }
+      const actions = airdropTransfers({
+        contract: drop.contract,
+        from: actor,
+        precision: drop.precision,
+        symbol: drop.symbol,
+        memo,
+        rows: [{ account: to, amountRaw }],
+      });
+      if (!actions.length) {
+        setMsg("That account cannot receive this drop.");
+        return;
+      }
+      const res = await transact(actions);
+      setTx(txIdFromResult(res) || "ok");
+      setMsg("Test send");
+      setWallet((cur) =>
+        (cur ?? []).map((row) =>
+          tokenKey(row.contract, row.symbol) === dropKey ? { ...row, balanceRaw: fresh - debit } : row
+        )
+      );
+    } catch (err) {
+      const text = txErrorMessage(err);
+      const hint = hintForError(text);
+      setMsg(hint ? `${text} - ${hint}` : text);
+    } finally {
+      setSigning(false);
+    }
+  };
+
   const checked = visible.filter(
     (row) => priced && row.amountRaw > 0n && !excluded.has(row.account) && !sent.has(row.account)
   );
@@ -305,7 +392,7 @@ export function AirdropPanel(props: {
         setWallet((cur) =>
           (cur ?? []).map((row) => (tokenKey(row.contract, row.symbol) === dropKey ? { ...row, balanceRaw: fresh } : row))
         );
-        setMsg("Your balance does not cover this batch plus tax. Lower the budget or uncheck accounts.");
+        setMsg("Your balance does not cover this batch plus tax. Lower the amount or uncheck accounts.");
         return;
       }
       const res = await transact(
@@ -355,20 +442,26 @@ export function AirdropPanel(props: {
         <p className="text-sm text-muted-foreground">
           You cover the RAM for receivers who do not already hold the token you drop.
         </p>
-        <button type="button" className="link text-xs" onClick={() => void loadWallet()}>
-          Refresh balances
-        </button>
+        {actor ? (
+          <button type="button" className="link text-xs" onClick={() => void loadWallet()}>
+            Refresh balances
+          </button>
+        ) : (
+          <button type="button" className="link text-xs" onClick={onConnect}>
+            Connect wallet
+          </button>
+        )}
       </div>
       {walletError ? <p className="text-sm text-destructive">{walletError}</p> : null}
 
       <Field
         label="Token to drop"
-        hint="Your issued tokens are listed first. Also EASY, WON, GRAMS, MEME, XPR, LOAN, and METAL when you hold a balance."
+        hint="Issued tokens are listed first, then any balance you hold from the saved list."
       >
         <select
           className="input"
           value={dropKey}
-          disabled={frozen != null}
+          disabled={frozen != null || !actor}
           onChange={(e) => {
             setDropKey(e.target.value);
             setBudget("");
@@ -376,7 +469,8 @@ export function AirdropPanel(props: {
             setMsg("");
           }}
         >
-          {wallet && wallet.length === 0 ? <option value="">No eligible balance</option> : null}
+          {!actor ? <option value="">Connect to see balances</option> : null}
+          {actor && wallet && wallet.length === 0 ? <option value="">No eligible balance</option> : null}
           {(wallet ?? []).map((row) => (
             <option key={tokenKey(row.contract, row.symbol)} value={tokenKey(row.contract, row.symbol)}>
               {row.owned ? "Yours · " : ""}
@@ -386,7 +480,7 @@ export function AirdropPanel(props: {
         </select>
       </Field>
 
-      <Field label="Drop to holders of">
+      <Field label="Drop to holders of" hint="X tokens, plus tokens with over $100 of XPR in an Alcor pool. That list is saved.">
         <select className="input" value={audienceKey} disabled={frozen != null} onChange={(e) => setAudienceKey(e.target.value)}>
           {audienceOptions.map((row) => (
             <option key={tokenKey(row.contract, row.symbol)} value={tokenKey(row.contract, row.symbol)}>
@@ -398,7 +492,16 @@ export function AirdropPanel(props: {
       </Field>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label="Airdrop budget" hint={drop ? `Total ${drop.symbol} receivers get. Leftover from rounding stays with you.` : "Pick a token first."}>
+        <Field
+          label={mode === "uniform" ? "Per account drop" : "Total drop"}
+          hint={
+            !drop
+              ? "Pick a token first."
+              : mode === "uniform"
+                ? `Each account receives this much ${drop.symbol}.`
+                : `Split this ${drop.symbol} by holding size.`
+          }
+        >
           <input
             className="input font-mono"
             inputMode="decimal"
@@ -426,7 +529,7 @@ export function AirdropPanel(props: {
         <div className="mb-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <span className="label mb-0">Distribution</span>
           <button type="button" className={`text-[11px] uppercase tracking-[0.22em] ${mode === "uniform" ? "text-primary" : "text-muted-foreground hover:text-foreground/80"}`} disabled={frozen != null} onClick={() => setMode("uniform")}>
-            Uniform
+            Simple
           </button>
           <button type="button" className={`text-[11px] uppercase tracking-[0.22em] ${mode === "proportional" ? "text-primary" : "text-muted-foreground hover:text-foreground/80"}`} disabled={frozen != null} onClick={() => setMode("proportional")}>
             Proportional
@@ -434,7 +537,7 @@ export function AirdropPanel(props: {
         </div>
         <p className="text-xs text-muted-foreground">
           {mode === "uniform"
-            ? "Each account gets the same amount, set from the budget and the account count."
+            ? "Each account receives the amount you enter."
             : "Each account's share follows their balance over the whole list. Later batches keep those amounts."}
         </p>
       </div>
@@ -448,10 +551,38 @@ export function AirdropPanel(props: {
         />
       </Field>
 
+      <div>
+        <button type="button" className="link text-xs" onClick={() => setTestOpen((v) => !v)}>
+          Test send
+        </button>
+        {testOpen ? (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-muted-foreground">Test with a dust send to see how your memo works</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                className="input max-w-[16rem] font-mono"
+                value={testTo}
+                placeholder="account"
+                disabled={frozen != null}
+                onChange={(e) => setTestTo(e.target.value.toLowerCase().replace(/[^a-z1-5.]/g, "").slice(0, 12))}
+              />
+              <button
+                type="button"
+                className="btn btn-sm"
+                disabled={signing || !drop || !actor || !validAccount(testTo.trim())}
+                onClick={() => void testSend()}
+              >
+                {signing ? "Signing…" : "Send"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-xs text-muted-foreground">
           {ramFit == null ? (
-            "Reading your free RAM."
+            actor ? "Reading your free RAM." : "Connect to read free RAM."
           ) : (
             <>
               Free RAM can open about {ramFit.toLocaleString()} new holder rows.{" "}
@@ -473,11 +604,11 @@ export function AirdropPanel(props: {
             The estimate divides free RAM by about {drop ? ramPerNewHolder(drop.contract).toLocaleString() : "360"} bytes for a new balance and holder row. It is a ceiling. If a transfer fails for RAM, buy storage and sign that batch again.
           </p>
           <p>You sign each batch yourself. One transaction sends to the checked accounts, 100 at a time.</p>
-          <p>Unchecking an account skips it. Amounts stay as they were set from the budget and the account count.</p>
+          <p>Unchecking an account skips it. Simple sends the per account amount to each checked account. Proportional amounts stay fixed from the total and the list.</p>
           <p>Wallet to wallet transfers can add tax on top of what the receiver gets. Your balance has to cover the send plus that tax. Fee opt-out skips the tax.</p>
           <p>Your own account, the token contract, and swap.alcor are left off. A transfer to yourself fails, and those accounts do not take a plain drop.</p>
           <p>
-            Balances, RAM, and tax are read from EOSUSA. Holder ranks come from the Light API, because EOSUSA does not publish that list. Flex holder rows past the Light API cap of 1,000 are filled from EOSUSA. XPR, LOAN, and METAL stop at that cap. If the signature fails for CPU or NET, stake more on{" "}
+            Balances, RAM, and tax are read from EOSUSA. Holder ranks come from the Light API, because EOSUSA does not publish that list. Flex holder rows past the Light API cap of 1,000 are filled from EOSUSA. Tokens without a flexer table stop at that cap. If the signature fails for CPU or NET, stake more on{" "}
             <a className="link" href={RESOURCES_URL} target="_blank" rel="noreferrer">
               XPR resources
             </a>
@@ -486,14 +617,14 @@ export function AirdropPanel(props: {
         </div>
       ) : null}
 
-      {plan && drop && priced && plan.length > 0 && plan.every((row) => row.amountRaw <= 0n) ? (
-        <p className="text-xs text-muted-foreground">That budget is smaller than one unit for each account.</p>
+      {plan && drop && priced && mode === "proportional" && plan.length > 0 && plan.every((row) => row.amountRaw <= 0n) ? (
+        <p className="text-xs text-muted-foreground">That total is smaller than one unit for each account.</p>
       ) : plan && drop && priced ? (
         <p className="text-xs text-muted-foreground">
           {mode === "uniform"
-            ? `Each account receives ${formatRawPretty(plan[0]?.amountRaw ?? 0n, drop.precision, drop.symbol)}.`
+            ? `Each account receives ${formatRawFace(plan[0]?.amountRaw ?? 0n, drop.precision, drop.symbol)}.`
             : `Shares are fixed across ${plan.length.toLocaleString()} accounts.`}{" "}
-          Planned send {formatRawPretty(plan.reduce((sum, row) => sum + row.amountRaw, 0n), drop.precision, drop.symbol)}.
+          Planned send {formatRawFace(shownSum, drop.precision, drop.symbol)}.
           {frozen ? (
             <>
               {" "}
@@ -567,8 +698,11 @@ export function AirdropPanel(props: {
             <button type="button" className="link text-xs" onClick={checkBatch}>
               Check batch
             </button>
+            <button type="button" className="link text-xs" onClick={uncheckBatch}>
+              Uncheck
+            </button>
           </div>
-          <ul className="max-h-80 overflow-auto rounded-xl border border-border">
+          <ul ref={listRef} className="h-80 min-h-32 max-h-[80vh] resize-y overflow-auto rounded-xl border border-border">
             {visible.map((row) => (
               <HolderRow
                 key={row.account}
@@ -582,6 +716,18 @@ export function AirdropPanel(props: {
               />
             ))}
           </ul>
+          <div className="mt-1 flex justify-end">
+            <button
+              type="button"
+              className="text-[10px] text-muted-foreground/60 hover:text-muted-foreground"
+              onClick={() => {
+                const el = listRef.current;
+                if (el) el.style.height = "80vh";
+              }}
+            >
+              expand
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -597,7 +743,7 @@ export function AirdropPanel(props: {
       </div>
       {tx ? (
         <p className="text-xs text-muted-foreground">
-          Airdrop · <TxLink tx={tx} />
+          {msg === "Test send" ? "Test send" : "Airdrop"} · <TxLink tx={tx} />
         </p>
       ) : msg ? (
         <p className="text-xs text-muted-foreground">{msg}</p>

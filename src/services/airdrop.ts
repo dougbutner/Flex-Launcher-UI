@@ -9,6 +9,7 @@ import {
   XPR_SYMBOL,
   XTOKENS,
 } from "@/config/launch";
+import { AIRDROP_AUDIENCES } from "@/data/airdropAudiences";
 import { formatSupplyCommas, parseAsset, parseSupplyInput, validAccount, validSymbol } from "@/services/assets";
 import type { ChainAction } from "@/services/launchActions";
 import { rpcPost } from "@/services/rpc";
@@ -64,13 +65,16 @@ export function tokenKey(contract: string, symbol: string): string {
   return `${contract}:${symbol.trim().toUpperCase()}`;
 }
 
+const AUDIENCE_KEYS = new Set(AIRDROP_AUDIENCES.map((row) => `${row.contract}:${row.symbol}`));
+
 export function isDroppableToken(contract: string, symbol: string): boolean {
   const code = contract.trim();
   const sym = symbol.trim().toUpperCase();
   if (!validSymbol(sym)) return false;
   if (programFromAccount(code)) return true;
   if (PROJECT_CORE_TOKENS.some((t) => t.contract === code && t.symbol === sym)) return true;
-  return SEND_EXTRAS.some((t) => t.contract === code && t.symbol === sym);
+  if (SEND_EXTRAS.some((t) => t.contract === code && t.symbol === sym)) return true;
+  return AUDIENCE_KEYS.has(`${code}:${sym}`);
 }
 
 /** Flexer book we can walk on EOSUSA. XPR, LOAN, and METAL have no such table. */
@@ -161,6 +165,11 @@ export function formatRawPretty(raw: bigint, precision: number, symbol: string):
   return `${formatSupplyCommas(parsed.amount)} ${parsed.symbol}`;
 }
 
+/** User-facing amount. Trailing zeros from token precision are left off. */
+export function formatRawFace(raw: bigint, precision: number, symbol: string): string {
+  return formatRawPretty(raw, precision, symbol).replace(/(\.\d*?)0+(?= )/, "$1").replace(/\.(?= )/, "");
+}
+
 export function keepHolder(account: string, sender: string, contracts: readonly string[]): boolean {
   const name = account.trim();
   if (!validAccount(name)) return false;
@@ -193,8 +202,7 @@ export function planDrop(mode: DropMode, budgetRaw: bigint, holders: AirdropHold
     return holders.map((h) => ({ ...h, amountRaw: 0n }));
   }
   if (mode === "uniform") {
-    const each = budgetRaw / BigInt(holders.length);
-    return holders.map((h) => ({ ...h, amountRaw: each }));
+    return holders.map((h) => ({ ...h, amountRaw: budgetRaw }));
   }
   const total = holders.reduce((sum, h) => sum + (h.weightRaw > 0n ? h.weightRaw : 0n), 0n);
   if (total <= 0n) return holders.map((h) => ({ ...h, amountRaw: 0n }));

@@ -358,22 +358,35 @@ export default function Manager() {
         <h1 className="text-3xl font-black tracking-tight">Dev Tools</h1>
         <WinnerTextLink label="Metadata" active={started && tool === "meta"} disabled={!started} title={toolTitle} onClick={() => setTool("meta")} />
         <WinnerTextLink label="Adjust Tax" active={started && tool === "tax"} disabled={!started} title={toolTitle} onClick={() => setTool("tax")} />
-        <WinnerTextLink label="Airdrop" active={started && tool === "airdrop"} disabled={!started} title={toolTitle} onClick={() => setTool("airdrop")} />
+        <WinnerTextLink label="Airdrop" active={tool === "airdrop"} onClick={() => setTool("airdrop")} />
         <WinnerTextLink label="Presale" active={started && tool === "presale"} disabled={!started} title={toolTitle} onClick={() => setTool("presale")} />
       </div>
 
-      {!isLoggedIn || !actor ? (
+      {tool === "airdrop" ? (
+        <>
+          {isLoggedIn && actor ? (
+            <button
+              type="button"
+              className="mt-3 text-left text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+              disabled={busy}
+              onClick={() => void load()}
+            >
+              {busy ? "Loading…" : "Refresh"}
+            </button>
+          ) : null}
+          {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
+          <AirdropPanel actor={actor || ""} issued={issued} transact={transact} onConnect={() => void addWebAuthWallet()} />
+        </>
+      ) : !isLoggedIn || !actor ? (
         <>
           <p className="mt-2 text-sm text-muted-foreground">
-            Connect the issuer account that already signed create. Token links stay inactive until that account has a token.
+            Connect the issuer account that already signed create. Metadata, tax, and presale stay inactive until that account has a token.
           </p>
           <button type="button" className="btn btn-primary mt-6" onClick={() => void addWebAuthWallet()}>
             Connect Wallet
           </button>
         </>
-      ) : null}
-
-      {isLoggedIn && actor ? (
+      ) : (
       <>
       <button
         type="button"
@@ -398,8 +411,6 @@ export default function Manager() {
             Go to Launch
           </Link>
         </div>
-      ) : tool === "airdrop" ? (
-        <AirdropPanel actor={actor} issued={issued} transact={transact} />
       ) : tool === "presale" && view ? (
         <section className="card mt-2 space-y-5 p-6">
           <div>
@@ -716,7 +727,7 @@ export default function Manager() {
         </>
       )}
       </>
-      ) : null}
+      )}
     </div>
   );
 }

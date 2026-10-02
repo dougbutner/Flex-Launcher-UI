@@ -7,6 +7,7 @@ import {
   budgetToRaw,
   clampMemo,
   debitForSend,
+  formatRawFace,
   holdersFitInRam,
   holderTableScope,
   isDroppableToken,
@@ -30,7 +31,8 @@ describe("airdrop", () => {
     expect(isDroppableToken("eosio.token", "XPR")).toBe(true);
     expect(isDroppableToken("loan.token", "LOAN")).toBe(true);
     expect(isDroppableToken("xtokens", "METAL")).toBe(true);
-    expect(isDroppableToken("xtokens", "XUSDC")).toBe(false);
+    expect(isDroppableToken("xtokens", "XUSDC")).toBe(true);
+    expect(isDroppableToken("electronteam", "DANK")).toBe(true);
     expect(isDroppableToken("mon3y", "NOPE")).toBe(false);
   });
 
@@ -40,7 +42,7 @@ describe("airdrop", () => {
     expect(holderTableScope("fl3x", "geasy")).toBe("GEASY");
   });
 
-  it("splits a uniform budget once, and leaves the remainder", () => {
+  it("gives every account the same per-account amount", () => {
     const plan = planDrop(
       "uniform",
       1000n,
@@ -50,9 +52,10 @@ describe("airdrop", () => {
         { account: "c", weightRaw: 1n },
       ]
     );
-    expect(plan.map((row) => row.amountRaw)).toEqual([333n, 333n, 333n]);
-    expect(batchOf(plan, 0, 2).map((row) => row.amountRaw)).toEqual([333n, 333n]);
-    expect(batchOf(plan, 1, 2).map((row) => row.amountRaw)).toEqual([333n]);
+    expect(plan.map((row) => row.amountRaw)).toEqual([1000n, 1000n, 1000n]);
+    expect(plan.reduce((sum, row) => sum + row.amountRaw, 0n)).toBe(3000n);
+    expect(batchOf(plan, 0, 2).map((row) => row.amountRaw)).toEqual([1000n, 1000n]);
+    expect(batchOf(plan, 1, 2).map((row) => row.amountRaw)).toEqual([1000n]);
   });
 
   it("fixes proportional amounts from the full set so later batches stay put", () => {
@@ -100,6 +103,8 @@ describe("airdrop", () => {
     expect(holdersFitInRam(0, 280)).toBe(0);
     expect(budgetToRaw("1.5", 4)).toBe(15_000n);
     expect(budgetToRaw("0", 4)).toBeNull();
+    expect(formatRawFace(4_200_000_000n, 6, "GEASY")).toBe("4,200 GEASY");
+    expect(formatRawFace(4_199_999_916n, 6, "GEASY")).toBe("4,199.999916 GEASY");
   });
 
   it("builds one transfer per checked positive amount", () => {
