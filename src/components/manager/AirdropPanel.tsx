@@ -27,6 +27,7 @@ import {
   readBalanceRaw,
   readDropTax,
   readFreeRam,
+  readHoldingAccounts,
   sortOwnedFirst,
   tokenKey,
   utf8Bytes,
@@ -39,6 +40,7 @@ import {
 } from "@/services/airdrop";
 import type { ChainAction } from "@/services/launchActions";
 import { getTokens } from "@/services/rpc";
+import { readVerifiedAccounts } from "@/services/protonProfile";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 const STORAGE_URL = "https://resources.xprnetwork.org/storage";
@@ -118,6 +120,10 @@ export function AirdropPanel(props: {
   const [progress, setProgress] = useState(0);
   const [truncated, setTruncated] = useState(false);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const [pick, setPick] = useState<"" | "exclude" | "only">("");
+  const [kyc, setKyc] = useState(false);
+  const [alsoKey, setAlsoKey] = useState("");
+  const [scan, setScan] = useState("");
   const [sent, setSent] = useState<Set<string>>(new Set());
   const [batch, setBatch] = useState(0);
   const [freeRam, setFreeRam] = useState<number | null>(null);
@@ -131,6 +137,8 @@ export function AirdropPanel(props: {
   const [testOpen, setTestOpen] = useState(false);
   const [testTo, setTestTo] = useState("");
   const listRef = useRef<HTMLUListElement>(null);
+  const heldRef = useRef(new Map<string, Set<string>>());
+  const kycRef = useRef<{ key: string; accounts: Set<string> } | null>(null);
 
   const issuedKey = issued.map((row) => tokenKey(row.contract, row.symbol)).join("|");
 
@@ -282,6 +290,72 @@ export function AirdropPanel(props: {
     return () => ctrl.abort();
   }, [audience?.contract, audience?.symbol, audience?.precision, drop?.contract, count, actor]);
 
+  useEffect(() => {
+    if (!holders || (!pick && !kyc && !alsoKey)) return;
+    const rows = holders;
+    const names = rows.map((row) => row.account);
+    const listKey = names.join(",");
+    const also = alsoKey ? audienceOptions.find((row) => tokenKey(row.contract, row.symbol) === alsoKey) ?? null : null;
+    const dropSame =
+      Boolean(pick && drop && audience) && tokenKey(drop!.contract, drop!.symbol) === tokenKey(audience!.contract, audience!.symbol);
+    const alsoSame = Boolean(also && audience) && tokenKey(also!.contract, also!.symbol) === tokenKey(audience!.contract, audience!.symbol);
+    const ctrl = new AbortController();
+    const held = async (token: { contract: string; symbol: string; precision: number }) => {
+      const key = `${tokenKey(token.contract, token.symbol)}|${listKey}`;
+      const hit = heldRef.current.get(key);
+      if (hit) return hit;
+      const have = await readHoldingAccounts({
+        contract: token.contract,
+        symbol: token.symbol,
+        precision: token.precision,
+        accounts: names,
+        signal: ctrl.signal,
+      });
+      heldRef.current.set(key, have);
+      return have;
+    };
+    void (async () => {
+      try {
+        const jobs: Promise<void>[] = [];
+        let dropSet: Set<string> | null = dropSame ? new Set(names) : null;
+        let alsoSet: Set<string> | null = alsoSame ? new Set(names) : null;
+        let verified: Set<string> | null = null;
+        if ((pick && drop && !dropSame) || (also && !alsoSame) || kyc) setScan("Reading…");
+        if (pick && drop && !dropSame) jobs.push(held(drop).then((set) => { dropSet = set; }));
+        if (also && !alsoSame) jobs.push(held(also).then((set) => { alsoSet = set; }));
+        if (kyc) {
+          const hit = kycRef.current;
+          jobs.push(
+            (hit && hit.key === listKey ? Promise.resolve(hit.accounts) : readVerifiedAccounts(names, ctrl.signal)).then((set) => {
+              kycRef.current = { key: listKey, accounts: set };
+              verified = set;
+            })
+          );
+        }
+        await Promise.all(jobs);
+        if (ctrl.signal.aborted) return;
+        setScan("");
+        setExcluded(() => {
+          const next = new Set<string>();
+          for (const row of rows) {
+            const holdsDrop = dropSet ? dropSet.has(row.account) : false;
+            let skip = false;
+            if (pick === "exclude" && holdsDrop) skip = true;
+            if (pick === "only" && drop && !holdsDrop) skip = true;
+            if (kyc && verified && !verified.has(row.account)) skip = true;
+            if (also && alsoSet && !alsoSet.has(row.account)) skip = true;
+            if (skip) next.add(row.account);
+          }
+          return next;
+        });
+      } catch (err) {
+        if (ctrl.signal.aborted || (err instanceof DOMException && err.name === "AbortError")) return;
+        setScan(txErrorMessage(err));
+      }
+    })();
+    return () => ctrl.abort();
+  }, [pick, kyc, alsoKey, holders, drop, audience, audienceOptions]);
+
   const livePlan = useMemo(() => (holders ? planDrop(mode, budgetRaw ?? 0n, holders) : null), [holders, budgetRaw, mode]);
   const plan = frozen ?? livePlan;
   const priced = budgetRaw != null;
@@ -298,7 +372,15 @@ export function AirdropPanel(props: {
   const visible = plan ? batchOf(plan, page) : [];
   const ramFit = freeRam == null || !drop ? null : holdersFitInRam(freeRam, ramPerNewHolder(drop.contract));
 
+  const release = () => {
+    setPick("");
+    setKyc(false);
+    setAlsoKey("");
+    setScan("");
+  };
+
   const toggle = (account: string) => {
+    release();
     setExcluded((cur) => {
       const next = new Set(cur);
       if (next.has(account)) next.delete(account);
@@ -308,6 +390,7 @@ export function AirdropPanel(props: {
   };
 
   const checkBatch = () => {
+    release();
     setExcluded((cur) => {
       const next = new Set(cur);
       for (const row of visible) next.delete(row.account);
@@ -316,11 +399,22 @@ export function AirdropPanel(props: {
   };
 
   const uncheckBatch = () => {
+    release();
     setExcluded((cur) => {
       const next = new Set(cur);
       for (const row of visible) next.add(row.account);
       return next;
     });
+  };
+
+  const choose = (next: "exclude" | "only") => {
+    setScan("");
+    if (pick === next) {
+      setPick("");
+      if (!kyc && !alsoKey) setExcluded(new Set());
+      return;
+    }
+    setPick(next);
   };
 
   const testSend = async () => {
@@ -477,7 +571,7 @@ export function AirdropPanel(props: {
 
       <Field
         label="Token to drop"
-        hint="Issued tokens are listed first, then any balance you hold from the saved list."
+        hint="Your tokens are listed first."
       >
         <select
           className="input"
@@ -501,7 +595,7 @@ export function AirdropPanel(props: {
         </select>
       </Field>
 
-      <Field label="Drop to holders of" hint="X tokens, plus tokens with over $100 of XPR in an Alcor pool. That list is saved.">
+      <Field label="Drop to holders of" hint="Holders of this token receive the drop.">
         <select className="input" value={audienceKey} disabled={frozen != null} onChange={(e) => setAudienceKey(e.target.value)}>
           {audienceOptions.map((row) => (
             <option key={tokenKey(row.contract, row.symbol)} value={tokenKey(row.contract, row.symbol)}>
@@ -625,10 +719,13 @@ export function AirdropPanel(props: {
           </p>
           <p>You sign each batch yourself. One transaction sends to the checked accounts, 100 at a time.</p>
           <p>Unchecking an account skips it. Simple sends the per account amount to each checked account. Proportional amounts stay fixed from the total and the list.</p>
+          <p>Exclude holders unchecks anyone who already has any balance of the token you are dropping.</p>
+          <p>Holders only checks people who already hold the token you are dropping, and unchecks the rest. The drop goes to people who already hold that token.</p>
+          <p>Both only change which boxes are checked. Amounts stay as they are.</p>
           <p>Wallet to wallet transfers can add tax on top of what the receiver gets. Your balance has to cover the send plus that tax. Fee opt-out skips the tax.</p>
           <p>Your own account, the token contract, swap.alcor, and vibrrairdrop are left off. A transfer to yourself fails. vibrrairdrop only accepts memo create_airdrop, or airdrop_deposit:&lt;id&gt;.</p>
           <p>
-            Balances, RAM, and tax are read from EOSUSA. Holder ranks come from the Light API, because EOSUSA does not publish that list. Flex holder rows past the Light API cap of 1,000 are filled from EOSUSA. Tokens without a flexer table stop at that cap. If the signature fails for CPU or NET, stake more on{" "}
+            If signing fails because the account is out of CPU or NET, stake more on{" "}
             <a className="link" href={RESOURCES_URL} target="_blank" rel="noreferrer">
               XPR resources
             </a>
@@ -656,6 +753,10 @@ export function AirdropPanel(props: {
                   setFrozen(null);
                   setSent(new Set());
                   setExcluded(new Set());
+                  setPick("");
+                  setKyc(false);
+                  setAlsoKey("");
+                  setScan("");
                   setBatch(0);
                   setTx("");
                   setMsg("");
@@ -681,7 +782,7 @@ export function AirdropPanel(props: {
       {holdersMsg ? <p className="text-xs text-muted-foreground">{holdersMsg}</p> : null}
       {truncated ? (
         <p className="text-xs text-warning">
-          Light API ranks the top 1,000. This pass did not read every holder row, so ranks after 1,000 can miss a larger balance.
+          This list stops at 1,000 holders. Someone further down could hold more than the last name shown.
         </p>
       ) : null}
       {shortBalance && drop ? (
@@ -723,6 +824,70 @@ export function AirdropPanel(props: {
             </button>
           </div>
           <ul ref={listRef} className="h-80 min-h-32 max-h-[80vh] resize-y overflow-auto rounded-xl border border-border">
+            <li className="sticky top-0 z-10 border-b border-border bg-card px-2 py-2 text-xs">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 shrink-0"
+                    checked={kyc}
+                    disabled={!holders || holdersBusy}
+                    onChange={() => {
+                      setScan("");
+                      if (kyc) {
+                        setKyc(false);
+                        if (!pick && !alsoKey) setExcluded(new Set());
+                        return;
+                      }
+                      setKyc(true);
+                    }}
+                  />
+                  KYCd
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 shrink-0"
+                    checked={pick === "exclude"}
+                    disabled={!holders || holdersBusy || !drop}
+                    onChange={() => choose("exclude")}
+                  />
+                  Exclude holders
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 shrink-0"
+                    checked={pick === "only"}
+                    disabled={!holders || holdersBusy || !drop}
+                    onChange={() => choose("only")}
+                  />
+                  Holders only
+                </label>
+                <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  also holds
+                  <select
+                    className="input !h-6 !w-[6.5rem] shrink-0 !px-1 !py-0 !text-[11px]"
+                    value={alsoKey}
+                    disabled={!holders || holdersBusy}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setScan("");
+                      setAlsoKey(value);
+                      if (!value && !pick && !kyc) setExcluded(new Set());
+                    }}
+                  >
+                    <option value="">-</option>
+                    {audienceOptions.map((row) => (
+                      <option key={tokenKey(row.contract, row.symbol)} value={tokenKey(row.contract, row.symbol)}>
+                        {row.symbol}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {scan ? <span className="text-muted-foreground">{scan}</span> : null}
+              </div>
+            </li>
             {visible.map((row) => (
               <HolderRow
                 key={row.account}
@@ -755,7 +920,7 @@ export function AirdropPanel(props: {
         <button
           type="button"
           className="btn btn-airdrop"
-          disabled={signing || holdersBusy || !drop || !checked.length || shortBalance || count == null || budgetRaw == null}
+          disabled={signing || holdersBusy || scan === "Reading…" || !drop || !checked.length || shortBalance || count == null || budgetRaw == null}
           onClick={() => void sign()}
         >
           <span>{signing ? "Signing…" : "Airdrop"}</span>

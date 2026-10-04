@@ -19,6 +19,7 @@ if (!is_file($configFile)) {
 require $configFile;
 require $root . "/lib/db.php";
 require $root . "/lib/accounts.php";
+require $root . "/lib/logos.php";
 require $root . "/lib/manager.php";
 require $root . "/lib/insiders.php";
 require $root . "/lib/cache.php";
@@ -52,6 +53,15 @@ if ($method === "OPTIONS") {
 }
 
 try {
+    if ($method === "POST" && request_path() === "/api/logo") {
+        logo_save();
+        exit;
+    }
+    $logo = logo_match(request_path());
+    if ($logo && $method === "GET") {
+        logo_send($logo["contract"], $logo["symbol"], $logo["cid"], query_param("url"));
+        exit;
+    }
     $pair = dispatch_api($cfg, db_connect($cfg));
     send_json($pair[0], $pair[1]);
 } catch (InvalidArgumentException $e) {

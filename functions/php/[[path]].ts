@@ -14,10 +14,13 @@ export async function onRequest(context: PagesContext) {
   if (req.method !== "GET" && req.method !== "HEAD") init.body = await req.arrayBuffer();
   try {
     const res = await fetch(`${origin}${rest}${url.search}`, init);
-    return new Response(res.body, {
-      status: res.status,
-      headers: { "Content-Type": res.headers.get("Content-Type") || "application/json; charset=utf-8" },
-    });
+    const out = new Headers();
+    for (const name of ["Content-Type", "Cache-Control", "X-Content-Type-Options", "Content-Security-Policy"]) {
+      const value = res.headers.get(name);
+      if (value) out.set(name, value);
+    }
+    if (!out.has("Content-Type")) out.set("Content-Type", "application/json; charset=utf-8");
+    return new Response(res.body, { status: res.status, headers: out });
   } catch {
     return Response.json({ error: "Club API is unreachable." }, { status: 502 });
   }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { rememberRemoteTokenIcon, tokenIconSrc } from "@/services/tokenIcons";
+import { localLogoSrc, localTokenIconSrc, rememberRemoteTokenIcon, storeLogoQuiet, tokenIconRemote } from "@/services/tokenIcons";
 
 type Props = {
   symbol: string;
@@ -21,8 +21,12 @@ export function TokenIcon({
   rounded = "full",
   fill = false,
 }: Props) {
-  const src = tokenIconSrc(contract, symbol, srcProp);
+  const remote = tokenIconRemote(contract, symbol, srcProp);
+  const bundled = localTokenIconSrc(contract, symbol);
+  const local = bundled || localLogoSrc(contract, symbol, remote || srcProp);
+  const [missedLocal, setMissedLocal] = useState(false);
   const [broken, setBroken] = useState(false);
+  const src = broken ? undefined : missedLocal && !bundled ? remote : local || remote;
   const letter = (symbol || "?").slice(0, 1).toUpperCase();
   const shape =
     rounded === "full" ? "rounded-full" : rounded === "md" ? "rounded-md" : fill ? "rounded-none" : "rounded-2xl";
@@ -33,10 +37,11 @@ export function TokenIcon({
   }, [contract, srcProp, symbol]);
 
   useEffect(() => {
+    setMissedLocal(false);
     setBroken(false);
-  }, [src]);
+  }, [local, remote]);
 
-  if (!src || broken) {
+  if (!src) {
     if (fill) {
       return (
         <span
@@ -66,8 +71,15 @@ export function TokenIcon({
       alt={symbol}
       width={fill ? undefined : size}
       height={fill ? undefined : size}
+      decoding="async"
       className={`shrink-0 bg-background ${fill ? "h-full w-full object-cover" : "object-contain"} ${shape} ${className}`}
-      onError={() => setBroken(true)}
+      onLoad={() => {
+        if (remote && src === remote) storeLogoQuiet(contract, symbol, remote);
+      }}
+      onError={() => {
+        if (!bundled && remote && src !== remote) setMissedLocal(true);
+        else setBroken(true);
+      }}
     />
   );
 }

@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import type { Plugin, ViteDevServer } from "vite";
 import { dispatch, type RefreshFn } from "./server/dispatch";
+import { fetchLogoFile, formFields, logoRoot, serveLogo, writeLogoBytes } from "./server/logoFile";
 
 const execFileAsync = promisify(execFile);
 const PREFIXES = ["/api/manager", "/api/insiders", "/api/site", "/api/cache", "/api/txs", "/api/admin"];
@@ -20,7 +21,7 @@ function send(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body ?? {}));
 }
 
-async function readBody(req: IncomingMessage, cap: number): Promise<string> {
+async function readRaw(req: IncomingMessage, cap: number): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let n = 0;
   for await (const chunk of req) {
@@ -29,11 +30,57 @@ async function readBody(req: IncomingMessage, cap: number): Promise<string> {
     if (n > cap) throw new Error("Body too large.");
     chunks.push(buf);
   }
-  return Buffer.concat(chunks).toString("utf8");
+  return Buffer.concat(chunks);
 }
 
 function wants(pathname: string) {
   return PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function quiet(res: ServerResponse) {
+  if (res.headersSent) return;
+  res.statusCode = 204;
+  res.end();
+}
+
+async function sendLogo(res: ServerResponse, pathname: string, rawUrl: string) {
+  const file = await serveLogo(pathname, rawUrl);
+  if (!file) {
+    send(res, 404, { error: "Missing logo." });
+    return;
+  }
+  res.statusCode = 200;
+  res.setHeader("Content-Type", file.type);
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Security-Policy", "default-src 'none'");
+  res.end(file.body);
+}
+
+async function saveLogo(req: IncomingMessage, res: ServerResponse) {
+  try {
+    const type = String(req.headers["content-type"] || "");
+    const raw = await readRaw(req, 1_200_000);
+    if (type.includes("multipart/form-data")) {
+      const form = formFields(raw, type);
+      const contract = String(form.fields.contract || "").trim().toLowerCase();
+      const symbol = String(form.fields.symbol || "").trim().toUpperCase();
+      const cid = String(form.fields.cid || "").trim();
+      if (form.file) await writeLogoBytes(logoRoot(), contract, symbol, cid, form.file);
+    } else {
+      const body = JSON.parse(raw.toString("utf8")) as { contract?: string; symbol?: string; cid?: string; url?: string };
+      await fetchLogoFile(
+        logoRoot(),
+        String(body.contract || "").trim().toLowerCase(),
+        String(body.symbol || "").trim().toUpperCase(),
+        String(body.cid || "").trim(),
+        String(body.url || "")
+      );
+    }
+  } catch {
+    /* quiet */
+  }
+  quiet(res);
 }
 
 function mergedEnv(extra: Record<string, string>): Record<string, string | undefined> {
@@ -60,7 +107,7 @@ async function handle(
     return;
   }
   const method = req.method || "GET";
-  const text = method === "GET" || method === "HEAD" ? "" : await readBody(req, 64_000);
+  const text = method === "GET" || method === "HEAD" ? "" : (await readRaw(req, 64_000)).toString("utf8");
   const request = new Request(`http://localhost${req.url}`, {
     method,
     headers: { "content-type": req.headers["content-type"] || "application/json" },
@@ -90,6 +137,16 @@ export function flexDbPlugin(env: Record<string, string>): Plugin {
       });
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url || "/", "http://localhost");
+        if (url.pathname === "/api/logo" && (req.method || "GET") === "POST") {
+          void saveLogo(req, res);
+          return;
+        }
+        if (url.pathname.startsWith("/api/logo/")) {
+          void sendLogo(res, url.pathname, url.searchParams.get("url") || "").catch((err) =>
+            send(res, 500, { error: err instanceof Error ? err.message : String(err) })
+          );
+          return;
+        }
         if (!wants(url.pathname)) {
           next();
           return;
@@ -108,6 +165,16 @@ export function flexDbPlugin(env: Record<string, string>): Plugin {
     configurePreviewServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url || "/", "http://localhost");
+        if (url.pathname === "/api/logo" && (req.method || "GET") === "POST") {
+          void saveLogo(req, res);
+          return;
+        }
+        if (url.pathname.startsWith("/api/logo/")) {
+          void sendLogo(res, url.pathname, url.searchParams.get("url") || "").catch((err) =>
+            send(res, 500, { error: err instanceof Error ? err.message : String(err) })
+          );
+          return;
+        }
         if (!wants(url.pathname)) {
           next();
           return;

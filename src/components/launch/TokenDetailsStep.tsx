@@ -11,6 +11,7 @@ import { CONTRACT_DOCS } from "@/content/flexContractDocs";
 import { LAUNCH_GUIDE_PARAS } from "@/content/launchGuide";
 import { formatSupplyCommas, parseSupplyInput, validSymbol } from "@/services/assets";
 import { pinLogoFile } from "@/services/ipfsPin";
+import { storeLogoFile } from "@/services/tokenIcons";
 import { defaultTaxDraft } from "@/services/taxRates";
 import { TOKEN_PROTON_TNAME_MAX } from "@/services/tokenProton";
 import { validateTokenLogo, validImageUrl } from "@/services/tokenLogo";
@@ -128,6 +129,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
       const pinned = await pinLogoFile(file);
       URL.revokeObjectURL(local);
       patch({ imageCid: pinned.cid, imageUrl: pinned.url, imageDataUrl: "", pinFailed: false });
+      if (draft.symbol) void storeLogoFile(tokenContract, draft.symbol, pinned.cid, file);
     } catch (err) {
       setLogoErr(txErrorMessage(err));
       setUrlOpen(true);

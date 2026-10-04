@@ -77,7 +77,7 @@ import {
   logoRequestTooltip,
   mergeAdminTokenRefs,
 } from "@/services/listingHelper";
-import { localTokenIconSrc, rememberRemoteTokenIcon, tokenIconKey, tokenIconSrc } from "@/services/tokenIcons";
+import { ipfsCid, localLogoSrc, localTokenIconSrc, rememberRemoteTokenIcon, tokenIconKey, tokenIconSrc } from "@/services/tokenIcons";
 import { hintForError, logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
 import { applyRangeWidth, applyStartMarketCap, fmtPrice, tokenStepValid } from "@/components/launch/draftPlan";
@@ -729,8 +729,16 @@ describe("local token icons", () => {
     expect(localTokenIconSrc("eosio.token", "XPR")).toBe("/tokens/eosio.token/XPR.png");
     expect(localTokenIconSrc("mon3y", "EASY")).toBe("/tokens/easy.png");
     expect(localTokenIconSrc("flexforex", "UUU")).toBeUndefined();
-    rememberRemoteTokenIcon("fl3x", "ZZZ", "https://gateway.pinata.cloud/ipfs/QmZ");
-    expect(tokenIconSrc("fl3x", "ZZZ")).toBe("https://gateway.pinata.cloud/ipfs/QmZ");
+    expect(tokenIconSrc("flexforex", "UUU")).toBeUndefined();
+    rememberRemoteTokenIcon("xtokens", "XBTC", "https://example.com/xbtc.png");
+    expect(tokenIconSrc("xtokens", "XBTC")).toBe("/tokens/xtokens/XBTC.png");
+    const cid = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
+    expect(ipfsCid(`https://gateway.pinata.cloud/ipfs/${cid}`)).toBe(cid);
+    expect(ipfsCid("https://example.com/z.png")).toBe("");
+    rememberRemoteTokenIcon("fl3x", "ZZZ", `https://gateway.pinata.cloud/ipfs/${cid}`);
+    expect(tokenIconSrc("fl3x", "ZZZ")).toBe(`/tokens/fl3x/ZZZ-${cid}.png`);
+    expect(localLogoSrc("fl3x", "ZZZ", `https://gateway.pinata.cloud/ipfs/${cid}`)).toBe(`/tokens/fl3x/ZZZ-${cid}.png`);
+    expect(localLogoSrc("fl3x", "ZZZ", `https://example.com/${cid}.svg`)).toBe(`/tokens/fl3x/ZZZ-${cid}.svg`);
     expect(tokenIconSrc("fl3x", "ZZZ", "https://example.com/z.png")).toBe("https://example.com/z.png");
   });
 });

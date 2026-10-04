@@ -474,6 +474,34 @@ export async function readFreeRam(account: string): Promise<number> {
   return Math.max(0, quota - usage);
 }
 
+/** Accounts in `accounts` that already have any balance of this token. */
+export async function readHoldingAccounts(args: {
+  contract: string;
+  symbol: string;
+  precision: number;
+  accounts: readonly string[];
+  signal?: AbortSignal;
+  onProgress?: (read: number) => void;
+}): Promise<Set<string>> {
+  const have = new Set<string>();
+  const sym = args.symbol.trim().toUpperCase();
+  let done = 0;
+  for (let i = 0; i < args.accounts.length; i += 10) {
+    if (args.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    const slice = args.accounts.slice(i, i + 10);
+    const found = await Promise.all(
+      slice.map(async (account) => {
+        const raw = await readBalanceRaw(args.contract, account, sym, args.precision);
+        return raw > 0n ? account : "";
+      })
+    );
+    for (const account of found) if (account) have.add(account);
+    done += slice.length;
+    args.onProgress?.(done);
+  }
+  return have;
+}
+
 export async function readBalanceRaw(contract: string, account: string, symbol: string, precision: number): Promise<bigint> {
   const data = await eosusaPost<string[] | { error?: unknown }>("/v1/chain/get_currency_balance", {
     code: contract,

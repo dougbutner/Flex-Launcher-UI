@@ -12,7 +12,10 @@ import { flexMeta, hasAngelChannels } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { MANAGER_RESUME_KEY, writeLaunchDraft } from "@/hooks/useLaunchDraft";
 import { listIssuerTokens } from "@/services/issuerTokens";
+import { pinLogoFile } from "@/services/ipfsPin";
 import { listManagerTokens, upsertManagerToken } from "@/services/managerApi";
+import { ipfsCid, storeLogoFile } from "@/services/tokenIcons";
+import { validateTokenLogo } from "@/services/tokenLogo";
 import { draftFromManager } from "@/services/managerDraft";
 import {
   applyManagerMeta,
@@ -255,6 +258,33 @@ export default function Manager() {
     }
   };
 
+  const onLogo = async (file?: File) => {
+    if (!file || !view || !meta || !actor || ipfsCid(meta.imageUrl)) return;
+    const problem = await validateTokenLogo(file);
+    if (problem) {
+      setSaveMsg(problem);
+      return;
+    }
+    try {
+      const pinned = await pinLogoFile(file);
+      const next = { ...meta, imageUrl: pinned.url };
+      setMeta(next);
+      void storeLogoFile(view.token.contract, view.token.symbol, pinned.cid, file);
+      const clean = sanitizeManagerMeta(next);
+      if (typeof clean === "string") return;
+      const saved = await upsertManagerToken(applyManagerMeta(view.token, clean));
+      setViews((prev) =>
+        (prev ?? []).map((v) =>
+          managerTokenKey(v.token.contract, v.token.symbol) === managerTokenKey(saved.contract, saved.symbol)
+            ? { ...v, token: { ...v.token, ...saved } }
+            : v
+        )
+      );
+    } catch {
+      /* quiet */
+    }
+  };
+
   const save = async () => {
     if (!view || !meta || !actor) return;
     const clean = sanitizeManagerMeta(meta);
@@ -433,7 +463,7 @@ export default function Manager() {
                         on ? "border-primary bg-primary/10" : "border-border bg-background/40 hover:border-primary/40"
                       }`}
                     >
-                      <TokenIcon contract={v.token.contract} symbol={v.token.symbol} size={36} rounded="xl" />
+                      <TokenIcon contract={v.token.contract} symbol={v.token.symbol} src={v.token.imageUrl} size={36} rounded="xl" />
                       <span className="min-w-0 flex-1 font-mono text-sm font-bold">
                         {v.token.symbol} <span className="text-muted-foreground">@ {v.token.contract}</span>
                       </span>
@@ -461,7 +491,7 @@ export default function Manager() {
                         on ? "border-primary bg-primary/10" : "border-border bg-background/40 hover:border-primary/40"
                       }`}
                     >
-                      <TokenIcon contract={v.token.contract} symbol={v.token.symbol} size={36} rounded="xl" />
+                      <TokenIcon contract={v.token.contract} symbol={v.token.symbol} src={v.token.imageUrl} size={36} rounded="xl" />
                       <span className="min-w-0 flex-1">
                         <span className="block font-mono text-sm font-bold">
                           {v.token.name || v.token.symbol}{" "}
@@ -486,11 +516,7 @@ export default function Manager() {
           {view && meta ? (
             <section className={`card space-y-5 p-6 ${views.length > 1 ? "mt-6" : "mt-2"}`}>
               <div className="flex items-start gap-4">
-                {meta.imageUrl ? (
-                  <img src={meta.imageUrl} alt="" className="h-16 w-16 rounded-2xl object-cover" />
-                ) : (
-                  <TokenIcon contract={view.token.contract} symbol={view.token.symbol} src={meta.imageUrl} size={64} rounded="xl" />
-                )}
+                <TokenIcon contract={view.token.contract} symbol={view.token.symbol} src={meta.imageUrl} size={64} rounded="xl" />
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-mono text-lg font-bold">${view.token.symbol}</p>
@@ -561,10 +587,18 @@ export default function Manager() {
                   <input className="input" value={meta.farcaster} onChange={(e) => setMeta({ ...meta, farcaster: e.target.value })} />
                 </Field>
               </div>
-              <Field
-                label="Icon URL"
-                hint="Paste a public http(s) image URL. Re-upload to IPFS is not available here."
-              >
+              <Field label="Logo" hint="Square PNG or SVG, or paste an image link.">
+                {ipfsCid(meta.imageUrl) ? null : (
+                  <label className="btn btn-outline btn-sm mb-2 inline-flex cursor-pointer">
+                    Upload logo
+                    <input
+                      type="file"
+                      accept="image/png,image/svg+xml"
+                      className="sr-only"
+                      onChange={(e) => void onLogo(e.target.files?.[0])}
+                    />
+                  </label>
+                )}
                 <input
                   className="input font-mono text-xs"
                   placeholder="https://"

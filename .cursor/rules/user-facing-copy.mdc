@@ -1,0 +1,16 @@
+---
+description: End-user UI copy never includes internal or technical builder notes.
+alwaysApply: true
+---
+
+# End-user copy
+
+Internal, techy copy is NEVER shown to an end user.
+
+Labels, hints, info panels, empty states, buttons, and errors say what the person can do or what will happen. They do not mention how a list was saved, which API answered, snapshot rules, table names, or why a list was built.
+
+Bad: `X tokens, plus tokens with over $100 of XPR in an Alcor pool. That list is saved.`
+
+Good: `Holders of this token receive the drop.`
+
+Skill: `.cursor/skills/user-facing-copy/SKILL.md`.
