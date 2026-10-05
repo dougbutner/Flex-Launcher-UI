@@ -81,26 +81,55 @@ export async function readLogoFile(root: string, contract: string, symbol: strin
   return null;
 }
 
+export function logoRemoteOk(url: string, contract: string, symbol: string, cid: string) {
+  const alcor = `https://raw.githubusercontent.com/alcorexchange/alcor-ui/master/assets/tokens/proton/${symbol.toLowerCase()}_${contract}.png`;
+  const drops = `https://raw.githubusercontent.com/eoscafe/eos-airdrops/master/logos/${symbol.toLowerCase()}-${contract}.png`;
+  if (url === alcor || url === drops) return true;
+  return Boolean(cid) && CID.test(cid) && url.includes(cid);
+}
+
 export async function writeLogoBytes(root: string, contract: string, symbol: string, cid: string, bytes: Buffer) {
   const ext = logoExt(bytes);
-  if (!logoIdOk(contract, symbol, cid) || !ext || bytes.length > MAX_BYTES) return null;
+  if (!validAccount(contract) || !validSymbol(symbol) || (cid !== "" && !CID.test(cid)) || !ext || bytes.length > MAX_BYTES) return null;
   const dir = path.join(root, contract);
   await mkdir(dir, { recursive: true });
-  const dest = path.join(dir, `${symbol}-${cid}.${ext}`);
-  const tmp = path.join(dir, `.${symbol}-${cid}.download`);
+  const tmp = path.join(dir, `.${symbol}.download`);
   await writeFile(tmp, bytes);
-  await rename(tmp, dest);
-  return { body: bytes, type: TYPES[ext] };
+  await rename(tmp, path.join(dir, `${symbol}.${ext}`));
+  if (cid) {
+    const dest = path.join(dir, `${symbol}-${cid}.${ext}`);
+    const cidTmp = path.join(dir, `.${symbol}-${cid}.download`);
+    await writeFile(cidTmp, bytes);
+    await rename(cidTmp, dest);
+  }
+  return { body: bytes, type: TYPES[ext], ext };
+}
+
+async function readPlainLogo(root: string, contract: string, symbol: string) {
+  if (!validAccount(contract) || !validSymbol(symbol)) return null;
+  const dir = path.join(root, contract);
+  for (const ext of Object.keys(TYPES)) {
+    try {
+      const body = await readFile(path.join(dir, `${symbol}.${ext}`));
+      return { body, type: TYPES[ext], ext };
+    } catch {
+      /* next extension */
+    }
+  }
+  return null;
 }
 
 export async function fetchLogoFile(root: string, contract: string, symbol: string, cid: string, rawUrl: string) {
-  const existing = await readLogoFile(root, contract, symbol, cid);
-  if (existing) return existing;
+  if (!validAccount(contract) || !validSymbol(symbol) || (cid !== "" && !CID.test(cid))) return null;
+  const plain = await readPlainLogo(root, contract, symbol);
+  if (plain) return plain;
+  const existing = cid ? await readLogoFile(root, contract, symbol, cid) : null;
+  if (existing) return writeLogoBytes(root, contract, symbol, "", existing.body);
   const url = rawUrl.trim();
-  if (!url.includes(cid) || !(await urlOk(url))) return null;
+  if (!logoRemoteOk(url, contract, symbol, cid) || !(await urlOk(url))) return null;
   try {
     const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(12_000), headers: { "User-Agent": "FlexLauncher/1.0" } });
-    if (!res.ok || !res.body || !res.url.includes(cid) || !(await urlOk(res.url))) return null;
+    if (!res.ok || !res.body || !logoRemoteOk(res.url, contract, symbol, cid) || !(await urlOk(res.url))) return null;
     const chunks: Buffer[] = [];
     let n = 0;
     const reader = res.body.getReader();
@@ -138,6 +167,54 @@ export function formFields(body: Buffer, contentType: string) {
     else out.fields[name] = Buffer.from(payload, "binary").toString("utf8");
   }
   return out;
+}
+
+export async function publishLogo(token: string, contract: string, symbol: string, bytes: Buffer, ext: string) {
+  if (!token || !validAccount(contract) || !validSymbol(symbol) || !TYPES[ext]) return;
+  const markDir = path.resolve(process.cwd(), "data/logo-sync", contract);
+  const mark = path.join(markDir, symbol);
+  try {
+    await readFile(mark);
+    return;
+  } catch {
+    /* not published yet */
+  }
+  const filePath = `public/tokens/${contract}/${symbol}.${ext}`;
+  const content = bytes.toString("base64");
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${token}`,
+    "User-Agent": "flex-launcher",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  try {
+    const got = await fetch(`https://api.github.com/repos/dougbutner/Flex-Launcher-UI/contents/${filePath}?ref=main`, { headers });
+    let sha = "";
+    if (got.ok) {
+      const json = (await got.json()) as { sha?: string; content?: string };
+      if (String(json.content || "").replace(/\n/g, "") === content) {
+        await mkdir(markDir, { recursive: true });
+        await writeFile(mark, "");
+        return;
+      }
+      sha = json.sha || "";
+    } else if (got.status !== 404) return;
+    const put = await fetch(`https://api.github.com/repos/dougbutner/Flex-Launcher-UI/contents/${filePath}`, {
+      method: "PUT",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `Add ${symbol} logo`,
+        content,
+        branch: "main",
+        ...(sha ? { sha } : {}),
+      }),
+    });
+    if (!put.ok) return;
+    await mkdir(markDir, { recursive: true });
+    await writeFile(mark, "");
+  } catch {
+    /* quiet */
+  }
 }
 
 export async function serveLogo(pathname: string, rawUrl: string, root = logoRoot()) {

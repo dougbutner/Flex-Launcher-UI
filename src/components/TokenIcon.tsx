@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { localLogoSrc, localTokenIconSrc, rememberRemoteTokenIcon, storeLogoQuiet, tokenIconRemote } from "@/services/tokenIcons";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { rememberRemoteTokenIcon, storeLogoQuiet, subscribeTokenIcons, tokenIconEpoch, tokenIconPlaces } from "@/services/tokenIcons";
 
 type Props = {
   symbol: string;
@@ -21,12 +21,11 @@ export function TokenIcon({
   rounded = "full",
   fill = false,
 }: Props) {
-  const remote = tokenIconRemote(contract, symbol, srcProp);
-  const bundled = localTokenIconSrc(contract, symbol);
-  const local = bundled || localLogoSrc(contract, symbol, remote || srcProp);
-  const [missedLocal, setMissedLocal] = useState(false);
-  const [broken, setBroken] = useState(false);
-  const src = broken ? undefined : missedLocal && !bundled ? remote : local || remote;
+  const epoch = useSyncExternalStore(subscribeTokenIcons, tokenIconEpoch, tokenIconEpoch);
+  const places = useMemo(() => tokenIconPlaces(contract, symbol, srcProp), [contract, epoch, srcProp, symbol]);
+  const list = places.join("|");
+  const [step, setStep] = useState(0);
+  const src = places[step];
   const letter = (symbol || "?").slice(0, 1).toUpperCase();
   const shape =
     rounded === "full" ? "rounded-full" : rounded === "md" ? "rounded-md" : fill ? "rounded-none" : "rounded-2xl";
@@ -37,9 +36,8 @@ export function TokenIcon({
   }, [contract, srcProp, symbol]);
 
   useEffect(() => {
-    setMissedLocal(false);
-    setBroken(false);
-  }, [local, remote]);
+    setStep((n) => (list.split("|")[n] ? n : 0));
+  }, [list]);
 
   if (!src) {
     if (fill) {
@@ -74,12 +72,9 @@ export function TokenIcon({
       decoding="async"
       className={`shrink-0 bg-background ${fill ? "h-full w-full object-cover" : "object-contain"} ${shape} ${className}`}
       onLoad={() => {
-        if (remote && src === remote) storeLogoQuiet(contract, symbol, remote);
+        if (src && !src.startsWith("/") && !src.startsWith("data:") && !src.startsWith("blob:")) storeLogoQuiet(contract, symbol, src);
       }}
-      onError={() => {
-        if (!bundled && remote && src !== remote) setMissedLocal(true);
-        else setBroken(true);
-      }}
+      onError={() => setStep((n) => n + 1)}
     />
   );
 }

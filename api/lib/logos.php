@@ -123,10 +123,38 @@ function logo_url_ok($url)
     return true;
 }
 
+function logo_plain($contract, $symbol)
+{
+    if (!valid_account($contract) || !valid_symbol($symbol)) {
+        return null;
+    }
+    $dir = logo_root() . "/" . $contract;
+    if (!is_dir($dir)) {
+        return null;
+    }
+    foreach (logo_types() as $ext => $type) {
+        $path = $dir . "/" . $symbol . "." . $ext;
+        if (is_file($path)) {
+            return ["path" => $path, "type" => $type, "ext" => $ext];
+        }
+    }
+    return null;
+}
+
+function logo_remote_ok($url, $contract, $symbol, $cid)
+{
+    $alcor = "https://raw.githubusercontent.com/alcorexchange/alcor-ui/master/assets/tokens/proton/" . strtolower($symbol) . "_" . strtolower($contract) . ".png";
+    $drops = "https://raw.githubusercontent.com/eoscafe/eos-airdrops/master/logos/" . strtolower($symbol) . "-" . strtolower($contract) . ".png";
+    if ($url === $alcor || $url === $drops) {
+        return true;
+    }
+    return $cid !== "" && logo_cid_ok($cid) && strpos($url, $cid) !== false;
+}
+
 function logo_write($contract, $symbol, $cid, $bytes)
 {
     $ext = logo_sniff($bytes);
-    if (!valid_account($contract) || !valid_symbol($symbol) || !logo_cid_ok($cid) || $ext === "" || strlen($bytes) > 1048576) {
+    if (!valid_account($contract) || !valid_symbol($symbol) || ($cid !== "" && !logo_cid_ok($cid)) || $ext === "" || strlen($bytes) > 1048576) {
         return null;
     }
     $root = logo_guard();
@@ -134,23 +162,73 @@ function logo_write($contract, $symbol, $cid, $bytes)
     if (!is_dir($dir)) {
         mkdir($dir, 0755, true);
     }
-    $dest = $dir . "/" . $symbol . "-" . $cid . "." . $ext;
-    $tmp = $dir . "/." . $symbol . "-" . $cid . ".download";
+    $plain = $dir . "/" . $symbol . "." . $ext;
+    $tmp = $dir . "/." . $symbol . ".download";
     if (file_put_contents($tmp, $bytes) === false) {
         return null;
     }
-    rename($tmp, $dest);
-    return ["path" => $dest, "type" => logo_types()[$ext]];
+    rename($tmp, $plain);
+    if ($cid !== "") {
+        $dest = $dir . "/" . $symbol . "-" . $cid . "." . $ext;
+        $cidTmp = $dir . "/." . $symbol . "-" . $cid . ".download";
+        if (file_put_contents($cidTmp, $bytes) !== false) {
+            rename($cidTmp, $dest);
+        }
+    }
+    return ["path" => $plain, "type" => logo_types()[$ext], "ext" => $ext];
+}
+
+function logo_publish($cfg, $contract, $symbol, $path)
+{
+    $token = isset($cfg["GITHUB_TOKEN"]) ? trim(strval($cfg["GITHUB_TOKEN"])) : "";
+    if ($token === "" || !is_file($path)) {
+        return;
+    }
+    $mark = logo_root() . "/" . $contract . "/." . $symbol . ".github";
+    if (is_file($mark)) {
+        return;
+    }
+    $ext = pathinfo($path, PATHINFO_EXTENSION);
+    $rel = "public/tokens/" . $contract . "/" . $symbol . "." . $ext;
+    $content = base64_encode(file_get_contents($path));
+    try {
+        $got = gh($token, "GET", "/repos/dougbutner/Flex-Launcher-UI/contents/" . $rel . "?ref=main");
+        $sha = "";
+        if ($got["ok"] && isset($got["json"]["content"]) && str_replace("\n", "", strval($got["json"]["content"])) === $content) {
+            file_put_contents($mark, "1");
+            return;
+        }
+        if ($got["ok"] && isset($got["json"]["sha"])) {
+            $sha = strval($got["json"]["sha"]);
+        } elseif ($got["status"] !== 404) {
+            return;
+        }
+        $payload = ["message" => "Add " . $symbol . " logo", "content" => $content, "branch" => "main"];
+        if ($sha !== "") {
+            $payload["sha"] = $sha;
+        }
+        $put = gh($token, "PUT", "/repos/dougbutner/Flex-Launcher-UI/contents/" . $rel, $payload);
+        if ($put["ok"]) {
+            file_put_contents($mark, "1");
+        }
+    } catch (Exception $e) {
+        /* quiet */
+    }
 }
 
 function logo_fetch_save($contract, $symbol, $cid, $url)
 {
-    $existing = logo_find($contract, $symbol, $cid);
+    $plain = logo_plain($contract, $symbol);
+    if ($plain) {
+        return $plain;
+    }
+    $existing = $cid !== "" ? logo_find($contract, $symbol, $cid) : null;
     if ($existing) {
-        return $existing;
+        $bytes = file_get_contents($existing["path"]);
+        return is_string($bytes) ? logo_write($contract, $symbol, "", $bytes) : null;
     }
     $url = trim($url);
-    if ($url === "" || strpos($url, $cid) === false || !logo_url_ok($url)) {
+    if ($url === "" || !logo_remote_ok($url, $contract, $symbol, $cid) || !logo_url_ok($url)) {
         return null;
     }
     $root = logo_guard();
@@ -186,7 +264,7 @@ function logo_fetch_save($contract, $symbol, $cid, $url)
     $final = strval(curl_getinfo($ch, CURLINFO_EFFECTIVE_URL));
     curl_close($ch);
     fclose($out);
-    $bytes = $ok !== false && $code >= 200 && $code < 300 && logo_public_ip($ip) && strpos($final, $cid) !== false ? file_get_contents($tmp) : false;
+    $bytes = $ok !== false && $code >= 200 && $code < 300 && logo_public_ip($ip) && logo_remote_ok($final, $contract, $symbol, $cid) ? file_get_contents($tmp) : false;
     @unlink($tmp);
     if (!is_string($bytes)) {
         return null;
@@ -194,12 +272,15 @@ function logo_fetch_save($contract, $symbol, $cid, $url)
     return logo_write($contract, $symbol, $cid, $bytes);
 }
 
-function logo_send($contract, $symbol, $cid, $url)
+function logo_send($cfg, $contract, $symbol, $cid, $url)
 {
     try {
         $file = logo_find($contract, $symbol, $cid);
         if (!$file && $url !== "") {
             $file = logo_fetch_save($contract, $symbol, $cid, $url);
+        }
+        if ($file) {
+            logo_publish($cfg, $contract, $symbol, $file["path"]);
         }
         if (!$file) {
             send_json(404, ["error" => "Missing logo."]);
@@ -216,7 +297,7 @@ function logo_send($contract, $symbol, $cid, $url)
     }
 }
 
-function logo_save()
+function logo_save($cfg)
 {
     try {
         $contract = "";
@@ -237,10 +318,14 @@ function logo_save()
             $cid = trim(isset($body["cid"]) ? strval($body["cid"]) : "");
             $url = trim(isset($body["url"]) ? strval($body["url"]) : "");
         }
+        $saved = null;
         if ($bytes !== "") {
-            logo_write($contract, $symbol, $cid, $bytes);
+            $saved = logo_write($contract, $symbol, $cid, $bytes);
         } elseif ($url !== "") {
-            logo_fetch_save($contract, $symbol, $cid, $url);
+            $saved = logo_fetch_save($contract, $symbol, $cid, $url);
+        }
+        if ($saved) {
+            logo_publish($cfg, $contract, $symbol, $saved["path"]);
         }
     } catch (Exception $e) {
         /* quiet */

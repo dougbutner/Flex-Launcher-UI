@@ -54,12 +54,12 @@ if ($method === "OPTIONS") {
 
 try {
     if ($method === "POST" && request_path() === "/api/logo") {
-        logo_save();
+        logo_save($cfg);
         exit;
     }
     $logo = logo_match(request_path());
     if ($logo && $method === "GET") {
-        logo_send($logo["contract"], $logo["symbol"], $logo["cid"], query_param("url"));
+        logo_send($cfg, $logo["contract"], $logo["symbol"], $logo["cid"], query_param("url"));
         exit;
     }
     $pair = dispatch_api($cfg, db_connect($cfg));

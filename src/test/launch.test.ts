@@ -77,7 +77,7 @@ import {
   logoRequestTooltip,
   mergeAdminTokenRefs,
 } from "@/services/listingHelper";
-import { ipfsCid, localLogoSrc, localTokenIconSrc, rememberRemoteTokenIcon, tokenIconKey, tokenIconSrc } from "@/services/tokenIcons";
+import { ipfsCid, localLogoSrc, localTokenIconSrc, rememberRemoteTokenIcon, tokenIconKey, tokenIconPlaces, tokenIconSrc } from "@/services/tokenIcons";
 import { hintForError, logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
 import { applyRangeWidth, applyStartMarketCap, fmtPrice, tokenStepValid } from "@/components/launch/draftPlan";
@@ -729,17 +729,27 @@ describe("local token icons", () => {
     expect(localTokenIconSrc("eosio.token", "XPR")).toBe("/tokens/eosio.token/XPR.png");
     expect(localTokenIconSrc("mon3y", "EASY")).toBe("/tokens/easy.png");
     expect(localTokenIconSrc("flexforex", "UUU")).toBeUndefined();
-    expect(tokenIconSrc("flexforex", "UUU")).toBeUndefined();
+    expect(tokenIconSrc("flexforex", "UUU")).toBe("/tokens/flexforex/UUU.png");
     rememberRemoteTokenIcon("xtokens", "XBTC", "https://example.com/xbtc.png");
     expect(tokenIconSrc("xtokens", "XBTC")).toBe("/tokens/xtokens/XBTC.png");
     const cid = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
     expect(ipfsCid(`https://gateway.pinata.cloud/ipfs/${cid}`)).toBe(cid);
     expect(ipfsCid("https://example.com/z.png")).toBe("");
     rememberRemoteTokenIcon("fl3x", "ZZZ", `https://gateway.pinata.cloud/ipfs/${cid}`);
-    expect(tokenIconSrc("fl3x", "ZZZ")).toBe(`/tokens/fl3x/ZZZ-${cid}.png`);
+    expect(tokenIconPlaces("fl3x", "ZZZ")).toEqual([
+      "/tokens/fl3x/ZZZ.png",
+      "https://raw.githubusercontent.com/alcorexchange/alcor-ui/master/assets/tokens/proton/zzz_fl3x.png",
+      "https://raw.githubusercontent.com/eoscafe/eos-airdrops/master/logos/zzz-fl3x.png",
+      `https://gateway.pinata.cloud/ipfs/${cid}`,
+    ]);
+    expect(tokenIconSrc("fl3x", "ZZZ")).toBe("/tokens/fl3x/ZZZ.png");
+    const alcor = "https://raw.githubusercontent.com/alcorexchange/alcor-ui/master/assets/tokens/proton/zzz_fl3x.png";
+    expect(tokenIconPlaces("fl3x", "ZZZ", alcor)[0]).toBe(alcor);
+    expect(tokenIconPlaces("fl3x", "ZZZ", alcor).at(-1)).toBe("/tokens/fl3x/ZZZ.png");
     expect(localLogoSrc("fl3x", "ZZZ", `https://gateway.pinata.cloud/ipfs/${cid}`)).toBe(`/tokens/fl3x/ZZZ-${cid}.png`);
     expect(localLogoSrc("fl3x", "ZZZ", `https://example.com/${cid}.svg`)).toBe(`/tokens/fl3x/ZZZ-${cid}.svg`);
-    expect(tokenIconSrc("fl3x", "ZZZ", "https://example.com/z.png")).toBe("https://example.com/z.png");
+    expect(tokenIconPlaces("fl3x", "ZZZ", "data:image/png;base64,aa")).toEqual(["data:image/png;base64,aa"]);
+    expect(tokenIconSrc("fl3x", "GEASY")).toBe("/tokens/fl3x/GEASY.png");
   });
 });
 

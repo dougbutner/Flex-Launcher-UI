@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import type { Plugin, ViteDevServer } from "vite";
 import { dispatch, type RefreshFn } from "./server/dispatch";
-import { fetchLogoFile, formFields, logoRoot, serveLogo, writeLogoBytes } from "./server/logoFile";
+import { fetchLogoFile, formFields, logoRoot, publishLogo, serveLogo, writeLogoBytes } from "./server/logoFile";
 
 const execFileAsync = promisify(execFile);
 const PREFIXES = ["/api/manager", "/api/insiders", "/api/site", "/api/cache", "/api/txs", "/api/admin"];
@@ -57,26 +57,26 @@ async function sendLogo(res: ServerResponse, pathname: string, rawUrl: string) {
   res.end(file.body);
 }
 
-async function saveLogo(req: IncomingMessage, res: ServerResponse) {
+async function saveLogo(req: IncomingMessage, res: ServerResponse, token: string) {
   try {
     const type = String(req.headers["content-type"] || "");
     const raw = await readRaw(req, 1_200_000);
+    let saved: { body: Buffer; ext?: string; type: string } | null = null;
+    let contract = "";
+    let symbol = "";
     if (type.includes("multipart/form-data")) {
       const form = formFields(raw, type);
-      const contract = String(form.fields.contract || "").trim().toLowerCase();
-      const symbol = String(form.fields.symbol || "").trim().toUpperCase();
+      contract = String(form.fields.contract || "").trim().toLowerCase();
+      symbol = String(form.fields.symbol || "").trim().toUpperCase();
       const cid = String(form.fields.cid || "").trim();
-      if (form.file) await writeLogoBytes(logoRoot(), contract, symbol, cid, form.file);
+      if (form.file) saved = await writeLogoBytes(logoRoot(), contract, symbol, cid, form.file);
     } else {
       const body = JSON.parse(raw.toString("utf8")) as { contract?: string; symbol?: string; cid?: string; url?: string };
-      await fetchLogoFile(
-        logoRoot(),
-        String(body.contract || "").trim().toLowerCase(),
-        String(body.symbol || "").trim().toUpperCase(),
-        String(body.cid || "").trim(),
-        String(body.url || "")
-      );
+      contract = String(body.contract || "").trim().toLowerCase();
+      symbol = String(body.symbol || "").trim().toUpperCase();
+      saved = await fetchLogoFile(logoRoot(), contract, symbol, String(body.cid || "").trim(), String(body.url || ""));
     }
+    if (saved?.ext) await publishLogo(token, contract, symbol, saved.body, saved.ext);
   } catch {
     /* quiet */
   }
@@ -138,7 +138,7 @@ export function flexDbPlugin(env: Record<string, string>): Plugin {
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url || "/", "http://localhost");
         if (url.pathname === "/api/logo" && (req.method || "GET") === "POST") {
-          void saveLogo(req, res);
+          void saveLogo(req, res, env.GITHUB_TOKEN?.trim() || "");
           return;
         }
         if (url.pathname.startsWith("/api/logo/")) {
@@ -166,7 +166,7 @@ export function flexDbPlugin(env: Record<string, string>): Plugin {
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url || "/", "http://localhost");
         if (url.pathname === "/api/logo" && (req.method || "GET") === "POST") {
-          void saveLogo(req, res);
+          void saveLogo(req, res, env.GITHUB_TOKEN?.trim() || "");
           return;
         }
         if (url.pathname.startsWith("/api/logo/")) {

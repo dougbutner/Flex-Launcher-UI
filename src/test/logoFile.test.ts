@@ -21,6 +21,7 @@ describe("logo files", () => {
     expect(logoExt(Buffer.from("nope"))).toBe("");
     const saved = await writeLogoBytes(dir, "fl3x", "GEASY", cid, png);
     expect(saved?.type).toBe("image/png");
+    expect(await readFile(path.join(dir, "fl3x", "GEASY.png"))).toEqual(png);
     expect(await readFile(path.join(dir, "fl3x", `GEASY-${cid}.png`))).toEqual(png);
     expect((await readLogoFile(dir, "fl3x", "GEASY", cid))?.body.equals(png)).toBe(true);
     expect(await readLogoFile(dir, "fl3x", "GEASY", other)).toBeNull();
