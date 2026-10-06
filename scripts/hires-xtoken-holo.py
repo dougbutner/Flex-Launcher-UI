@@ -4,6 +4,8 @@
 Sources are vector logos (1024px PNG in public/tokens/xtokenpng).
 512holoxtokens is the foil still. 512holoxtokensanimated is a WebP.
 512holoxtokensapng is the same loop as an APNG (.png), transparent background.
+128holoxtokensapng is that APNG at 128px. 128holoxtokensshiny moves the foil
+lines with the gold streak, same 128px size and timing.
 14 fps for a 1 second sweep, then a 2 second hold, infinite loop.
 The sweep matches the site gold line (.tetra-shimmer / .btn::before).
 
@@ -24,6 +26,8 @@ PARENT = ROOT / "public" / "tokens" / "xtokenpng"
 STILL = PARENT / "512holoxtokens"
 ANIM = PARENT / "512holoxtokensanimated"
 APNG = PARENT / "512holoxtokensapng"
+APNG128 = PARENT / "128holoxtokensapng"
+SHINY128 = PARENT / "128holoxtokensshiny"
 CACHE = Path("/tmp/xtoken-logo-src")
 SHARP = Path("/tmp/raster/node_modules/sharp")
 SIZE = 1024
@@ -220,7 +224,7 @@ def soft_light(base: np.ndarray, blend: np.ndarray) -> np.ndarray:
     )
 
 
-def foil(im: Image.Image, size: int) -> Image.Image:
+def foil(im: Image.Image, size: int, phase_shift: float = 0.0, ridge_gain: float = 0.2) -> Image.Image:
     im = im.convert("RGBA")
     if im.size != (size, size):
         im = im.resize((size, size), Image.Resampling.LANCZOS)
@@ -240,9 +244,9 @@ def foil(im: Image.Image, size: int) -> Image.Image:
     dark = np.clip((0.32 - lum) / 0.32, 0, 1)[..., None]
     out = rgb * 0.46 + soft * 0.54
     out = out * (1 - dark * 0.6) + screened * (dark * 0.6)
-    phase = diag * 14 + 0.9 * np.sin(yn * 4.5 + xn)
+    phase = diag * 14 + 0.9 * np.sin(yn * 4.5 + xn) + phase_shift
     ridge = np.clip(np.cos(phase * np.pi), 0, 1) ** 4
-    out = np.clip(out + foil_rgb * ridge[..., None] * 0.2, 0, 1)
+    out = np.clip(out + foil_rgb * ridge[..., None] * ridge_gain, 0, 1)
     gloss = np.exp(-((xn * 0.75 - yn * 0.55 - 0.12) ** 2) / 0.018) * np.clip(a, 0, 1)
     out = 1 - (1 - out) * (1 - gloss[..., None] * 0.34)
     rng = np.random.default_rng(20261001)
@@ -304,8 +308,11 @@ def write_anim(still: Image.Image, dest: Path) -> None:
     )
 
 
-def write_apng(still: Image.Image, dest: Path) -> None:
-    frames, durations = anim_frames(still)
+def write_apng(still: Image.Image, dest: Path, frames: list[Image.Image] | None = None) -> None:
+    if frames is None:
+        frames, durations = anim_frames(still)
+    else:
+        durations = [71] * 13 + [77, 2000]
     # disposal 1 clears each frame to transparent before the next one.
     frames[0].save(
         dest,
@@ -320,6 +327,19 @@ def write_apng(still: Image.Image, dest: Path) -> None:
     )
 
 
+def shiny_frames(logo: Image.Image) -> list[Image.Image]:
+    """Foil lines slide one band-spacing while the gold streak crosses."""
+    frames: list[Image.Image] = []
+    for i in range(14):
+        t = i / 13
+        foiled = foil(logo, OUT, phase_shift=t * 2, ridge_gain=0.34)
+        small = foiled.resize((128, 128), Image.Resampling.LANCZOS)
+        frames.append(shimmer(small, i))
+    rest = foil(logo, OUT, phase_shift=0, ridge_gain=0.34)
+    frames.append(rest.resize((128, 128), Image.Resampling.LANCZOS))
+    return frames
+
+
 def main() -> int:
     src_dir = ROOT / "public" / "tokens" / "xtokens"
     symbols = sorted(p.stem for p in src_dir.glob("*.png"))
@@ -330,6 +350,8 @@ def main() -> int:
     STILL.mkdir(parents=True, exist_ok=True)
     ANIM.mkdir(parents=True, exist_ok=True)
     APNG.mkdir(parents=True, exist_ok=True)
+    APNG128.mkdir(parents=True, exist_ok=True)
+    SHINY128.mkdir(parents=True, exist_ok=True)
     CACHE.mkdir(parents=True, exist_ok=True)
     for symbol in symbols:
         logo = source_for(symbol)
@@ -338,6 +360,9 @@ def main() -> int:
         foiled.save(STILL / f"{symbol}.png", "PNG")
         write_anim(foiled, ANIM / f"{symbol}.webp")
         write_apng(foiled, APNG / f"{symbol}.png")
+        small = foiled.resize((128, 128), Image.Resampling.LANCZOS)
+        write_apng(small, APNG128 / f"{symbol}.png")
+        write_apng(small, SHINY128 / f"{symbol}.png", shiny_frames(logo))
         kb = (ANIM / f"{symbol}.webp").stat().st_size / 1024
         apng_kb = (APNG / f"{symbol}.png").stat().st_size / 1024
         print(f"{symbol}  webp {kb:.0f}kb  apng {apng_kb:.0f}kb")

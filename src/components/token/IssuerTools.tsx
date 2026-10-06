@@ -13,7 +13,7 @@ import {
   setminAction,
   type ChainAction,
 } from "@/services/launchActions";
-import { hasProjectTax, taxFromSettings, taxRateValid, type TaxDraft } from "@/services/taxRates";
+import { hasProjectTax, taxAdjustValid, taxFromSettings, taxSavePlan, type TaxDraft } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]): unknown {
@@ -111,8 +111,8 @@ export function IssuerTools({
     }
   };
 
-  const channelsChanged =
-    angelOk && (tax.angelNumbersBps !== chainTax.angelNumbersBps || tax.jackpotBps !== chainTax.jackpotBps);
+  const plan = taxSavePlan(tax, program, chainTax, actor);
+  const saveLabel = plan.fees && plan.channels ? "Save tax and channels" : plan.channels ? "Save reflection channels" : "Save tax";
 
   return (
     <section className="space-y-5 rounded-xl border border-primary/25 bg-primary/5 p-4">
@@ -120,7 +120,7 @@ export function IssuerTools({
         <h3 className="text-sm font-bold tracking-tight">Issuer tools</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Add flex reward pools
-          {angelOk ? "; configure angel / jackpot channels (share of the reflection fee)" : ""}
+          {angelOk ? "; angel / jackpot are a share of the reflection fee (ratios), not a cut of project" : ""}
           {setminOk ? "; set the makeitrain pool floor" : ""}. Transfer tax is setfees. Later calls cannot raise the
           total or lower reflection.
         </p>
@@ -130,6 +130,7 @@ export function IssuerTools({
         program={program}
         value={tax}
         chain={chainTax}
+        actor={actor}
         disabled={disabled || !settings}
         onChange={setTax}
       />
@@ -137,48 +138,38 @@ export function IssuerTools({
         <button
           type="button"
           className="btn btn-primary btn-sm"
-          disabled={disabled || !settings || Boolean(taxRateValid(tax, program, chainTax))}
+          disabled={disabled || !settings || Boolean(taxAdjustValid(tax, program, chainTax)) || (!plan.fees && !plan.channels)}
           onClick={() => {
-            const err = taxRateValid(tax, program, chainTax);
+            const err = taxAdjustValid(tax, program, chainTax);
             if (err) {
               setMsg({ err });
               return;
             }
-            void run([
-              setfeesAction(
-                contract,
-                precision,
-                symbol,
-                {
-                  reflectionRate: tax.reflectionRate,
-                  burnRate: tax.burnRate,
-                  projectRate: tax.projectRate,
-                  projectAccount: tax.projectAccount,
-                },
-                hasProjectTax(program),
-                actor
-              ),
-            ]);
+            if (!plan.fees && !plan.channels) return;
+            const actions: ChainAction[] = [];
+            if (plan.fees) {
+              actions.push(
+                setfeesAction(
+                  contract,
+                  precision,
+                  symbol,
+                  {
+                    reflectionRate: tax.reflectionRate,
+                    burnRate: tax.burnRate,
+                    projectRate: tax.projectRate,
+                    projectAccount: tax.projectAccount,
+                  },
+                  hasProjectTax(program),
+                  actor
+                )
+              );
+            }
+            if (plan.channels) actions.push(ratiosAction(contract, symbol, tax.angelNumbersBps, tax.jackpotBps));
+            void run(actions);
           }}
         >
-          {signing ? "Signing…" : "Save tax"}
+          {signing ? "Signing…" : saveLabel}
         </button>
-        {angelOk ? (
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            disabled={disabled || !settings || !channelsChanged || tax.angelNumbersBps + tax.jackpotBps > 10000}
-            onClick={() => {
-              if (tax.angelNumbersBps + tax.jackpotBps > 10000) {
-                setMsg({ err: "angel + jackpot bps must sum to ≤ 10000." });
-                return;
-              }
-              void run([ratiosAction(contract, symbol, tax.angelNumbersBps, tax.jackpotBps)]);
-            }}
-          >
-            {signing ? "Signing…" : "Save reflection channels"}
-          </button>
-        ) : null}
       </div>
 
       {angelOk ? (

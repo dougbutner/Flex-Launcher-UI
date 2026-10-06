@@ -6,6 +6,7 @@ import {
   hasProjectTax,
   taxAdjustValid,
   taxCreateValid,
+  taxSignatureNote,
   taxSum,
   type TaxDraft,
 } from "@/services/taxRates";
@@ -18,6 +19,8 @@ type Props = {
   showChannels?: boolean;
   /** After the first setfees, pass on-chain rates so later edits follow contract rules. */
   chain?: TaxDraft | null;
+  /** Blank project account means this account. Used only for the pre-sign sentence. */
+  actor?: string;
 };
 
 export function TaxBucketsForm({
@@ -27,6 +30,7 @@ export function TaxBucketsForm({
   disabled = false,
   showChannels,
   chain = null,
+  actor = "",
 }: Props) {
   const projectOk = hasProjectTax(program);
   const channelsOk = showChannels ?? hasAngelChannels(program);
@@ -81,7 +85,11 @@ export function TaxBucketsForm({
             bps={value.projectRate}
             disabled={disabled}
             onBps={(projectRate) => patch({ projectRate })}
-            hint="Project pool paid to the project account."
+            hint={
+              adjusting
+                ? "Paid to the project account. Cutting this does not fund angel or jackpot."
+                : "Project pool paid to the project account."
+            }
           />
         ) : null}
       </div>
@@ -105,8 +113,9 @@ export function TaxBucketsForm({
           <div>
             <p className="text-sm font-semibold">Reflection channels</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Share of the reflection fee only. Signed with ratios. Does not raise the transfer tax. Remainder stays
-              in the standard reflection pool.
+              {adjusting
+                ? "Percent of the reflection fee, not of the transfer. A separate ratios action. Omitted from the signature unless you change these."
+                : "Share of the reflection fee only. Signed with ratios. Does not raise the transfer tax. Remainder stays in the standard reflection pool."}
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -127,6 +136,10 @@ export function TaxBucketsForm({
             Standard splash keeps {formatBpsPercent(channelRest)} of the reflection fee.
           </p>
         </div>
+      ) : null}
+
+      {adjusting && chain ? (
+        <p className="text-xs text-muted-foreground">{taxSignatureNote(value, program, chain, actor)}</p>
       ) : null}
     </div>
   );

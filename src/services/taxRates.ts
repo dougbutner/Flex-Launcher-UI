@@ -117,6 +117,44 @@ export function taxAdjustValid(draft: TaxDraft, program: FlexProgram, chain: Tax
   return taxRateValid(draft, program, chain) ?? taxChannelValid(draft, program);
 }
 
+export type TaxSavePlan = {
+  fees: boolean;
+  channels: boolean;
+  /** Project bps removed while angel/jackpot were left untouched. */
+  projectCutLeftBehind: number;
+};
+
+/** Which actions a tax save will actually sign. Angel/jackpot are ratios, not setfees. */
+export function taxSavePlan(draft: TaxDraft, program: FlexProgram, chain: TaxDraft, actor = ""): TaxSavePlan {
+  const project = hasProjectTax(program);
+  const account = (name: string) => name.trim() || actor;
+  const fees =
+    draft.reflectionRate !== chain.reflectionRate ||
+    draft.burnRate !== chain.burnRate ||
+    (project && draft.projectRate !== chain.projectRate) ||
+    (project && account(draft.projectAccount) !== account(chain.projectAccount));
+  const channels =
+    hasAngelChannels(program) &&
+    (draft.angelNumbersBps !== chain.angelNumbersBps || draft.jackpotBps !== chain.jackpotBps);
+  const cut = project ? chain.projectRate - draft.projectRate : 0;
+  return { fees, channels, projectCutLeftBehind: cut > 0 && !channels ? cut : 0 };
+}
+
+/** Sentence shown before signing, so a project cut is not mistaken for an angel/jackpot move. */
+export function taxSignatureNote(draft: TaxDraft, program: FlexProgram, chain: TaxDraft, actor = ""): string {
+  const plan = taxSavePlan(draft, program, chain, actor);
+  if (!plan.fees && !plan.channels) return "No tax changes to sign.";
+  const rates = `reflection ${formatBpsPercent(draft.reflectionRate)}, burn ${formatBpsPercent(draft.burnRate)}, project ${formatBpsPercent(hasProjectTax(program) ? draft.projectRate : 0)}`;
+  const ratios = `ratios (angel ${draft.angelNumbersBps} bps, jackpot ${draft.jackpotBps} bps of the reflection fee)`;
+  if (plan.fees && plan.channels) return `This signature is setfees (${rates}) and ${ratios}.`;
+  if (plan.channels) return `This signature is ${ratios}. Project, burn, and reflection rates stay as they are.`;
+  const cut =
+    plan.projectCutLeftBehind > 0
+      ? ` The ${formatBpsPercent(plan.projectCutLeftBehind)} taken off project is not added to angel or jackpot.`
+      : "";
+  return `This signature is setfees only (${rates}). Angel and jackpot are not in it.${cut}`;
+}
+
 export function taxFromSettings(
   program: FlexProgram,
   settings: Record<string, unknown> | null | undefined

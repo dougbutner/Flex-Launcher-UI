@@ -61,6 +61,8 @@ import {
   sanitizePercentInput,
   taxAdjustValid,
   taxCreateValid,
+  taxSavePlan,
+  taxSignatureNote,
   taxSum,
 } from "@/services/taxRates";
 import { airdropsEntryMatch } from "@/services/listingRepos";
@@ -661,6 +663,27 @@ describe("tax rates", () => {
     );
     expect(taxAdjustValid({ ...chain, burnRate: 50, projectRate: 50 }, "complexflex", chain)).toBeNull();
     expect(taxAdjustValid({ ...chain, projectRate: 0 }, "complexflex", chain)).toBeNull();
+  });
+
+  it("a project cut is setfees only until angel or jackpot change", () => {
+    const chain = { ...defaultTaxDraft("flexforex"), projectAccount: "fala", angelNumbersBps: 0, jackpotBps: 0 };
+    const cut = { ...chain, projectRate: 60 };
+    expect(taxSavePlan(cut, "flexforex", chain, "fala")).toEqual({
+      fees: true,
+      channels: false,
+      projectCutLeftBehind: 40,
+    });
+    expect(taxSignatureNote(cut, "flexforex", chain, "fala")).toBe(
+      "This signature is setfees only (reflection 1%, burn 0%, project 0.6%). Angel and jackpot are not in it. The 0.4% taken off project is not added to angel or jackpot."
+    );
+    const moved = { ...cut, angelNumbersBps: 2000, jackpotBps: 2000 };
+    expect(taxSavePlan(moved, "flexforex", chain, "fala")).toEqual({
+      fees: true,
+      channels: true,
+      projectCutLeftBehind: 0,
+    });
+    expect(taxSignatureNote(moved, "flexforex", chain, "fala")).toContain("setfees");
+    expect(taxSignatureNote(moved, "flexforex", chain, "fala")).toContain("ratios (angel 2000 bps, jackpot 2000 bps of the reflection fee)");
   });
 });
 
