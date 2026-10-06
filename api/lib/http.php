@@ -28,8 +28,17 @@ function request_path()
             $path = $rest === "" ? "/" : $rest;
         }
     }
-    if ($path === "/index.php") {
+    if (strpos($path, "/index.php/") === 0) {
+        $path = substr($path, 10);
+    } elseif ($path === "/index.php") {
         $path = "/";
+    }
+    $flexPath = isset($_SERVER["HTTP_X_FLEX_PATH"]) ? strval($_SERVER["HTTP_X_FLEX_PATH"]) : "";
+    if (($path === "/" || $path === "") && $flexPath !== "" && isset($flexPath[0]) && $flexPath[0] === "/" && strpos($flexPath, "..") === false) {
+        $path = $flexPath;
+        if (strlen($path) > 1) {
+            $path = rtrim($path, "/");
+        }
     }
     if (strpos($path, "/api/") !== 0 && $path !== "/api") {
         $path = "/api" . ($path === "/" ? "/site" : $path);

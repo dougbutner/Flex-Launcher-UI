@@ -26,7 +26,7 @@ export type FeedResponse = {
 
 function clubError(message: string | undefined, fallback: string) {
   const text = (message || "").trim();
-  if (!text || /mysql|MYSQL_|not configured|config\.example/i.test(text)) return fallback;
+  if (!text || text.startsWith("<") || text.length > 240 || /mysql|MYSQL_|not configured|config\.example/i.test(text)) return fallback;
   return text;
 }
 

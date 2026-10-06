@@ -65,8 +65,10 @@ function db_connect($cfg)
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
         PDO::ATTR_TIMEOUT => 4,
-        PDO::MYSQL_ATTR_CONNECT_TIMEOUT => 4,
     ];
+    if (defined("PDO::MYSQL_ATTR_CONNECT_TIMEOUT")) {
+        $opts[constant("PDO::MYSQL_ATTR_CONNECT_TIMEOUT")] = 4;
+    }
     $pdo = new PDO($dsn, $user, $pass, $opts);
     db_ensure_schema($pdo);
     return $pdo;

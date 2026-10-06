@@ -10,10 +10,11 @@ export async function onRequest(context: PagesContext) {
   const headers = new Headers();
   const ct = req.headers.get("Content-Type");
   if (ct) headers.set("Content-Type", ct);
+  headers.set("X-Flex-Path", rest.startsWith("/") ? rest : `/${rest}`);
   const init: RequestInit = { method: req.method, headers, redirect: "manual" };
   if (req.method !== "GET" && req.method !== "HEAD") init.body = await req.arrayBuffer();
   try {
-    const res = await fetch(`${origin}${rest}${url.search}`, init);
+    const res = await fetch(`${origin}/index.php${url.search}`, init);
     const out = new Headers();
     for (const name of ["Content-Type", "Cache-Control", "X-Content-Type-Options", "Content-Security-Policy"]) {
       const value = res.headers.get(name);

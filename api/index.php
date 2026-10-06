@@ -81,6 +81,6 @@ try {
         exit;
     }
     send_json($noDb ? 503 : 500, ["error" => $msg, "db" => !$noDb]);
-} catch (Exception $e) {
-    send_json(500, ["error" => $e->getMessage()]);
+} catch (Throwable $e) {
+    send_json(500, ["error" => $e->getMessage() !== "" ? $e->getMessage() : "Request failed."]);
 }

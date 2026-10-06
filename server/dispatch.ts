@@ -130,7 +130,12 @@ export async function dispatch(request: Request, env: Env, refresh: RefreshFn): 
       if (path === "/api/txs") return { status: 200, body: { stored: false, db: false } };
       return { status: 503, body: { error: err.message, db: false } };
     }
-    const message = err instanceof Error ? err.message : "Request failed.";
+    const code = err && typeof err === "object" && "code" in err ? String((err as { code?: unknown }).code || "") : "";
+    let message = err instanceof Error ? err.message : "Request failed.";
+    if (!message && (code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "ETIMEDOUT" || code === "EHOSTUNREACH")) {
+      message = "MySQL connection failed.";
+    }
+    if (!message) message = "Request failed.";
     return { status: 500, body: { error: message } };
   }
 }

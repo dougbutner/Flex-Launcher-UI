@@ -114,6 +114,34 @@ async function handle(
     body: method === "GET" || method === "HEAD" ? undefined : text,
   });
   const result = await dispatch(request, mergedEnv(env), refresh);
+  const failed =
+    result.body && typeof result.body === "object" && "error" in result.body
+      ? String((result.body as { error?: unknown }).error || "")
+      : "";
+  if (result.status >= 500 && /mysql/i.test(failed)) {
+    const origin = String(env.PHP_API_ORIGIN || "http://api.flex.forex").replace(/\/$/, "");
+    try {
+      const headers: Record<string, string> = { "X-Flex-Path": url.pathname };
+      const type = req.headers["content-type"];
+      if (type) headers["Content-Type"] = String(type);
+      const proxied = await fetch(`${origin}/index.php${url.search}`, {
+        method,
+        headers,
+        body: method === "GET" || method === "HEAD" ? undefined : text,
+      });
+      const raw = await proxied.text();
+      let body: unknown = { error: "" };
+      try {
+        body = raw ? (JSON.parse(raw) as unknown) : {};
+      } catch {
+        body = { error: "" };
+      }
+      send(res, proxied.status, body);
+      return;
+    } catch {
+      /* keep the local error */
+    }
+  }
   send(res, result.status, result.body);
 }
 
