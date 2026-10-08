@@ -8,7 +8,7 @@ import { RainDefaultsFields } from "@/components/launch/RainDefaultsFields";
 import { TaxBucketsForm } from "@/components/launch/TaxBucketsForm";
 import { TokenIcon } from "@/components/TokenIcon";
 import { TokenListingCard } from "@/components/token/TokenListingCard";
-import { flexMeta } from "@/config/launch";
+import { flexMeta, hasAngelChannels } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { MANAGER_RESUME_KEY, writeLaunchDraft } from "@/hooks/useLaunchDraft";
 import { listIssuerTokens } from "@/services/issuerTokens";
@@ -31,7 +31,7 @@ import {
 } from "@/services/managerStore";
 import { formatSupplyCommas, parseAsset } from "@/services/assets";
 import { readSettings } from "@/services/flexTables";
-import { payoutAction, ratiosAction, setfeesAction, goliveAction, type ChainAction } from "@/services/launchActions";
+import { payoutAction, ratiosAction, setdistAction, setfeesAction, setminAction, goliveAction, type ChainAction } from "@/services/launchActions";
 import { rainFromRow, type RainDefaults } from "@/services/rainDefaults";
 import { hasProjectTax, taxAdjustValid, taxFromSettings, taxSavePlan, type TaxDraft } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
@@ -65,6 +65,7 @@ export default function Manager() {
   const [rain, setRain] = useState<RainDefaults>({ rainMinHold: 0, rainMinPool: 0 });
   const [rainSaving, setRainSaving] = useState(false);
   const [rainSaveMsg, setRainSaveMsg] = useState("");
+  const [dist, setDist] = useState({ winners: "0", minHold: "0", cooldown: "0", keeperMin: "0", reflectMin: "0" });
   const [tool, setTool] = useState<"meta" | "tax" | "airdrop" | "presale">("meta");
 
   const load = useCallback(async () => {
@@ -134,6 +135,14 @@ export default function Manager() {
         if (cancelled) return;
         setSettings(row);
         setTax(taxFromSettings(view.token.program, row));
+        const raw = (k: string) => String(Math.max(0, Math.floor(Number(row?.[k]) || 0)));
+        setDist({
+          winners: raw("jackpot_winners"),
+          minHold: raw("jackpot_min_hold"),
+          cooldown: raw("angel_numbers_cooldown"),
+          keeperMin: raw("keeper_min"),
+          reflectMin: raw("reflect_min"),
+        });
       })
       .catch(() => {
         if (cancelled) return;
@@ -219,6 +228,67 @@ export default function Manager() {
     }
   };
 
+  const saveDist = async () => {
+    if (!view || !tax || !settings || !actor) return;
+    const winners = Number(dist.winners) || 0;
+    const cooldown = Number(dist.cooldown) || 0;
+    if (tax.jackpotBps > 0 && !(winners > 0)) {
+      setTaxTx(null);
+      setTaxMsg("⟁ jackpot needs winners > 0");
+      return;
+    }
+    if (tax.angelNumbersBps > 0 && !(cooldown > 0)) {
+      setTaxTx(null);
+      setTaxMsg("⟁ angel numbers needs cooldown");
+      return;
+    }
+    setTaxBusy(true);
+    setTaxMsg("");
+    setTaxTx(null);
+    try {
+      const res = await transact([
+        setdistAction(view.token.contract, view.token.symbol, {
+          angelNumbersBps: tax.angelNumbersBps,
+          jackpotBps: tax.jackpotBps,
+          jackpotWinners: winners,
+          jackpotMinHold: Number(dist.minHold) || 0,
+          angelNumbersCooldown: cooldown,
+          keeperMin: Number(dist.keeperMin) || 0,
+          reflectMin: Number(dist.reflectMin) || 0,
+        }),
+      ]);
+      const tx = txIdFromResult(res) || "ok";
+      setTaxTx({ label: "Saved distribution setup", id: tx });
+      const row = await readSettings(view.token.contract, view.token.symbol);
+      setSettings(row);
+    } catch (err) {
+      const text = txErrorMessage(err);
+      const hint = hintForError(text);
+      setTaxMsg(hint ? `${text} - ${hint}` : text);
+    } finally {
+      setTaxBusy(false);
+    }
+  };
+
+  const saveMin = async () => {
+    if (!view || !actor) return;
+    setTaxBusy(true);
+    setTaxMsg("");
+    setTaxTx(null);
+    try {
+      const res = await transact([setminAction(view.token.contract, view.token.symbol, Number(dist.reflectMin) || 0)]);
+      const tx = txIdFromResult(res) || "ok";
+      setTaxTx({ label: "Saved reflection floor", id: tx });
+      const row = await readSettings(view.token.contract, view.token.symbol);
+      setSettings(row);
+    } catch (err) {
+      const text = txErrorMessage(err);
+      const hint = hintForError(text);
+      setTaxMsg(hint ? `${text} - ${hint}` : text);
+    } finally {
+      setTaxBusy(false);
+    }
+  };
 
   const onLogo = async (file?: File) => {
     if (!file || !view || !meta || !actor || ipfsCid(meta.imageUrl)) return;
@@ -653,6 +723,37 @@ export default function Manager() {
                   ) : taxMsg ? (
                     <p className="text-xs text-muted-foreground">{taxMsg}</p>
                   ) : null}
+                  {hasAngelChannels(view.token.program) ? (
+                    <DistOps
+                      value={dist}
+                      locked={settings.dist_locked === true || Number(settings.dist_locked) === 1}
+                      disabled={busy}
+                      signing={taxBusy}
+                      onChange={setDist}
+                      onSave={() => void saveDist()}
+                    />
+                  ) : (
+                    <div className="space-y-3 border-t border-border pt-5">
+                      <Field
+                        label="Reflection floor"
+                        sentence
+                        hint="Raw amount. 0 means one whole token. makeitrain waits until the reflection pool meets this floor. Rain min hold and min pool are under Metadata."
+                      >
+                        <input
+                          className="input"
+                          inputMode="numeric"
+                          aria-label="reflect min"
+                          placeholder="reflect floor (raw)"
+                          disabled={busy || taxBusy}
+                          value={dist.reflectMin}
+                          onChange={(e) => setDist({ ...dist, reflectMin: e.target.value.replace(/\D/g, "") })}
+                        />
+                      </Field>
+                      <button type="button" className="btn btn-outline btn-sm" disabled={busy || taxBusy} onClick={() => void saveMin()}>
+                        {taxBusy ? "Signing…" : "Save reflection floor"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : view.progress.create ? (
                 <FormPanelSkeleton />
@@ -724,6 +825,42 @@ export default function Manager() {
       )}
       </>
       )}
+    </div>
+  );
+}
+
+function DistOps(props: {
+  value: { winners: string; minHold: string; cooldown: string; keeperMin: string; reflectMin: string };
+  locked: boolean;
+  disabled: boolean;
+  signing: boolean;
+  onChange: (next: { winners: string; minHold: string; cooldown: string; keeperMin: string; reflectMin: string }) => void;
+  onSave: () => void;
+}) {
+  const digits = (s: string) => s.replace(/\D/g, "");
+  const set = (key: keyof typeof props.value, raw: string) => props.onChange({ ...props.value, [key]: digits(raw) });
+  return (
+    <div className="space-y-3 border-t border-border pt-5">
+      <Field
+        label="Distribution setup"
+        sentence
+        hint={
+          props.locked
+            ? "setdist is locked. Channel percents still save with ratios. Cooldown, winners, and floors stay as stored."
+            : "Shown as stored. 0 is live: cooldown 0 is no wait, winners 0 pays 1, min hold 0 and reflect floor 0 mean one whole token, keeper 0 pays no tip. This save calls setdist once and locks. With angel or jackpot above 0, cooldown and winners must both be above 0. Rain min hold and min pool are under Metadata."
+        }
+      >
+        <div className="grid gap-2 sm:grid-cols-2">
+          <input className="input" inputMode="numeric" aria-label="jackpot winners" placeholder="jackpot winners" disabled={props.disabled || props.signing || props.locked} value={props.value.winners} onChange={(e) => set("winners", e.target.value)} />
+          <input className="input" inputMode="numeric" aria-label="jackpot min hold" placeholder="jackpot min hold (raw)" disabled={props.disabled || props.signing || props.locked} value={props.value.minHold} onChange={(e) => set("minHold", e.target.value)} />
+          <input className="input" inputMode="numeric" aria-label="angel cooldown seconds" placeholder="angel cooldown (sec)" disabled={props.disabled || props.signing || props.locked} value={props.value.cooldown} onChange={(e) => set("cooldown", e.target.value)} />
+          <input className="input" inputMode="numeric" aria-label="keeper min" placeholder="keeper tip (raw)" disabled={props.disabled || props.signing || props.locked} value={props.value.keeperMin} onChange={(e) => set("keeperMin", e.target.value)} />
+          <input className="input" inputMode="numeric" aria-label="reflect min" placeholder="reflect floor (raw)" disabled={props.disabled || props.signing || props.locked} value={props.value.reflectMin} onChange={(e) => set("reflectMin", e.target.value)} />
+        </div>
+      </Field>
+      <button type="button" className="btn btn-outline btn-sm" disabled={props.disabled || props.signing || props.locked} onClick={props.onSave}>
+        {props.locked ? "setdist locked" : props.signing ? "Signing…" : "Save distribution setup"}
+      </button>
     </div>
   );
 }

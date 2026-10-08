@@ -88,9 +88,9 @@ export function IssuerTools({
 
   useEffect(() => {
     setTax(taxFromSettings(program, settings));
-    setWinners(String(Number(pick(settings, "jackpot_winners") ?? 3) || 3));
-    setMinHold(String(Number(pick(settings, "jackpot_min_hold") ?? 0)));
-    setCooldown(String(Number(pick(settings, "angel_numbers_cooldown") ?? 86400) || 86400));
+    setWinners(String(Math.max(0, Math.floor(Number(pick(settings, "jackpot_winners")) || 0))));
+    setMinHold(String(Math.max(0, Math.floor(Number(pick(settings, "jackpot_min_hold")) || 0))));
+    setCooldown(String(Math.max(0, Math.floor(Number(pick(settings, "angel_numbers_cooldown")) || 0))));
     setKeeperMin(String(Number(pick(settings, "keeper_min") ?? 0)));
     setReflectMin(String(Number(pick(settings, "reflect_min") ?? 0)));
   }, [program, settings]);
@@ -178,7 +178,7 @@ export function IssuerTools({
           hint={
             distLocked
               ? "Already locked - issuer cannot re-run. Use ratios above for channel bps; contract can still reset ops."
-              : "One-shot for issuer: channel bps + winners, cooldown, keeper/reflect mins. Locks after success."
+              : "One-shot for issuer. 0 is live: cooldown 0 is no wait, winners 0 pays 1. Saving setdist locks and, with channels on, needs cooldown and winners above 0."
           }
         >
           <div className="grid gap-2 sm:grid-cols-2">
