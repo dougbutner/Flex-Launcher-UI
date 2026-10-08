@@ -1,6 +1,6 @@
-import { SWAP_ALCOR } from "@/config/launch";
+import { SWAP_ALCOR, coreLiquidOf } from "@/config/launch";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
-import { fetchSwapPool, fetchSwapPoolsForToken, type AlcorPoolRow } from "@/services/alcorMarket";
+import { fetchAccountPositions, fetchSwapPool, fetchSwapPoolsForToken, type AlcorLpPosition, type AlcorPoolRow } from "@/services/alcorMarket";
 import { readAccounts, readLock, readPool, readPosition, readPositions } from "@/services/flexTables";
 import { amountsAtSqrt } from "@/services/launchMath";
 import { getSqrtPriceX64AtTick } from "@/services/tickMath";
@@ -52,6 +52,23 @@ export type SanityView = {
   backing: BackingSlice[];
   /** Pools that list this token, with the other side's symbol and USD. */
   poolBook: PoolBookRow[];
+  /** Project-token backing positions. Empty for a normal launch. */
+  marks: BackingMark[];
+  /** Quote assets that count as pure backing. Empty when this is a normal launch. */
+  backingQuotes: { symbol: string; contract: string }[];
+  /** MEME: no pure liquid backing. */
+  bare: boolean;
+  /** Share of pure backing by quote. Empty on a normal launch, where `backing` is the ring. */
+  pureBacking: BackingSlice[];
+};
+
+export type BackingMark = {
+  symbol: string;
+  contract: string;
+  positionId: number;
+  poolId: number;
+  usd: number;
+  quoteQty: number;
 };
 
 export type BackingSlice = {
@@ -91,10 +108,13 @@ export function splitCommunityLp(args: {
   slices: { symbol: string; contract: string; usd: number }[];
   quoteSymbol: string;
   quoteContract: string;
+  /** When set, every listed quote counts as the launch backing, not just one symbol. */
+  quotes?: { symbol: string; contract: string }[];
   hardBackingUsd: number | null;
 }): CommunityLpSplit {
-  const quoteSym = args.quoteSymbol.toUpperCase();
-  const quoteCode = args.quoteContract.toLowerCase();
+  const quoteList = args.quotes?.length
+    ? args.quotes
+    : [{ symbol: args.quoteSymbol, contract: args.quoteContract }];
   let sameGross = 0;
   let ecosystemUsd = 0;
   let degenUsd = 0;
@@ -102,7 +122,9 @@ export function splitCommunityLp(args: {
     if (!(row.usd > 0)) continue;
     const sym = row.symbol.toUpperCase();
     const code = row.contract.toLowerCase();
-    const same = sym === quoteSym && (quoteCode === "" || code === quoteCode);
+    const same = quoteList.some(
+      (q) => sym === q.symbol.toUpperCase() && (q.contract === "" || code === q.contract.toLowerCase())
+    );
     if (same) {
       sameGross += row.usd;
       continue;
@@ -149,6 +171,10 @@ export type SanityMathInput = {
   poolTvlUsd: number | null;
   volumeUsd24: number | null;
   unpricedPools?: number;
+  /** Skip tick math and use these amounts. Core tokens pass the backing positions. */
+  settled?: { lockedTokens: number; lockedQuote: number };
+  /** Quote per token. Used when there is no single sqrt price. */
+  midQuote?: number;
 };
 
 function rawToNumber(raw: bigint, precision: number): number {
@@ -201,36 +227,50 @@ function usdOrNull(quote: number, quoteUsd: number): number | null {
 }
 
 export function buildSanity(input: SanityMathInput): SanityView {
-  const sqrtLower = getSqrtPriceX64AtTick(input.tickLower);
-  const sqrtUpper = getSqrtPriceX64AtTick(input.tickUpper);
-  const sqrtStart =
-    input.sqrtStart > 0n ? input.sqrtStart : input.tokenIsA ? sqrtLower : sqrtUpper;
-  const now = amountsAtSqrt({
-    liquidity: input.liquidity,
-    sqrtLower,
-    sqrtUpper,
-    sqrtPrice: input.sqrtNow,
-  });
-  const start = amountsAtSqrt({
-    liquidity: input.liquidity,
-    sqrtLower,
-    sqrtUpper,
-    sqrtPrice: sqrtStart,
-  });
-  const tokenRaw = (side: { amountA: bigint; amountB: bigint }) =>
-    input.tokenIsA ? side.amountA : side.amountB;
-  const quoteRaw = (side: { amountA: bigint; amountB: bigint }) =>
-    input.tokenIsA ? side.amountB : side.amountA;
+  let lockedTokens: number;
+  let lockedQuote: number;
+  let tokensOut: number;
+  let quoteIn: number;
+  if (input.settled) {
+    lockedTokens = input.settled.lockedTokens;
+    lockedQuote = input.settled.lockedQuote;
+    tokensOut = 0;
+    quoteIn = 0;
+  } else {
+    const sqrtLower = getSqrtPriceX64AtTick(input.tickLower);
+    const sqrtUpper = getSqrtPriceX64AtTick(input.tickUpper);
+    const sqrtStart =
+      input.sqrtStart > 0n ? input.sqrtStart : input.tokenIsA ? sqrtLower : sqrtUpper;
+    const now = amountsAtSqrt({
+      liquidity: input.liquidity,
+      sqrtLower,
+      sqrtUpper,
+      sqrtPrice: input.sqrtNow,
+    });
+    const start = amountsAtSqrt({
+      liquidity: input.liquidity,
+      sqrtLower,
+      sqrtUpper,
+      sqrtPrice: sqrtStart,
+    });
+    const tokenRaw = (side: { amountA: bigint; amountB: bigint }) =>
+      input.tokenIsA ? side.amountA : side.amountB;
+    const quoteRaw = (side: { amountA: bigint; amountB: bigint }) =>
+      input.tokenIsA ? side.amountB : side.amountA;
 
-  const lockedTokens = rawToNumber(tokenRaw(now), input.tokenPrecision);
-  const lockedQuote = rawToNumber(quoteRaw(now), input.quotePrecision);
-  const startTokens = rawToNumber(tokenRaw(start), input.tokenPrecision);
-  const startQuote = rawToNumber(quoteRaw(start), input.quotePrecision);
-  const tokensOut = Math.max(0, dust(startTokens - lockedTokens, input.maxSupply));
-  const quoteIn = Math.max(0, dust(lockedQuote - startQuote, lockedQuote));
+    lockedTokens = rawToNumber(tokenRaw(now), input.tokenPrecision);
+    lockedQuote = rawToNumber(quoteRaw(now), input.quotePrecision);
+    const startTokens = rawToNumber(tokenRaw(start), input.tokenPrecision);
+    const startQuote = rawToNumber(quoteRaw(start), input.quotePrecision);
+    tokensOut = Math.max(0, dust(startTokens - lockedTokens, input.maxSupply));
+    quoteIn = Math.max(0, dust(lockedQuote - startQuote, lockedQuote));
+  }
   const avgPaidQuote = posDiv(quoteIn, tokensOut);
 
-  const midQuote = midQuotePerToken(input.sqrtNow, input.tokenIsA, input.tokenPrecision, input.quotePrecision);
+  const midQuote =
+    input.midQuote != null && input.midQuote > 0
+      ? input.midQuote
+      : midQuotePerToken(input.sqrtNow, input.tokenIsA, input.tokenPrecision, input.quotePrecision);
   const quoteUsd = input.quoteUsd > 0 ? input.quoteUsd : 0;
   const midUsd = usdOrNull(midQuote, quoteUsd);
   const avgPaidUsd = avgPaidQuote == null ? null : usdOrNull(avgPaidQuote, quoteUsd);
@@ -310,7 +350,57 @@ export function buildSanity(input: SanityMathInput): SanityView {
     unpricedPools: input.unpricedPools ?? 0,
     backing: [],
     poolBook: [],
+    marks: [],
+    backingQuotes: [],
+    bare: false,
+    pureBacking: [],
   };
+}
+
+/** Quote dollars and token amounts inside the named backing positions. Ignores other pairs. */
+export function backingFromPositions(args: {
+  tokenSymbol: string;
+  quotes: { symbol: string; contract: string }[];
+  positions: AlcorLpPosition[];
+  price: (contract: string, symbol: string) => number;
+}): { usd: number; tokens: number; marks: BackingMark[] } {
+  const tokenSym = args.tokenSymbol.toUpperCase();
+  const seen = new Set<number>();
+  let usd = 0;
+  let tokens = 0;
+  const marks: BackingMark[] = [];
+  for (const quote of args.quotes) {
+    const hits: BackingMark[] = [];
+    for (const pos of args.positions) {
+      if (pos.closed) continue;
+      const id = Number(pos.id) || 0;
+      if (id > 0 && seen.has(id)) continue;
+      const a = parseAsset(pos.amountA ?? "");
+      const b = parseAsset(pos.amountB ?? "");
+      if (!a || !b) continue;
+      const tokenSide = a.symbol === tokenSym ? a : b.symbol === tokenSym ? b : null;
+      const quoteSide = tokenSide === a ? b : tokenSide === b ? a : null;
+      if (!tokenSide || !quoteSide || quoteSide.symbol !== quote.symbol.toUpperCase()) continue;
+      if (id > 0) seen.add(id);
+      const quoteQty = Number(quoteSide.amount);
+      const tokenQty = Number(tokenSide.amount);
+      const px = args.price(quote.contract, quote.symbol);
+      const sideUsd = px > 0 && quoteQty > 0 ? quoteQty * px : 0;
+      usd += sideUsd;
+      tokens += Number.isFinite(tokenQty) && tokenQty > 0 ? tokenQty : 0;
+      hits.push({
+        symbol: quote.symbol.toUpperCase(),
+        contract: quote.contract,
+        positionId: id,
+        poolId: Number(pos.pool) || 0,
+        usd: sideUsd,
+        quoteQty: Number.isFinite(quoteQty) && quoteQty > 0 ? quoteQty : 0,
+      });
+    }
+    hits.sort((p, q) => q.usd - p.usd || q.quoteQty - p.quoteQty);
+    marks.push(...hits);
+  }
+  return { usd, tokens, marks };
 }
 
 function asBigint(v: unknown): bigint {
@@ -513,4 +603,86 @@ export async function loadPoolSanity(args: {
   const lock = posId > 0 ? await readLock(posId).catch(() => null) : null;
   const unlockUnix = num(pick(lock, "unlockTime", "unlock_time"));
   return { ...view, unlockUnix, backing, poolBook };
+}
+
+/** Same figures as a launch, with pure backing taken from the project token's own pools. */
+export async function loadCoreSanity(args: {
+  contract: string;
+  symbol: string;
+  maxSupply: number;
+  tokenPrecision: number;
+}): Promise<SanityView> {
+  const spec = coreLiquidOf(args.contract, args.symbol);
+  if (!spec) throw new Error("Backing pools are not set for this token.");
+  const [acct, listed, tokenUsd, nests] = await Promise.all([
+    readAccounts(args.contract, SWAP_ALCOR, args.symbol),
+    fetchSwapPoolsForToken(args.symbol, args.contract).catch(() => null as AlcorPoolRow[] | null),
+    fetchAlcorUsdPrice(args.contract, args.symbol).catch(() => 0),
+    Promise.all(spec.owners.map((owner) => fetchAccountPositions(owner))),
+  ]);
+  const prices = new Map<string, number>();
+  await Promise.all(
+    spec.quotes.map(async (q) => {
+      prices.set(`${q.contract}:${q.symbol}`, await fetchAlcorUsdPrice(q.contract, q.symbol).catch(() => 0));
+    })
+  );
+  const summed = spec.bare
+    ? { usd: 0, tokens: 0, marks: [] as BackingMark[] }
+    : backingFromPositions({
+        tokenSymbol: args.symbol,
+        quotes: spec.quotes.map((q) => ({ symbol: q.symbol, contract: q.contract })),
+        positions: nests.flat(),
+        price: (contract, symbol) => prices.get(`${contract}:${symbol}`) ?? 0,
+      });
+  const one = spec.quotes.length === 1 ? spec.quotes[0] : null;
+  const quoteUsd = one ? (prices.get(`${one.contract}:${one.symbol}`) ?? 0) : 1;
+  const lockedQuote = one ? summed.marks.reduce((sum, row) => sum + row.quoteQty, 0) : summed.usd;
+  const midQuote = quoteUsd > 0 && tokenUsd > 0 ? tokenUsd / quoteUsd : tokenUsd > 0 ? tokenUsd : 0;
+
+  let allPoolsQuoteUsd: number | null = null;
+  let unpricedPools = 0;
+  let volumeUsd24: number | null = null;
+  let backing: BackingSlice[] = [];
+  let poolBook: PoolBookRow[] = [];
+  if (listed) {
+    const book = await quoteBookUsd(listed, args.symbol, args.contract);
+    allPoolsQuoteUsd = book.usd;
+    unpricedPools = book.unpriced;
+    backing = book.backing;
+    poolBook = book.poolBook;
+    volumeUsd24 = listed.reduce((sum, row) => sum + (Number(row.volumeUSD24) || 0), 0);
+  }
+  const poolIds = new Set(summed.marks.map((row) => row.poolId));
+  const reportedTvl = (listed ?? [])
+    .filter((row) => poolIds.has(Number(row.id)))
+    .reduce((sum, row) => sum + (Number(row.tvlUSD) || 0), 0);
+  const view = buildSanity({
+    maxSupply: args.maxSupply,
+    tokenPrecision: args.tokenPrecision,
+    quotePrecision: 6,
+    tokenIsA: true,
+    sqrtNow: 0n,
+    sqrtStart: 0n,
+    tickLower: 0,
+    tickUpper: 0,
+    liquidity: 0n,
+    swapAlcorTokens: assetAmountNumber(String(pick(acct.rows[0], "balance") ?? "0")),
+    quoteUsd,
+    allPoolsQuoteUsd,
+    poolTvlUsd: reportedTvl > 0 ? reportedTvl : summed.usd > 0 ? summed.usd : null,
+    volumeUsd24,
+    unpricedPools,
+    settled: { lockedTokens: summed.tokens, lockedQuote },
+    midQuote,
+  });
+  return {
+    ...view,
+    hardBackingUsd: spec.bare ? null : view.hardBackingUsd,
+    backing,
+    poolBook,
+    marks: summed.marks,
+    backingQuotes: spec.quotes.map((q) => ({ symbol: q.symbol, contract: q.contract })),
+    bare: spec.bare,
+    pureBacking: backingShares(summed.marks.map((row) => ({ symbol: row.symbol, contract: row.contract, usd: row.usd }))),
+  };
 }

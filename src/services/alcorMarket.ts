@@ -180,6 +180,30 @@ function buildTrades(swaps: AlcorSwapRow[], tokenIsA: boolean, limit = 12): Mark
   return out;
 }
 
+export type AlcorLpPosition = {
+  id?: number;
+  pool?: number;
+  closed?: boolean;
+  amountA?: string;
+  amountB?: string;
+};
+
+/** Open AMM positions for an account. Amounts are "1.0000 SYM" strings. */
+export async function fetchAccountPositions(account: string): Promise<AlcorLpPosition[]> {
+  const name = account.trim().toLowerCase();
+  if (!name) return [];
+  try {
+    const res = await fetch(`https://proton.alcor.exchange/api/v2/account/${encodeURIComponent(name)}/positions`, {
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as AlcorLpPosition[];
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchSwapPool(poolId: number): Promise<AlcorPoolRow | null> {
   if (!(poolId > 0)) return null;
   const res = await fetch(`${ALCOR_POOL}/${poolId}`, { signal: AbortSignal.timeout(10_000) });

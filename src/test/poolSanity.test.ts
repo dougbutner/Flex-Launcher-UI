@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { amountsAtSqrt } from "@/services/launchMath";
-import { buildSanity, backingShares, midQuotePerToken, splitCommunityLp } from "@/services/poolSanity";
+import { backingFromPositions, buildSanity, backingShares, midQuotePerToken, splitCommunityLp } from "@/services/poolSanity";
 import { getSqrtPriceX64AtTick } from "@/services/tickMath";
 
 const GEASY = {
@@ -166,5 +166,66 @@ describe("pool sanity", () => {
     expect(split.sameUsd).toBe(2000);
     expect(split.ecosystemUsd).toBe(1220);
     expect(split.degenUsd).toBe(400);
+  });
+
+  it("treats several backing quotes as the same pure backing", () => {
+    const split = splitCommunityLp({
+      slices: [
+        { symbol: "XUSDC", contract: "xtokens", usd: 20000 },
+        { symbol: "XUSDT", contract: "xtokens", usd: 15000 },
+        { symbol: "WON", contract: "w3won", usd: 500 },
+      ],
+      quoteSymbol: "XUSDC",
+      quoteContract: "xtokens",
+      quotes: [
+        { symbol: "XUSDC", contract: "xtokens" },
+        { symbol: "XUSDT", contract: "xtokens" },
+      ],
+      hardBackingUsd: 30000,
+    });
+    expect(split.sameUsd).toBe(5000);
+    expect(split.ecosystemUsd).toBe(500);
+    expect(split.degenUsd).toBe(0);
+  });
+
+  it("prices backing from the quote side of the named positions", () => {
+    const summed = backingFromPositions({
+      tokenSymbol: "EASY",
+      quotes: [
+        { symbol: "XUSDT", contract: "xtokens" },
+        { symbol: "XUSDC", contract: "xtokens" },
+        { symbol: "XMD", contract: "xmd.token" },
+      ],
+      positions: [
+        { id: 1, pool: 10, amountA: "100.000000 EASY", amountB: "10.000000 XUSDT" },
+        { id: 2, pool: 11, amountA: "80.000000 EASY", amountB: "4.000000 XUSDC" },
+        { id: 3, pool: 12, amountA: "50.000000 EASY", amountB: "9.000000 INDEX" },
+        { id: 4, pool: 13, closed: true, amountA: "1.000000 EASY", amountB: "1.000000 XMD" },
+        { id: 5, pool: 14, amountA: "0.000000 EASY", amountB: "3.000000 XMD" },
+      ],
+      price: (_contract, symbol) => (symbol === "XMD" ? 0.5 : 1),
+    });
+    expect(summed.tokens).toBe(180);
+    expect(summed.usd).toBeCloseTo(15.5, 8);
+    expect(summed.marks.map((row) => row.symbol)).toEqual(["XUSDT", "XUSDC", "XMD"]);
+    expect(summed.marks[2].quoteQty).toBe(3);
+  });
+
+  it("uses settled backing amounts instead of tick math", () => {
+    const view = buildSanity({
+      ...GEASY,
+      settled: { lockedTokens: 100, lockedQuote: 40 },
+      midQuote: 2,
+      quoteUsd: 1,
+    });
+    expect(view.lockedTokens).toBe(100);
+    expect(view.lockedQuote).toBe(40);
+    expect(view.midQuote).toBe(2);
+    expect(view.hardBackingUsd).toBe(40);
+    expect(view.fullPrintUsd).toBeCloseTo(2 * GEASY.maxSupply, 6);
+    expect(view.backingOverFull).toBeCloseTo(40 / (2 * GEASY.maxSupply), 8);
+    expect(view.tokensOut).toBe(0);
+    expect(view.bare).toBe(false);
+    expect(view.marks).toEqual([]);
   });
 });

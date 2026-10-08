@@ -1,7 +1,8 @@
+import { coreLiquidOf } from "@/config/launch";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { bookCacheKey } from "@/services/cacheKeys";
 import { liveOr } from "@/services/readThrough";
-import { loadPoolSanity, type SanityView } from "@/services/poolSanity";
+import { loadCoreSanity, loadPoolSanity, type SanityView } from "@/services/poolSanity";
 import { loadTokenPublicFresh, type TokenPublic } from "@/services/tokenSnapshot";
 import {
   loadHeadcounts,
@@ -69,7 +70,16 @@ export async function loadTokenBookFresh(args: TokenBookArgs): Promise<TokenBook
   let error = "";
   let books: InsiderRow[] = [];
   let wallets: WalletDot[] = [];
-  if (args.poolId > 0) {
+  if (coreLiquidOf(args.contract, args.symbol)) {
+    try {
+      view = await loadCoreSanity(args);
+      const insider = await loadInsiderBooks(args.contract, args.symbol, view.poolBook);
+      books = insider.insiders;
+      wallets = insider.wallets;
+    } catch (err) {
+      error = err instanceof Error ? err.message : "Could not read the backing pools.";
+    }
+  } else if (args.poolId > 0) {
     try {
       view = await loadPoolSanity(args);
       const insider = await loadInsiderBooks(args.contract, args.symbol, view.poolBook);

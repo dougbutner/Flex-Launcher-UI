@@ -4,6 +4,7 @@ import { ClubFeed, WeekTopPost } from "@/components/insiders/ClubFeed";
 import { DecimalText } from "@/components/Amount";
 import { TxLink } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
+import { BackingMarks } from "@/components/token/BackingMarks";
 import { SanitySection } from "@/components/token/SanitySection";
 import { IssuerTools } from "@/components/token/IssuerTools";
 import { PresalePanel } from "@/components/token/PresalePanel";
@@ -12,7 +13,7 @@ import { TokenListingCard } from "@/components/token/TokenListingCard";
 import { TokenTitleStats } from "@/components/token/TokenMarket";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { TokenPageSkeleton } from "@/components/ui/PageSkeletons";
-import { alcorAnalyticsUrl, coreTokenOf, explorerAccount, flexMeta, hasAngelChannels, isFlexContractActor, programFromAccount } from "@/config/launch";
+import { alcorAnalyticsUrl, coreLiquidOf, coreTokenOf, explorerAccount, flexMeta, hasAngelChannels, isFlexContractActor, programFromAccount } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { fetchTopSwapPool, poolCounterparty } from "@/services/alcorMarket";
@@ -27,6 +28,7 @@ import { listManagerTokens } from "@/services/managerApi";
 import { storedPayoutAction } from "@/services/rainDefaults";
 import { rememberRemoteTokenIcon } from "@/services/tokenIcons";
 import { findProtonTokenRow } from "@/services/tokenProton";
+import type { BackingMark, SanityView } from "@/services/poolSanity";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]): unknown {
@@ -61,7 +63,11 @@ export default function Token() {
   const [pokeMsg, setPokeMsg] = useState<{ tx?: string; err?: string }>({});
   const [iconSrc, setIconSrc] = useState("");
   const [sanityEpoch, setSanityEpoch] = useState(0);
+  const [marks, setMarks] = useState<BackingMark[]>([]);
   const [pair, setPair] = useState({ poolId: 0, quoteSymbol: "", quoteContract: "" });
+  const onMarks = useCallback((next: SanityView | null) => {
+    setMarks(next?.marks ?? []);
+  }, []);
 
   const load = useCallback(async (force = false) => {
     if (!code || !sym || !program) return;
@@ -127,6 +133,10 @@ export default function Token() {
   }, [actor, code, core, program, sym]);
 
   useEffect(() => {
+    setMarks([]);
+  }, [code, sym]);
+
+  useEffect(() => {
     void load();
   }, [load]);
 
@@ -145,6 +155,7 @@ export default function Token() {
   }
 
   const meta = flexMeta(program);
+  const liquid = coreLiquidOf(code, sym);
   const issuer = String(pick(stat, "issuer") ?? "");
   const isIssuer = Boolean(actor && issuer && actor === issuer);
   const isContractAdmin = Boolean(actor && isFlexContractActor(actor) && actor === code);
@@ -225,10 +236,31 @@ export default function Token() {
               </button>
             )}
             {pokeMsg.tx ? <TxLink tx={pokeMsg.tx} prefix="tx " /> : null}
-            {quoteSymbol ? <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={28} /> : null}
+            {liquid?.bare ? (
+              <TokenIcon contract={code} symbol={sym} size={28} />
+            ) : liquid && liquid.quotes.length ? (
+              <BackingMarks
+                size={28}
+                marks={
+                  marks.length
+                    ? marks.map((mark) => ({
+                        symbol: mark.symbol,
+                        contract: mark.contract,
+                        href:
+                          mark.positionId > 0
+                            ? `https://alcor.exchange/v/xpr/swap/positions/${mark.positionId}`
+                            : undefined,
+                        title: mark.symbol,
+                      }))
+                    : liquid.quotes.map((row) => ({ symbol: row.symbol, contract: row.contract, title: row.symbol }))
+                }
+              />
+            ) : quoteSymbol ? (
+              <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={28} />
+            ) : null}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {core ? "" : `${program} @ `}
+            {"@ "}
             <a href={explorerAccount(code)} target="_blank" rel="noopener noreferrer" className="link font-mono">
               {code}
             </a>
@@ -265,7 +297,10 @@ export default function Token() {
         <span className={launched ? "chip-success" : inPresale ? "chip-primary" : "chip-muted"}>
           {launched ? "launched" : inPresale ? "insiders" : "wizard in progress"}
         </span>
-        {quoteSymbol ? <span className="chip-muted">quote {quoteSymbol}</span> : null}
+        {!liquid && quoteSymbol ? <span className="chip-muted">quote {quoteSymbol}</span> : null}
+        {liquid && !liquid.bare && liquid.quotes.length === 1 ? (
+          <span className="chip-muted">backing {liquid.quotes[0].symbol}</span>
+        ) : null}
         {Boolean(pick(launch, "swap_underlying_default")) && quoteSymbol ? (
           <span className="chip-muted">→ {quoteSymbol} default</span>
         ) : null}
@@ -384,7 +419,7 @@ export default function Token() {
         />
       ) : null}
 
-      {launch ? (
+      {launch || core ? (
         <SanitySection
           contract={code}
           symbol={sym}
@@ -399,6 +434,7 @@ export default function Token() {
           tokenPrecision={precision}
           reloadKey={sanityEpoch}
           part={presale && !launched ? "stats" : "all"}
+          onReady={core ? onMarks : undefined}
         />
       ) : null}
 

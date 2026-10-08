@@ -96,20 +96,25 @@ export function CoverGauge({
   total,
   cap,
   extras,
+  hidePure = false,
+  pureExplain,
 }: {
   ratio: number | null;
   backing: string;
   total: string;
   cap: string;
   extras: readonly CoverExtra[];
+  hidePure?: boolean;
+  pureExplain?: string;
 }) {
   const r = 132;
   const cx = 230;
   const cy = 162;
   const shown = extras.filter((extra) => extra.ratio != null && extra.ratio > 0);
-  let cursor = ratio == null ? 0 : clamp01(ratio);
+  const goldRatio = hidePure ? null : ratio;
+  let cursor = goldRatio == null ? 0 : clamp01(goldRatio);
   const arcs: { d: string; color: string }[] = [];
-  const gold = semiArc(cx, cy, r, 0, cursor);
+  const gold = goldRatio == null ? "" : semiArc(cx, cy, r, 0, cursor);
   if (gold) arcs.push({ d: gold, color: GOLD });
   for (const extra of shown) {
     const start = Math.min(1, cursor + 0.016);
@@ -120,7 +125,7 @@ export function CoverGauge({
   }
 
   return (
-    <figure className="bg-[#0d0d0d] px-3 py-3" aria-label={`Pure liquid backing is ${shareLabel(ratio)} of market cap`}>
+    <figure className="bg-[#0d0d0d] px-3 py-3" aria-label={hidePure ? `Community liquidity is ${shareLabel(shown.reduce((sum, extra) => sum + (extra.ratio ?? 0), 0))} of market cap` : `Pure liquid backing is ${shareLabel(ratio)} of market cap`}>
       <FigureTitle
         center
         label="Backing / market cap"
@@ -132,14 +137,16 @@ export function CoverGauge({
         {arcs.map((arc) => (
           <path key={arc.color} d={arc.d} fill="none" stroke={arc.color} strokeWidth="18" strokeLinecap="butt" />
         ))}
-        <text x={cx} y={132} textAnchor="middle" fontSize="28" fontFamily="ui-monospace, monospace" fill={GOLD}>
-          <DecimalText text={shareLabel(ratio)} svg />
+        <text x={cx} y={132} textAnchor="middle" fontSize="28" fontFamily="ui-monospace, monospace" fill={hidePure ? INK : GOLD}>
+          <DecimalText text={shareLabel(hidePure ? shown.reduce((sum, extra) => sum + (extra.ratio ?? 0), 0) : ratio)} svg />
         </text>
         {shown.length ? (
           <text x={cx} y={160} textAnchor="middle" fontSize="20" fontFamily="ui-monospace, monospace">
             {shown.map((extra, i) => (
               <tspan key={extra.label} fill={extra.color}>
-                {i ? "  " : ""}+ <DecimalText text={shareLabel(extra.ratio)} svg />
+                {i ? "  " : ""}
+                {hidePure ? "" : "+ "}
+                <DecimalText text={shareLabel(extra.ratio)} svg />
               </tspan>
             ))}
           </text>
@@ -160,12 +167,16 @@ export function CoverGauge({
               color: INK,
               value: total,
             },
-            {
-              label: "Pure liquid backing",
-              explain: "Quote in the day-one locked position times the Alcor USD price of that quote.",
-              color: GOLD,
-              value: backing,
-            },
+            ...(hidePure
+              ? []
+              : [
+                  {
+                    label: "Pure liquid backing",
+                    explain: pureExplain ?? "Quote in the day-one locked position times the Alcor USD price of that quote.",
+                    color: GOLD,
+                    value: backing,
+                  },
+                ]),
             ...extras.map((extra) => ({
               label: extra.label,
               explain: extra.hint,

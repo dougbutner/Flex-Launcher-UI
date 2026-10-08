@@ -314,6 +314,67 @@ export function coreTokenOf(contract: string, symbol?: string) {
   return null;
 }
 
+export type CoreQuote = { symbol: string; contract: string };
+
+/**
+ * Pure backing for the four project tokens.
+ * EASY: hands.mon3y positions in the five stables.
+ * WON: every EASY position on w3won or hands.money.
+ * GRAMS: every hands.mon3y XPAXG position.
+ * MEME: no pure backing.
+ */
+export const CORE_LIQUID: readonly {
+  symbol: string;
+  contract: string;
+  owners: readonly string[];
+  quotes: readonly CoreQuote[];
+  bare: boolean;
+}[] = [
+  {
+    symbol: "EASY",
+    contract: MON3Y,
+    owners: ["hands.mon3y"],
+    quotes: [
+      { symbol: "XUSDT", contract: XTOKENS },
+      { symbol: "XUSDC", contract: XTOKENS },
+      { symbol: "XMD", contract: XMD_TOKEN },
+      { symbol: "XPYUSD", contract: XTOKENS },
+      { symbol: "XPAX", contract: XTOKENS },
+    ],
+    bare: false,
+  },
+  {
+    symbol: "WON",
+    contract: "w3won",
+    owners: ["w3won", "hands.money"],
+    quotes: [{ symbol: "EASY", contract: MON3Y }],
+    bare: false,
+  },
+  {
+    symbol: "GRAMS",
+    contract: "gold.mon3y",
+    owners: ["hands.mon3y"],
+    quotes: [{ symbol: "XPAXG", contract: XTOKENS }],
+    bare: false,
+  },
+  {
+    symbol: "MEME",
+    contract: "m3m3",
+    owners: [],
+    quotes: [],
+    bare: true,
+  },
+];
+
+export function coreLiquidOf(contract: string, symbol: string) {
+  const code = contract.trim().toLowerCase();
+  const sym = symbol.trim().toUpperCase();
+  for (const row of CORE_LIQUID) {
+    if (row.contract === code && row.symbol === sym) return row;
+  }
+  return null;
+}
+
 /** True when quote is a flex quote (0% skim, proof id 0), including GEASY@fl3x. */
 export function isFlexQuoteToken(symbol: string, contract: string): boolean {
   if (symbol === "GEASY" && contract === COMPLEXFLEX_CONTRACT) return true;
