@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Bell } from "lucide-react";
 import { hasAngelChannels, hasInheritance, type FlexProgram } from "@/config/launch";
 import { TxLink } from "@/components/launch/ui";
 import { validAccount } from "@/services/assets";
@@ -122,18 +123,28 @@ export function HolderPrefs({
     void run(inheritanceAction(contract, actor, bene, bps, symbol));
   };
 
-  const chip = (slot: Slot, label: string, extraDisabled = false) => (
-    <button
-      type="button"
-      className={`btn btn-sm ${open === slot ? "btn-primary" : "btn-outline"}`}
-      disabled={disabled || extraDisabled}
-      onClick={() => {
-        setMsg({});
-        setOpen((cur) => (cur === slot ? null : slot));
-      }}
-    >
-      {label}
-    </button>
+  const chip = (slot: Slot, label: string, hint: string, extraDisabled = false, bell = false) => (
+    <span className="group/chip relative inline-flex max-sm:static">
+      <span className="pointer-events-none absolute z-20 border border-border bg-background px-2 py-1 text-xs text-foreground opacity-0 transition max-sm:right-3 max-sm:top-2 max-sm:w-max max-sm:max-w-[calc(100%-1.5rem)] max-sm:whitespace-nowrap max-sm:text-right sm:right-full sm:top-1/2 sm:mr-2 sm:w-max sm:-translate-y-1/2 sm:translate-x-1 sm:whitespace-nowrap group-hover/chip:opacity-100 group-focus-within/chip:opacity-100 sm:group-hover/chip:translate-x-0 sm:group-focus-within/chip:translate-x-0">
+        {hint}
+      </span>
+      <button
+        type="button"
+        className={`btn btn-sm relative ${open === slot ? "btn-primary" : "btn-outline"}`}
+        disabled={disabled || extraDisabled}
+        onClick={() => {
+          setMsg({});
+          setOpen((cur) => (cur === slot ? null : slot));
+        }}
+      >
+        {label}
+        {bell ? (
+          <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-label={hint}>
+            <Bell className="h-2.5 w-2.5" aria-hidden />
+          </span>
+        ) : null}
+      </button>
+    </span>
   );
 
   const sendBtn = (onSend: () => void, extraDisabled = false) => (
@@ -143,8 +154,8 @@ export function HolderPrefs({
   );
 
   return (
-    <section className="border border-border bg-background/40 p-3">
-      <div className="flex flex-wrap items-center gap-1.5">
+    <section className="relative border border-border bg-background/40 p-3 max-sm:pt-11">
+      <div className="flex flex-wrap items-center justify-end gap-1.5">
         {open === "flex" ? (
           <>
             <select
@@ -166,7 +177,7 @@ export function HolderPrefs({
             {sendBtn(sendFlex)}
           </>
         ) : (
-          chip("flex", "Flex")
+          chip("flex", "Flex", "Where your rain is paid.")
         )}
 
         {open === "optout" ? (
@@ -175,7 +186,7 @@ export function HolderPrefs({
             {sendBtn(() => void run(feeoptoutAction(contract, actor, true, symbol)), optedOut)}
           </>
         ) : (
-          chip("optout", optedOut ? "Opted out" : "Opt out", optedOut)
+          chip("optout", optedOut ? "Opted out" : "Opt out", "Skip tax. Give up rain forever.", optedOut)
         )}
 
         {angelEnabled ? (
@@ -192,7 +203,13 @@ export function HolderPrefs({
               {sendBtn(() => void run(setangelnumAction(contract, actor, symbol, Number(angel))), angel === "" || Number(angel) > 999)}
             </>
           ) : (
-            chip("angel", "Angel")
+            chip(
+              "angel",
+              "Angel",
+              currentAngel === 1000 ? "Set this so angels can call you." : "The number angels call.",
+              false,
+              currentAngel === 1000,
+            )
           )
         ) : null}
 
@@ -217,7 +234,7 @@ export function HolderPrefs({
               {sendBtn(sendHeir)}
             </>
           ) : (
-            chip("heir", "Heir")
+            chip("heir", "Heir", "Who gets a share of your rain.")
           )
         ) : null}
 
@@ -235,7 +252,7 @@ export function HolderPrefs({
               {sendBtn(() => void run(inheritmemoAction(contract, actor, memo, symbol)), memo.length > 200)}
             </>
           ) : (
-            chip("memo", "Memo")
+            chip("memo", "Memo", "Note sent with the heir's rain.")
           )
         ) : null}
       </div>

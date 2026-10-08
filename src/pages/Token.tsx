@@ -29,7 +29,9 @@ import { storedPayoutAction } from "@/services/rainDefaults";
 import { rememberRemoteTokenIcon } from "@/services/tokenIcons";
 import { findProtonTokenRow } from "@/services/tokenProton";
 import type { BackingMark, SanityView } from "@/services/poolSanity";
+import { getAccount } from "@/services/rpc";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
+import { fmtAge } from "@/services/winnerBoard";
 
 function pick(row: Record<string, unknown> | null | undefined, ...keys: string[]): unknown {
   if (!row) return undefined;
@@ -65,6 +67,7 @@ export default function Token() {
   const [sanityEpoch, setSanityEpoch] = useState(0);
   const [marks, setMarks] = useState<BackingMark[]>([]);
   const [pair, setPair] = useState({ poolId: 0, quoteSymbol: "", quoteContract: "" });
+  const [issuerBorn, setIssuerBorn] = useState(0);
   const onMarks = useCallback((next: SanityView | null) => {
     setMarks(next?.marks ?? []);
   }, []);
@@ -88,6 +91,9 @@ export default function Token() {
       const s = shared.stat;
       setLaunch(l);
       setStat(s);
+      setIssuerBorn(
+        Date.parse(String((await getAccount(String(pick(s, "issuer") ?? "")).catch(() => null))?.created ?? "")),
+      );
       setSettings(shared.settings);
       setPools(shared.pools);
       setPresale(shared.presale);
@@ -270,6 +276,14 @@ export default function Token() {
                 <a href={explorerAccount(issuer)} target="_blank" rel="noopener noreferrer" className="link font-mono">
                   {issuer}
                 </a>
+                {issuerBorn > 0 ? (
+                  <span
+                    className="ml-1 align-baseline font-mono leading-none"
+                    style={{ fontSize: "0.62em", color: "rgb(255 255 255 / 0.38)" }}
+                  >
+                    {fmtAge(issuerBorn)}
+                  </span>
+                ) : null}
               </>
             ) : null}
           </p>

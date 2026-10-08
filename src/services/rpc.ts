@@ -89,6 +89,7 @@ export async function getAbi(accountName: string) {
 export async function getAccount(name: string) {
   return rpcPost<{
     account_name?: string;
+    created?: string;
     ram_quota?: number;
     ram_usage?: number;
     core_liquid_balance?: string;
