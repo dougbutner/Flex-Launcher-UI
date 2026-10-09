@@ -609,7 +609,7 @@ describe("holder and issuer manage actions", () => {
           from: "alice",
           to: "bob",
           quantity: "0.0001 FOO",
-          memo: "alice opted you into the tax",
+          memo: "⟁ FOO alice opted you into the tax",
         },
       },
     ]);

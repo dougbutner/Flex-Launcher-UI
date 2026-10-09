@@ -384,7 +384,9 @@ export function issuerTaxStatusActions(
         from: issuer,
         to: holder,
         quantity: dustQuantity(precision, tokenSymbol),
-        memo: banStatus ? `${issuer} opted you out of the tax` : `${issuer} opted you into the tax`,
+        memo: banStatus
+          ? `⟁ ${tokenSymbol} ${issuer} opted you out of the tax`
+          : `⟁ ${tokenSymbol} ${issuer} opted you into the tax`,
       },
     });
   }

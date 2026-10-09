@@ -1,11 +1,30 @@
 const MAX_BILLS = 200;
 
-type Bit = { el: HTMLDivElement; x: number; y: number; vx: number; vy: number; rot: number; vr: number };
+type Bit = {
+  el: HTMLDivElement;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  rot: number;
+  vr: number;
+  bill: boolean;
+  sway: number;
+  swayHz: number;
+};
 
 let layer: HTMLDivElement | null = null;
 let bits: Bit[] = [];
 let frame = 0;
 let last = 0;
+let mouseX = -1e6;
+let mouseY = -1e6;
+let tracking = false;
+
+function onPointer(ev: PointerEvent) {
+  mouseX = ev.clientX;
+  mouseY = ev.clientY;
+}
 
 function svg(w: number, h: number, body: string) {
   const el = document.createElement("div");
@@ -54,13 +73,28 @@ function step(now: number) {
   const dt = Math.min(0.032, (now - last) / 1000 || 0.016);
   last = now;
   const floor = window.innerHeight + 48;
+  const fall = 1.2;
   for (let i = bits.length - 1; i >= 0; i--) {
     const b = bits[i];
-    b.vy = Math.min(72, b.vy + 220 * dt);
+    const dx = b.x - mouseX;
+    const dy = b.y - mouseY;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 72 && dist > 0.5) {
+      const push = (1 - dist / 72) * 520;
+      b.vx += (dx / dist) * push * dt;
+      b.vy += (dy / dist) * push * dt * 0.25;
+    }
+    b.vy = Math.min(72 * fall, b.vy + 220 * fall * dt);
+    let vx = b.vx;
+    if (b.bill) {
+      b.sway += dt * b.swayHz;
+      vx += Math.sin(b.sway) * 78;
+      b.rot = Math.sin(b.sway) * 18;
+    }
     b.vx *= 0.985;
-    b.x += b.vx * dt;
+    b.x += vx * dt;
     b.y += b.vy * dt;
-    b.rot += b.vr * dt;
+    if (!b.bill) b.rot += b.vr * dt;
     if (b.y > floor) {
       b.el.remove();
       bits.splice(i, 1);
@@ -71,6 +105,10 @@ function step(now: number) {
   if (bits.length) frame = requestAnimationFrame(step);
   else {
     frame = 0;
+    if (tracking) {
+      window.removeEventListener("pointermove", onPointer);
+      tracking = false;
+    }
     layer?.remove();
     layer = null;
   }
@@ -89,8 +127,15 @@ function launch(kind: "1" | "25" | "10" | "5" | "1c", x: number, y: number) {
     vy: -140 - Math.random() * 80,
     rot: (Math.random() - 0.5) * 24,
     vr: (Math.random() - 0.5) * 70,
+    bill: kind === "1",
+    sway: Math.random() * Math.PI * 2,
+    swayHz: 2.4 + Math.random() * 1.6,
   };
   bits.push(bit);
+  if (!tracking) {
+    window.addEventListener("pointermove", onPointer, { passive: true });
+    tracking = true;
+  }
   if (!frame) {
     last = performance.now();
     frame = requestAnimationFrame(step);
