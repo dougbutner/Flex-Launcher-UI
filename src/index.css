@@ -125,6 +125,21 @@
     @apply btn text-muted-foreground hover:bg-secondary hover:text-foreground;
   }
 
+  .money-rain {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .money-rain > div {
+    position: absolute;
+    top: 0;
+    left: 0;
+    will-change: transform;
+  }
+
   .btn-rain {
     @apply btn border-0 bg-transparent text-[#3b82f6] shadow-none hover:bg-[#1e3a8a] hover:text-primary active:scale-[0.98];
   }

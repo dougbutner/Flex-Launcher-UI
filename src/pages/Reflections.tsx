@@ -8,6 +8,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { pullangelAction, pulljackpotAction } from "@/services/launchActions";
 import { loadDrylands, type Dryland } from "@/services/rainBoard";
 import { storedPayoutAction } from "@/services/rainDefaults";
+import { rainCash, whenWalletClosed } from "@/components/rain/moneyRain";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
 function fmtPool(n: number, precision: number): string {
@@ -35,7 +36,7 @@ export default function Reflections() {
     }
   }, []);
 
-  const rain = async (d: Dryland, kind: "rain" | "angel" | "jackpot" = "rain") => {
+  const rain = async (d: Dryland, from: HTMLElement, kind: "rain" | "angel" | "jackpot" = "rain") => {
     if (kind === "rain" && d.poolRaw < d.floorRaw) return;
     if (kind === "angel" && !(d.angel > 0)) return;
     if (kind === "jackpot" && !(d.jackpot > 0)) return;
@@ -43,6 +44,9 @@ export default function Reflections() {
       void addWebAuthWallet();
       return;
     }
+    const box = from.getBoundingClientRect();
+    const origin = { x: box.left + box.width / 2, y: box.top };
+    const usd = kind === "angel" ? d.px * d.angel : kind === "jackpot" ? d.px * d.jackpot : d.usd * splashShare(d.contract, d.symbol);
     const id = `${kind}:${d.key}`;
     setRaining(id);
     setRainMsg((m) => ({ ...m, [id]: {} }));
@@ -57,6 +61,8 @@ export default function Reflections() {
               : await storedPayoutAction(d.contract, d.symbol, actor, flexMeta(d.program ?? "easyflex").payoutSigner);
       const res = await transact([action]);
       setRainMsg((m) => ({ ...m, [id]: { tx: txIdFromResult(res) || "ok" } }));
+      await whenWalletClosed();
+      rainCash(usd, origin);
       await load();
     } catch (err) {
       const msg = txErrorMessage(err);
@@ -120,14 +126,15 @@ export default function Reflections() {
                       ? "card flex min-h-[13.5rem] cursor-not-allowed flex-col opacity-40 grayscale"
                       : "group card flex min-h-[13.5rem] cursor-pointer flex-col transition-colors hover:border-[#1e3a8a] hover:bg-[#1e3a8a] focus:border-[#1e3a8a] focus:bg-[#1e3a8a] focus:outline-none"
                   }
-                  onClick={() => {
-                    if (!below) void rain(d);
+                  onClick={(e) => {
+                    if (below) return;
+                    void rain(d, e.currentTarget);
                   }}
                   onKeyDown={(e) => {
                     if (below) return;
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      void rain(d);
+                      void rain(d, e.currentTarget);
                     }
                   }}
                 >
@@ -193,7 +200,7 @@ export default function Reflections() {
             rows={drylands.filter((d) => d.angel > 0)}
             raining={raining}
             rainMsg={rainMsg}
-            onCall={(d) => void rain(d, "angel")}
+            onCall={(d, from) => void rain(d, from, "angel")}
           />
           <PotSection
             title="Jackpot"
@@ -203,7 +210,7 @@ export default function Reflections() {
             rows={drylands.filter((d) => d.jackpot > 0)}
             raining={raining}
             rainMsg={rainMsg}
-            onCall={(d) => void rain(d, "jackpot")}
+            onCall={(d, from) => void rain(d, from, "jackpot")}
           />
         </>
       )}
@@ -228,7 +235,7 @@ function PotSection({
   rows: Dryland[];
   raining: string | null;
   rainMsg: Record<string, { tx?: string; err?: string }>;
-  onCall: (d: Dryland) => void;
+  onCall: (d: Dryland, from: HTMLElement) => void;
 }) {
   const kind = tone === "white" ? "angel" : "jackpot";
   const hot =
@@ -267,11 +274,11 @@ function PotSection({
                 tabIndex={0}
                 aria-label={`${label} ${d.symbol}`}
                 className={`group card flex min-h-[13.5rem] cursor-pointer flex-col transition-colors focus:outline-none ${hot}`}
-                onClick={() => onCall(d)}
+                onClick={(e) => onCall(d, e.currentTarget)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onCall(d);
+                    onCall(d, e.currentTarget);
                   }
                 }}
               >
