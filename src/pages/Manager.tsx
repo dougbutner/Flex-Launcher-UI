@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Field, StatusIcon, TxLink } from "@/components/launch/ui";
 import { AirdropPanel } from "@/components/manager/AirdropPanel";
+import { HolderTaxPanel } from "@/components/manager/HolderTaxPanel";
 import { ManagerPresale } from "@/components/manager/ManagerPresale";
 import { WinnerTextLink } from "@/components/winners/WinnerTextLink";
 import { RainDefaultsFields } from "@/components/launch/RainDefaultsFields";
@@ -754,6 +755,14 @@ export default function Manager() {
                       </button>
                     </div>
                   )}
+                  <HolderTaxPanel
+                    contract={view.token.contract}
+                    symbol={view.token.symbol}
+                    precision={view.token.precision}
+                    issuer={actor ?? ""}
+                    disabled={busy || taxBusy}
+                    transact={transact}
+                  />
                 </div>
               ) : view.progress.create ? (
                 <FormPanelSkeleton />

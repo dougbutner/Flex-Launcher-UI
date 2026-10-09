@@ -18,6 +18,7 @@ import {
   chooserewardAction,
   firstBuySwapAction,
   feeoptoutAction,
+  issuerTaxStatusActions,
   inheritanceAction,
   inheritmemoAction,
   abiSymbol,
@@ -599,6 +600,22 @@ describe("holder and issuer manage actions", () => {
       ban_status: true,
       token_symbol: "FOO",
     });
+    expect(issuerTaxStatusActions("for3x", "alice", "bob", false, "FOO", 4)).toEqual([
+      feeoptoutAction("for3x", "bob", false, "FOO"),
+      {
+        account: "for3x",
+        name: "transfer",
+        data: {
+          from: "alice",
+          to: "bob",
+          quantity: "0.0001 FOO",
+          memo: "alice opted you into the tax",
+        },
+      },
+    ]);
+    expect(issuerTaxStatusActions("3asy", "alice", "alice", true, "BAR", 0)).toEqual([
+      feeoptoutAction("3asy", "alice", true, "BAR"),
+    ]);
     expect(inheritanceAction("complexflex", "alice", "bob", 2500, "FOO").data).toEqual({
       flexer: "alice",
       beneficiary: "bob",

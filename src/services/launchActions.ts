@@ -346,7 +346,7 @@ export function chooserewardAction(
   };
 }
 
-/** Self may only pass `banStatus: true` (irreversible opt-out). */
+/** Holder may only pass `banStatus: true`. Issuer, admin, or the token contract may set either way. */
 export function feeoptoutAction(
   tokenContract: string,
   account: string,
@@ -358,6 +358,37 @@ export function feeoptoutAction(
     name: "feeoptout",
     data: { account, ban_status: banStatus, token_symbol: tokenSymbol },
   };
+}
+
+function dustQuantity(precision: number, symbol: string): string {
+  const p = Math.max(0, Math.min(8, Math.floor(precision) || 0));
+  if (p === 0) return `1 ${symbol}`;
+  return `0.${"0".repeat(p - 1)}1 ${symbol}`;
+}
+
+/** Issuer sets fee_opted_out, then sends one raw unit so the holder sees who changed it. */
+export function issuerTaxStatusActions(
+  tokenContract: string,
+  issuer: string,
+  holder: string,
+  banStatus: boolean,
+  tokenSymbol: string,
+  precision: number
+): ChainAction[] {
+  const actions: ChainAction[] = [feeoptoutAction(tokenContract, holder, banStatus, tokenSymbol)];
+  if (holder !== issuer) {
+    actions.push({
+      account: tokenContract,
+      name: "transfer",
+      data: {
+        from: issuer,
+        to: holder,
+        quantity: dustQuantity(precision, tokenSymbol),
+        memo: banStatus ? `${issuer} opted you out of the tax` : `${issuer} opted you into the tax`,
+      },
+    });
+  }
+  return actions;
 }
 
 /** `rate` = bps of splash paid to beneficiary (0-10000). Empty beneficiary → self. */
