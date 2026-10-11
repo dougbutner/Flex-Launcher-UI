@@ -38,3 +38,6 @@ api/config.php
 
 # Live flex token contracts (local source of truth, not this UI repo).
 src/Project Contracts/
+
+# Local HOLOFLX card studies: generator and renders stay off the repo.
+holoflx/

@@ -25,6 +25,7 @@ import {
   lockposAction,
   payoutAction,
   provelockAction,
+  finishdrawAction,
   pullangelAction,
   pulljackpotAction,
   ratiosAction,
@@ -216,6 +217,7 @@ export function simulateManageActions(args: {
     out.push(setangelnumAction(code, actor, symbol, 42));
     out.push(pullangelAction(code, symbol));
     out.push(pulljackpotAction(code, symbol));
+    out.push(finishdrawAction(code, symbol));
   }
   const now = Math.floor(Date.now() / 1000);
   out.push(

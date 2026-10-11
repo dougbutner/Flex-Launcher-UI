@@ -198,7 +198,8 @@ export function payoutAction(
     data: {
       token_symbol: tokenSymbol,
       ...who,
-      ...(min_hold > 0 || min_pool > 0 ? { min_hold, min_pool } : {}),
+      min_hold,
+      min_pool,
     },
   };
 }
@@ -223,6 +224,15 @@ export function pulljackpotAction(tokenContract: string, tokenSymbol: string): C
   return {
     account: tokenContract,
     name: "pulljackpot",
+    data: { token_symbol: tokenSymbol },
+  };
+}
+
+/** Settles a draw opened by pullangel or pulljackpot. Must be a later block than the open. */
+export function finishdrawAction(tokenContract: string, tokenSymbol: string): ChainAction {
+  return {
+    account: tokenContract,
+    name: "finishdraw",
     data: { token_symbol: tokenSymbol },
   };
 }

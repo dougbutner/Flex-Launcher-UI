@@ -5,9 +5,9 @@ import { RainSkeleton } from "@/components/ui/PageSkeletons";
 import { TxLink } from "@/components/launch/ui";
 import { flexMeta, splashShare } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
-import { pullangelAction, pulljackpotAction } from "@/services/launchActions";
+import { finishdrawAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
 import { loadDrylands, type Dryland } from "@/services/rainBoard";
-import { storedPayoutAction } from "@/services/rainDefaults";
+import { signRain, storedPayoutAction } from "@/services/rainDefaults";
 import { rainCash, whenWalletClosed } from "@/components/rain/moneyRain";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 
@@ -53,13 +53,17 @@ export default function Reflections() {
     try {
       const action =
         kind === "angel"
-          ? pullangelAction(d.contract, d.symbol)
+          ? d.draw === 1
+            ? finishdrawAction(d.contract, d.symbol)
+            : pullangelAction(d.contract, d.symbol)
           : kind === "jackpot"
-            ? pulljackpotAction(d.contract, d.symbol)
+            ? d.draw === 2
+              ? finishdrawAction(d.contract, d.symbol)
+              : pulljackpotAction(d.contract, d.symbol)
             : d.rainAction
               ? { account: d.contract, name: d.rainAction, data: {} }
               : await storedPayoutAction(d.contract, d.symbol, actor, flexMeta(d.program ?? "easyflex").payoutSigner);
-      const res = await transact([action]);
+      const res = await signRain(transact, action);
       setRainMsg((m) => ({ ...m, [id]: { tx: txIdFromResult(res) || "ok" } }));
       await whenWalletClosed();
       rainCash(usd, origin);
@@ -196,6 +200,7 @@ export default function Reflections() {
             title="Angels"
             empty="No angel pots waiting."
             label="Call angels"
+            payLabel="Pay angels"
             tone="white"
             rows={drylands.filter((d) => d.angel > 0)}
             raining={raining}
@@ -206,6 +211,7 @@ export default function Reflections() {
             title="Jackpot"
             empty="No jackpot pots waiting."
             label="Call jackpot"
+            payLabel="Pay jackpot"
             tone="gold"
             rows={drylands.filter((d) => d.jackpot > 0)}
             raining={raining}
@@ -222,6 +228,7 @@ function PotSection({
   title,
   empty,
   label,
+  payLabel,
   tone,
   rows,
   raining,
@@ -231,6 +238,7 @@ function PotSection({
   title: string;
   empty: string;
   label: string;
+  payLabel: string;
   tone: "white" | "gold";
   rows: Dryland[];
   raining: string | null;
@@ -248,13 +256,11 @@ function PotSection({
       <p className="mt-1 text-sm text-muted-foreground">
         {kind === "angel" ? (
           <>
-            Unpaid <span className="font-mono">angel_numbers_pool</span>. Anyone can call{" "}
-            <span className="font-mono">pullangel</span>.
+            Unpaid angel pot. Opens the draw, then pays a moment later.
           </>
         ) : (
           <>
-            Unpaid <span className="font-mono">jackpot_pool</span>. Anyone can call{" "}
-            <span className="font-mono">pulljackpot</span>.
+            Unpaid jackpot. Opens the draw, then pays a moment later.
           </>
         )}
       </p>
@@ -263,7 +269,9 @@ function PotSection({
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {rows.map((d) => {
+            const waiting = kind === "angel" ? d.draw === 1 : d.draw === 2;
             const amount = kind === "angel" ? d.angel : d.jackpot;
+            const call = waiting ? payLabel : label;
             const usd = d.px * amount;
             const id = `${kind}:${d.key}`;
             const msg = rainMsg[id];
@@ -272,7 +280,7 @@ function PotSection({
                 key={d.key}
                 role="button"
                 tabIndex={0}
-                aria-label={`${label} ${d.symbol}`}
+                aria-label={`${call} ${d.symbol}`}
                 className={`group card flex min-h-[13.5rem] cursor-pointer flex-col transition-colors focus:outline-none ${hot}`}
                 onClick={(e) => onCall(d, e.currentTarget)}
                 onKeyDown={(e) => {
@@ -288,7 +296,7 @@ function PotSection({
                     {d.symbol}
                   </span>
                   <span className="mt-1 h-5 text-sm font-semibold text-primary opacity-0 transition-opacity group-hover:text-neutral-950 group-hover:opacity-100 group-focus:text-neutral-950 group-focus:opacity-100">
-                    {raining === id ? "Signing…" : label}
+                    {raining === id ? "Signing…" : call}
                   </span>
                 </div>
                 <div className="px-2 pb-3 text-center">

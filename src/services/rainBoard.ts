@@ -7,8 +7,8 @@ import {
 } from "@/config/launch";
 import { parseAsset } from "@/services/assets";
 import { CACHE_KEYS } from "@/services/cacheKeys";
-import { readLaunches, readSettings, readStat } from "@/services/flexTables";
-import { amountToRaw, reflectionPayFloorRaw } from "@/services/rainDefaults";
+import { readDraw, readLaunches, readSettings, readStat } from "@/services/flexTables";
+import { amountToRaw, rawToAmount, reflectionPayFloorRaw } from "@/services/rainDefaults";
 import { symbolCodeOf } from "@/services/preflight";
 import { liveOr } from "@/services/readThrough";
 import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
@@ -26,6 +26,8 @@ export type Dryland = {
   px: number;
   angel: number;
   jackpot: number;
+  /** 1 angel draw waiting, 2 jackpot draw waiting, 0 none. */
+  draw: number;
   rainAction?: string;
 };
 
@@ -69,6 +71,7 @@ async function drylandFromStat(
     px: 0,
     angel: angelAsset ? Number(angelAsset.amount) : 0,
     jackpot: jackAsset ? Number(jackAsset.amount) : 0,
+    draw: 0,
     rainAction: extra.rainAction,
   };
 }
@@ -102,7 +105,17 @@ export async function loadDrylandsFresh(): Promise<Dryland[]> {
       return Promise.all(
         items.map(async ({ code, program, symbol }) => {
           const row = await drylandFromStat(code, symbol, { program });
-          if (!row || !(row.pool > 0 || row.angel > 0 || row.jackpot > 0)) return null;
+          if (!row) return null;
+          if (program === "flexforex") {
+            const draw = await readDraw(code, symbol).catch(() => null);
+            if (draw) {
+              row.draw = draw.kind;
+              const human = Number(rawToAmount(draw.pot, row.precision));
+              if (draw.kind === 1) row.angel = human;
+              else row.jackpot = human;
+            }
+          }
+          if (!(row.pool > 0 || row.angel > 0 || row.jackpot > 0)) return null;
           return row;
         })
       );

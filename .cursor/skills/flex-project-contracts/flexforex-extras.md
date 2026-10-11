@@ -6,7 +6,7 @@ Source: `src/Project Contracts/flexforex.hpp` + `.cpp`. complexflex shares inher
 
 Launcher ships:
 
-- public poke: `pullangel` / `pulljackpot` (+ pot chips)
+- public poke: `pullangel` / `pulljackpot`, then `finishdraw` on a later block (+ pot chips)
 - token manage page: issuer `setdist` / `ratios` / `addpool`; holder `setangelnum` / inheritance / `choosereward` / `feeoptout`
 
 Gate angel channel UI to `program === "flexforex"`; inheritance to complexflex + flexforex.
@@ -54,25 +54,28 @@ Typical first-run issuer flow after launch: `setdist` with desired channel ops, 
 ## `pullangel(token_symbol)`
 
 - Anyone may call
-- Requires `angel_numbers_bps` and `angel_numbers_cooldown`
-- Cooldown vs `stat.angel_numbers_last`
-- Pot `angel_numbers_pool > 0`, `rng_kind == 0`
-- Zeros pot, stamps last time, `request_rng(assoc=symbol_code, kind=RNG_NUMBERS, amt=pot)`
-- Payout happens in `receiverand` to holders whose `angel_number` matches the draw
+- Requires `angel_numbers_bps` (cooldown still gates vs `stat.angel_numbers_last`)
+- Pot `angel_numbers_pool > 0`, `rng_kind == 0`, no open `drawjobs` row
+- Zeros pot, stamps last time, writes `drawjobs` (`kind` = angel). Does not pay in this action
 
 ## `pulljackpot(token_symbol)`
 
 - Anyone may call
-- Requires `jackpot_bps` and `jackpot_winners > 0`
-- Pot `jackpot_pool > 0`, `rng_kind == 0`
-- Zeros pot, `request_rng(..., RNG_JACKPOT, pot)`
-- `receiverand` picks winners; `jackpot_min_hold` checked **after** draw
+- Requires `jackpot_bps` (`jackpot_winners` 0 pays 1 winner)
+- Pot `jackpot_pool > 0`, `rng_kind == 0`, no open `drawjobs` row
+- Zeros pot, writes `drawjobs`. Does not pay in this action
+
+## `finishdraw(token_symbol)`
+
+- Anyone may call. Not `receiverand`
+- Requires an open `drawjobs` row. Reference block must be after `opened_block`, unless the job is older than `DRAW_TTL` (3600s), in which case the pot is refunded
+- Pays angel holders whose number matches the draw, or jackpot winners. `jackpot_min_hold` is checked at settle
+- UI signs this in a later transaction after `pullangel` / `pulljackpot`
 
 ## `receiverand(assoc_id, random_value)`
 
 - Auth: **`rng` only**  -  never from UI
-- `assoc_id` = token symbol code raw
-- Clears `rng_kind` / `rng_amt` then pays reserved pot
+- Clears `rng_kind` / `rng_amt` then `settle_draw` for an in-flight rng callback
 
 ## Inheritance (complexflex + flexforex)
 

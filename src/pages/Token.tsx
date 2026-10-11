@@ -17,15 +17,16 @@ import { alcorAnalyticsUrl, coreLiquidOf, coreTokenOf, explorerAccount, flexMeta
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { fetchTopSwapPool, poolCounterparty } from "@/services/alcorMarket";
-import { readAccounts, readFlexer, readFlexers, readInsiders } from "@/services/flexTables";
+import { readAccounts, readDraw, readFlexer, readFlexers, readInsiders } from "@/services/flexTables";
 import { loadTokenPublic } from "@/services/tokenSnapshot";
 import {
   checklockAction,
+  finishdrawAction,
   pullangelAction,
   pulljackpotAction,
 } from "@/services/launchActions";
 import { listManagerTokens } from "@/services/managerApi";
-import { storedPayoutAction } from "@/services/rainDefaults";
+import { signRain, storedPayoutAction } from "@/services/rainDefaults";
 import { rememberRemoteTokenIcon } from "@/services/tokenIcons";
 import { findProtonTokenRow } from "@/services/tokenProton";
 import type { BackingMark, SanityView } from "@/services/poolSanity";
@@ -59,6 +60,7 @@ export default function Token() {
   const [pools, setPools] = useState<Record<string, unknown>[]>([]);
   const [flexer, setFlexer] = useState<Record<string, unknown> | null>(null);
   const [presale, setPresale] = useState<Record<string, unknown> | null>(null);
+  const [drawKind, setDrawKind] = useState(0);
   const [insider, setInsider] = useState<Record<string, unknown> | null>(null);
   const [holderBalRaw, setHolderBalRaw] = useState(0);
   const [poking, setPoking] = useState<string | null>(null);
@@ -95,6 +97,7 @@ export default function Token() {
         Date.parse(String((await getAccount(String(pick(s, "issuer") ?? "")).catch(() => null))?.created ?? "")),
       );
       setSettings(shared.settings);
+      setDrawKind(program === "flexforex" ? (await readDraw(code, sym).catch(() => null))?.kind ?? 0 : 0);
       setPools(shared.pools);
       setPresale(shared.presale);
       const other = top ? poolCounterparty(top, sym, code) : undefined;
@@ -192,9 +195,13 @@ export default function Token() {
           : kind === "checklock"
             ? checklockAction(code, sym)
             : kind === "pullangel"
-              ? pullangelAction(code, sym)
-              : pulljackpotAction(code, sym);
-      const res = await transact([action]);
+              ? drawKind === 1
+                ? finishdrawAction(code, sym)
+                : pullangelAction(code, sym)
+              : drawKind === 2
+                ? finishdrawAction(code, sym)
+                : pulljackpotAction(code, sym);
+      const res = await signRain(transact, action);
       setPokeMsg({ tx: txIdFromResult(res) || "ok" });
       void load(true);
     } catch (err) {
@@ -361,18 +368,18 @@ export default function Token() {
                       <button
                         type="button"
                         className="btn btn-outline btn-sm"
-                        disabled={poking != null || angelPool <= 0}
+                        disabled={poking != null || (angelPool <= 0 && drawKind !== 1)}
                         onClick={() => void poke("pullangel")}
                       >
-                        {poking === "pullangel" ? "Signing…" : "Pull angel"}
+                        {poking === "pullangel" ? "Signing…" : drawKind === 1 ? "Pay angels" : "Pull angel"}
                       </button>
                       <button
                         type="button"
                         className="btn btn-outline btn-sm"
-                        disabled={poking != null || jackpotPool <= 0}
+                        disabled={poking != null || (jackpotPool <= 0 && drawKind !== 2)}
                         onClick={() => void poke("pulljackpot")}
                       >
-                        {poking === "pulljackpot" ? "Signing…" : "Pull jackpot"}
+                        {poking === "pulljackpot" ? "Signing…" : drawKind === 2 ? "Pay jackpot" : "Pull jackpot"}
                       </button>
                     </>
                   ) : null}

@@ -50,7 +50,7 @@ export function FeeTable() {
             <tr>
               <td className="font-semibold text-foreground">Market fee</td>
               <td colSpan={4}>
-                1% of swapped rain, sent to flex.for3x. This 1% is not sold. Reflections on it are collected by the
+                1% of swapped rain, sent to fl3x.for3x. This 1% is not sold. Reflections on it are collected by the
                 project. Same on 3asy, fl3x, and for3x.
               </td>
             </tr>
@@ -81,7 +81,7 @@ export function FeeHow() {
         <div className="mt-3 space-y-3 leading-relaxed">
           <p>
             Rain that flexes into another token is swapped on Alcor. The swap memo uses a built-in Alcor market fee.
-            That fee puts 1% into a vault at flex.for3x. The 1% is not sold. It stays as the token. The vault then
+            That fee puts 1% into a vault at fl3x.for3x. The 1% is not sold. It stays as the token. The vault then
             reflects in that token or in EASY, and the project keeps those reflections.
           </p>
           <p>

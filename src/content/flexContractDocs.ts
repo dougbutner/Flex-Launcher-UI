@@ -56,7 +56,7 @@ export const CONTRACT_DOCS: Record<FlexProgram, ContractDoc> = {
         title: "Supply and rain",
         lines: [
           { name: "issue", note: "Issuer. 100% to yourself for launch." },
-          { name: "makeitrain", note: "Anyone who signs as sender. Splashes 38.2% of the rain pool. Flex or native." },
+          { name: "makeitrain", note: "Anyone who signs as sender. Splashes 38.2% of the rain pool. Swapped rain pays one holder per signature, then this continues." },
           { name: "setmin", note: "Issuer floor for rain size." },
           { name: "choosereward", note: "Holder picks a route, or native." },
           { name: "feeoptout", note: "Holder. Opt out of tax and rain. You cannot turn it back on yourself." },
@@ -86,7 +86,7 @@ export const CONTRACT_DOCS: Record<FlexProgram, ContractDoc> = {
         title: "Supply and rain",
         lines: [
           { name: "mint", note: "Issuer. 100% to yourself for launch." },
-          { name: "makeitrain", note: "Anyone who signs as sender. Splashes 38.2% of the rain pool. Heir can take a cut." },
+          { name: "makeitrain", note: "Anyone who signs as sender. Splashes 38.2% of the rain pool. Heir can take a cut. Swapped rain pays one holder per signature, then this continues." },
           { name: "setmin", note: "Issuer floor for rain size." },
           { name: "inheritance / inheritmemo", note: "Holder names an heir and a share of rain." },
           { name: "choosereward", note: "Holder picks a route, or native." },
@@ -117,11 +117,11 @@ export const CONTRACT_DOCS: Record<FlexProgram, ContractDoc> = {
         title: "Supply and rain",
         lines: [
           { name: "mint", note: "Issuer. 100% to yourself for launch." },
-          { name: "makeitrain", note: "Anyone who signs as keeper. Splashes the rain pool only. Angel and jackpot stay in their pots." },
+          { name: "makeitrain", note: "Anyone who signs as keeper. Splashes the rain pool only. Angel and jackpot stay in their pots. Swapped rain pays one holder per signature, then this continues." },
           { name: "ratios", note: "Issuer. Share of tax rain that feeds luck pots." },
           { name: "setdist", note: "Issuer once. Winners, cooldown, floors. Locks after success." },
           { name: "setangelnum", note: "Holder picks 0-999." },
-          { name: "pullangel / pulljackpot", note: "Anyone. Draws the luck pots." },
+          { name: "pullangel / pulljackpot", note: "Anyone. Opens the draw. Winners are paid a moment later." },
           { name: "inheritance / inheritmemo", note: "Holder names an heir and a share of rain." },
           { name: "choosereward", note: "Holder picks a route, or native." },
           { name: "feeoptout", note: "Holder. Opt out of tax and rain. You cannot turn it back on yourself." },

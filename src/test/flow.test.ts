@@ -49,7 +49,7 @@ const ABI_FIELDS: Record<string, string[]> = {
   lockpos: ["poolId", "owner", "tickLower", "tickUpper", "unlockTime"],
   liftoff: ["token_symbol", "pool_id", "tick_lower", "tick_upper"],
   setfees: ["sym", "reflection_rate", "burn_rate"],
-  makeitrain: ["token_symbol"],
+  makeitrain: ["token_symbol", "min_hold", "min_pool"],
   checklock: ["token_symbol"],
   addpool: ["pool_id", "token_symbol", "output_symbol", "output_contract"],
   choosereward: ["owner", "token_symbol", "output_symbol", "output_contract"],
@@ -71,6 +71,7 @@ const ABI_FIELDS: Record<string, string[]> = {
   setangelnum: ["owner", "token_symbol", "angel_number"],
   pullangel: ["token_symbol"],
   pulljackpot: ["token_symbol"],
+  finishdraw: ["token_symbol"],
   setpresale: [
     "token_symbol",
     "launch_time",
@@ -286,6 +287,7 @@ describe("mainnet launch flow simulation", () => {
       expect(names).toContain("setangelnum");
       expect(names).toContain("pullangel");
       expect(names).toContain("pulljackpot");
+      expect(names).toContain("finishdraw");
       expect(actions.find((a) => a.name === "makeitrain")?.data).toHaveProperty("keeper");
       expect(actions.find((a) => a.name === "makeitrain")?.account).toBe(FLEXFOREX_CONTRACT);
     }

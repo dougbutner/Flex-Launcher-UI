@@ -9,10 +9,10 @@ import { FLEX_PROGRAMS, PROJECT_CORE_TOKENS, alcorAnalyticsUrl, alcorSwapUrl, co
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { fetchTopSwapPool, poolCounterparty } from "@/services/alcorMarket";
-import { readAccounts, readFlexer, readFlexers, readInsiders, readLaunches, readStat, readXprBalance } from "@/services/flexTables";
+import { readAccounts, readDraw, readFlexer, readFlexers, readInsiders, readLaunches, readStat, readXprBalance } from "@/services/flexTables";
 import { actorClubMark, type ClubMark } from "@/services/insidersClub";
-import { checklockAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
-import { storedPayoutAction } from "@/services/rainDefaults";
+import { checklockAction, finishdrawAction, pullangelAction, pulljackpotAction } from "@/services/launchActions";
+import { rawToAmount, signRain, storedPayoutAction } from "@/services/rainDefaults";
 import { symbolCodeOf } from "@/services/preflight";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { loadProtonTokenTable } from "@/services/tokenProton";
@@ -50,6 +50,7 @@ type Holding = {
   reflectionPool: number;
   angelPool: number;
   jackpotPool: number;
+  draw: number;
   estSplash: number | null;
 };
 
@@ -159,8 +160,18 @@ export default function Portfolio() {
               const precision = balAsset?.precision ?? 4;
               const supply = assetAmountNumber(String(pick(stat, "supply") ?? "0"));
               const reflectionPool = assetAmountNumber(String(pick(stat, "reflection_pool") ?? "0"));
-              const angelPool = assetAmountNumber(String(pick(stat, "angel_numbers_pool") ?? "0"));
-              const jackpotPool = assetAmountNumber(String(pick(stat, "jackpot_pool") ?? "0"));
+              let angelPool = assetAmountNumber(String(pick(stat, "angel_numbers_pool") ?? "0"));
+              let jackpotPool = assetAmountNumber(String(pick(stat, "jackpot_pool") ?? "0"));
+              let draw = 0;
+              if (p.id === "flexforex") {
+                const open = await readDraw(code, symbol).catch(() => null);
+                if (open) {
+                  draw = open.kind;
+                  const human = Number(rawToAmount(open.pot, precision));
+                  if (open.kind === 1) angelPool = human;
+                  else jackpotPool = human;
+                }
+              }
               const vaultTotal = vaults.reduce(
                 (s, v) => s + assetAmountNumber(String(pick(v.rows[0], "balance") ?? "0")),
                 0
@@ -189,6 +200,7 @@ export default function Portfolio() {
                 reflectionPool,
                 angelPool,
                 jackpotPool,
+                draw,
                 estSplash,
               });
             })
@@ -228,6 +240,7 @@ export default function Portfolio() {
             reflectionPool,
             angelPool: 0,
             jackpotPool: 0,
+            draw: 0,
             estSplash:
               balance > 0 && supply > 0 && reflectionPool > 0
                 ? reflectionPool * splashShare(t.contract, t.symbol) * (balance / supply)
@@ -272,9 +285,13 @@ export default function Portfolio() {
           : kind === "checklock"
             ? checklockAction(h.contract, h.symbol)
             : kind === "pullangel"
-              ? pullangelAction(h.contract, h.symbol)
-              : pulljackpotAction(h.contract, h.symbol);
-      const res = await transact([action]);
+              ? h.draw === 1
+                ? finishdrawAction(h.contract, h.symbol)
+                : pullangelAction(h.contract, h.symbol)
+              : h.draw === 2
+                ? finishdrawAction(h.contract, h.symbol)
+                : pulljackpotAction(h.contract, h.symbol);
+      const res = await signRain(transact, action);
       setPokeMsg((m) => ({ ...m, [h.key]: { tx: txIdFromResult(res) || "ok" } }));
       void load();
     } catch (err) {
@@ -505,18 +522,18 @@ export default function Portfolio() {
                       <button
                         type="button"
                         className="btn btn-outline btn-sm"
-                        disabled={busyAny || h.angelPool <= 0}
+                        disabled={busyAny || (h.angelPool <= 0 && h.draw !== 1)}
                         onClick={() => void poke(h, "pullangel")}
                       >
-                        {poking === `${h.key}:pullangel` ? "Signing…" : "Pull angel"}
+                        {poking === `${h.key}:pullangel` ? "Signing…" : h.draw === 1 ? "Pay angels" : "Pull angel"}
                       </button>
                       <button
                         type="button"
                         className="btn btn-outline btn-sm"
-                        disabled={busyAny || h.jackpotPool <= 0}
+                        disabled={busyAny || (h.jackpotPool <= 0 && h.draw !== 2)}
                         onClick={() => void poke(h, "pulljackpot")}
                       >
-                        {poking === `${h.key}:pulljackpot` ? "Signing…" : "Pull jackpot"}
+                        {poking === `${h.key}:pulljackpot` ? "Signing…" : h.draw === 2 ? "Pay jackpot" : "Pull jackpot"}
                       </button>
                     </>
                   ) : null}

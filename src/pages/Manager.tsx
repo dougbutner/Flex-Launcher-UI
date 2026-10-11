@@ -33,7 +33,7 @@ import {
 import { formatSupplyCommas, parseAsset } from "@/services/assets";
 import { readSettings } from "@/services/flexTables";
 import { payoutAction, ratiosAction, setdistAction, setfeesAction, setminAction, goliveAction, type ChainAction } from "@/services/launchActions";
-import { rainFromRow, type RainDefaults } from "@/services/rainDefaults";
+import { rainFromRow, signRain, type RainDefaults } from "@/services/rainDefaults";
 import { hasProjectTax, taxAdjustValid, taxFromSettings, taxSavePlan, type TaxDraft } from "@/services/taxRates";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
 import { TOKEN_PROTON_TNAME_MAX } from "@/services/tokenProton";
@@ -376,15 +376,16 @@ export default function Manager() {
     setRainMsg("");
     setRainTx("");
     try {
-      const res = await transact([
+      const res = await signRain(
+        transact,
         payoutAction(
           view.token.contract,
           view.token.symbol,
           actor,
           flexMeta(view.token.program).payoutSigner,
           rain
-        ),
-      ]);
+        )
+      );
       setRainTx(txIdFromResult(res) || "ok");
     } catch (err) {
       const text = txErrorMessage(err);

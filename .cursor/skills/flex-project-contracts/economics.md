@@ -30,7 +30,7 @@ On makeitrain (and optionally via `checklock`):
 1. Require launched + auth (`sender` or `keeper`)
 2. Apply unlock fee if due
 3. Skim protocol bps
-4. Splash **`PAY_NUM/PAY_DEN` = 38.2%** of remaining `reflection_pool` across eligible flexers (paginate `start_key` / `limit`)
+4. Splash **`PAY_NUM/PAY_DEN` = 38.2%** of remaining `reflection_pool` across eligible flexers (paginate `start_key` / `limit`). At most **one Alcor swap** per call. A second flexed holder stops the walk, the unpaid slice returns to the pool, and `start_key` resumes there. The UI signs again while that cut happened and the pool is still above the floor.
 5. Optional keeper tip if `keeper_min > 0` (flexforex). Paid only when `keeper_min` is at most 1% of the splash (`(standard * PAY_NUM / PAY_DEN) / 100`). If the reflection is smaller than that, the tip is skipped.
 6. Flush `burn_pool` after a successful standard pay (easy/complex)
 
@@ -52,7 +52,7 @@ Then:
 
 - Resolve output from `flexpools[pid]`, **or** if pid is the launch pool, use `launch.quote`
 - If output is not the native token: transfer to `swap.alcor` with  
-  `swapexactin#<oid>#<recipient>#<min> <SYM>@<contract>#0#flex.for3x`
+  `swapexactin#<oid>#<recipient>#<min> <SYM>@<contract>#0#fl3x.for3x`
 - Else: pay native token to holder (and beneficiary split if inheritance)
 
 Issuer sets `swap_underlying_default` at `startlaunch` (wizard checkbox, default **on**). After liftoff the issuer `addpool`s the launch pair (`pure_liquid_alcor_pool_id`, token, quote symbol, quote contract). Holders override via `choosereward`. Empty `output_contract` = native (pid 0). pid 0 uses the quote only if `swap_underlying_default` was true.
@@ -66,7 +66,7 @@ Issuer sets `swap_underlying_default` at `startlaunch` (wizard checkbox, default
 
 GEASY@fl3x is a flex quote. Liftoff waives the EASY hold when the issuer has no prior launch on that contract and `eosio.proton` `usersinfo.verified` is true. Other flex quotes force a 90% hold discount (they do not follow the decaying promo). GEASY after the first launch, and every non-flex quote, use the decaying promo. The launcher offers GEASY on 3asy, fl3x, and for3x.
 
-Alcor market `flex.for3x` keeps 1% of a flexed rain swap as the token (not sold). The UI calls that the market fee.
+Alcor market `fl3x.for3x` keeps 1% of a flexed rain swap as the token (not sold). The UI calls that the market fee.
 
 ## Pre-liftoff
 

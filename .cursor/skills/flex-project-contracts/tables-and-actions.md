@@ -129,7 +129,7 @@ golive            issuer or contract (after liftoff filled the launch row)
 | `addpool(pool_id, token_symbol, output_symbol, output_contract)` | issuer or contract | all |
 | `choosereward(owner, token_symbol, output_symbol, output_contract)` | owner or issuer/admin/contract; empty output_contract → native (0) | all |
 | `inheritance` / `inheritmemo` | flexer or contract | complex + forex |
-| `ratios` / `setdist` / `setangelnum` / `pullangel` / `pulljackpot` | see [flexforex-extras.md](flexforex-extras.md) | forex only |
+| `ratios` / `setdist` / `setangelnum` / `pullangel` / `pulljackpot` / `finishdraw` | see [flexforex-extras.md](flexforex-extras.md) | forex only |
 | `setmin(token_symbol, reflect_min)` | issuer | easy + complex (live 3asy / fl3x) |
 | `receiverand` | `rng` only | forex only |
 
@@ -141,9 +141,9 @@ golive            issuer or contract (after liftoff filled the launch row)
 | complexflex | `makeitrain(token_symbol, sender)` | + inheritance split |
 | flexforex | `makeitrain(token_symbol, keeper)` | reflection_pool only; optional keeper tip |
 
-Requires `launches.launched`. Skim first: `dev_bps` → `nyra`, `club_bps` → `reflections`. Pagination via `settings.start_key` / `limit`.
+Requires `launches.launched`. Skim first: `dev_bps` → `nyra`, `club_bps` → `reflections`. Pagination via `settings.start_key` / `limit`. One Alcor swap per call. A second flexed holder stops the walk and the unpaid slice returns to the pool.
 
-Flex swap memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#reflections`
+Flex swap memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#fl3x.for3x`
 
 ## Signing cheatsheet
 
@@ -152,7 +152,7 @@ create / setfees / issue|mint / startlaunch / liftoff   issuer@active
 golive / setpresale / setlaunchtime / addinsiders / rminsider   issuer or contract
 reginsider / provelock                        owner@active
 ratios                                        issuer or contract
-checklock / pullangel / pulljackpot           anyone (chain gates)
+checklock / pullangel / pulljackpot / finishdraw   anyone (chain gates)
 makeitrain                                    sender|keeper@active
 addpool                                       issuer or contract
 choosereward / feeoptout / setangelnum        holder (see rules)

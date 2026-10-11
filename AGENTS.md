@@ -212,7 +212,7 @@ Optional **`setpresale`** before liftoff: if a `presales` row exists, liftoff le
 | `addpool` | issuer or contract | Launch pair after liftoff, then extra routes. Fail copy: `⟁ Only the issuer can add a flex reward token.` |
 | `choosereward` | owner (or issuer/admin/contract) | Empty `output_contract` → native (pid 0). pid 0 uses the quote only if `swap_underlying_default` was true at startlaunch. |
 | `feeoptout` | self: `ban_status` **true** only | Irreversible for self |
-| `makeitrain` | signer (`sender` or `keeper`) | Always `require_auth` of that name. flexforex ABI field is `keeper`. Signer pays RAM for new holder rows. Splashes 38.2% of `reflection_pool`. |
+| `makeitrain` | signer (`sender` or `keeper`) | Always `require_auth` of that name. flexforex ABI field is `keeper`. Signer pays RAM for new holder rows. Splashes 38.2% of `reflection_pool`. One Alcor swap per call. A second flexed holder stops the walk and the unpaid slice returns to the pool. |
 | `checklock` | anyone | After `unlock_time`, may raise protocol skim once. |
 | `setpresale` / `golive` / `addinsiders` / `rminsider` | issuer or contract | Optional gated window; `golive` ends it |
 | `reginsider` / `provelock` | owner | Join list / prove Alcor lock for higher cap |
@@ -221,7 +221,7 @@ Optional **`setpresale`** before liftoff: if a `presales` row exists, liftoff le
 | `setmin` | issuer | easyflex + complexflex (live 3asy / fl3x) |
 | `inheritance` / `inheritmemo` | flexer or contract | not easyflex |
 
-Flex payout memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#flex.for3x`
+Flex payout memo: `swapexactin#<poolId>#<recipient>#<minAmount> <SYM>@<contract>#0#fl3x.for3x`
 
 Wallet→wallet tax is **on top of** `quantity`; Alcor inbound tax is **taken from** `quantity`.
 

@@ -71,7 +71,7 @@ Env: `VITE_FLEXFOREX_CONTRACT` (`for3x`), `VITE_EASYFLEX` (`3asy`), `VITE_COMPLE
 
 Flex quotes (0% skim, proof id 0): EASY@mon3y, WON@w3won, MEME@m3m3, GRAMS@gold.mon3y, GEASY@fl3x.  
 The launcher offers GEASY on 3asy, fl3x, and for3x. Non-flex (0.5% skim, 1% after the LP unlock, proof id **> 0** vs XUSDC or XPR): xtokens, XPR@eosio.token, XMD@xmd.token, LOAN@loan.token.  
-Flex quotes except GEASY stay at 90% off the EASY hold. A verified first GEASY launch waives the hold. Other quotes use the monthly promo. Swap memo market is `flex.for3x` (1% not sold). UI says dev and Contributor's Club, never the dev account name.
+Flex quotes except GEASY stay at 90% off the EASY hold. A verified first GEASY launch waives the hold. Other quotes use the monthly promo. Swap memo market is `fl3x.for3x` (1% not sold). UI says dev and Contributor's Club, never the dev account name.
 
 ## Do not
 

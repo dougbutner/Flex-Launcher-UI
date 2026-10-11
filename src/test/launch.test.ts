@@ -6,6 +6,7 @@ import {
   createTokenAction,
   checklockAction,
   payoutAction,
+  finishdrawAction,
   pullangelAction,
   pulljackpotAction,
   startlaunchAction,
@@ -85,7 +86,7 @@ import { hintForError, logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
 import { applyRangeWidth, applyStartMarketCap, fmtPrice, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
-import { amountToRaw, formatRainAsset, reflectionPayFloorRaw } from "@/services/rainDefaults";
+import { amountToRaw, formatRainAsset, rainCutShort, reflectionPayFloorRaw } from "@/services/rainDefaults";
 import { validImageUrl } from "@/services/tokenLogo";
 import { XTOKEN_FALLBACK, XTOKEN_TOP_N, findProofPoolId } from "@/services/xtokenCatalog";
 import { draftFromManager, managerFromDraft } from "@/services/managerDraft";
@@ -282,7 +283,7 @@ describe("launch plan", () => {
     expect(payoutAction("mon3y", "BAR", "alice", "sender")).toEqual({
       account: "mon3y",
       name: "makeitrain",
-      data: { token_symbol: "BAR", sender: "alice" },
+      data: { token_symbol: "BAR", sender: "alice", min_hold: 0, min_pool: 0 },
     });
     expect(payoutAction("flex.mon3y", "BAR", "alice", "keeper", { rainMinHold: 10, rainMinPool: 20 }).data).toEqual({
       token_symbol: "BAR",
@@ -531,6 +532,11 @@ describe("post-launch rain actions", () => {
     expect(pulljackpotAction("flexforex", "FOO")).toEqual({
       account: "flexforex",
       name: "pulljackpot",
+      data: { token_symbol: "FOO" },
+    });
+    expect(finishdrawAction("flexforex", "FOO")).toEqual({
+      account: "flexforex",
+      name: "finishdraw",
       data: { token_symbol: "FOO" },
     });
   });
@@ -814,6 +820,9 @@ describe("XPR mainnet launcher defaults", () => {
     expect(formatRainAsset(665555, 6, "FOO")).toBe("0.665555 FOO");
     expect(reflectionPayFloorRaw(0, 6)).toBe(1_000_000);
     expect(reflectionPayFloorRaw(5000, 4)).toBe(5000);
+    expect(rainCutShort(10000, 9900)).toBe(true);
+    expect(rainCutShort(10000, 6000)).toBe(false);
+    expect(rainCutShort(0, 0)).toBe(false);
     expect(PROJECT_CORE_TOKENS.map((t) => t.symbol)).toEqual(["EASY", "WON", "GRAMS", "MEME"]);
     expect(PROJECT_CORE_TOKENS.map((t) => t.program)).toEqual([
       "easyflex",

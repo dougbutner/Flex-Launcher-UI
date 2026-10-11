@@ -1,5 +1,6 @@
 import {
   EOSIO_TOKEN,
+  FLEXFOREX_CONTRACT,
   SWAP_ALCOR,
   XPR_SYMBOL,
   XTOKENS,
@@ -7,6 +8,7 @@ import {
 } from "@/config/launch";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { nameToU64, symbolCodeToU64 } from "@/services/eosioName";
+import { rainRaw } from "@/services/rainRaw";
 import { getAllTableRows, getCurrencyBalance, getTableRows, getTransaction } from "@/services/rpc";
 import { logpoolIdFromResult, txIdFromResult } from "@/services/txParse";
 import type { LaunchPlan } from "@/services/launchMath";
@@ -59,6 +61,24 @@ export async function readSettings(code: string, symbol: string) {
     limit: 1,
   });
   return withSiteSandbox(rows[0] ?? null, (mod, live) => mod.mergeSettings(code, symbol, live));
+}
+
+/** Open flexforex draw. kind 1 is angels, kind 2 is jackpot. Gone after finishdraw. */
+export async function readDraw(code: string, symbol: string): Promise<{ kind: number; pot: number } | null> {
+  if (code.trim().toLowerCase() !== FLEXFOREX_CONTRACT) return null;
+  const bound = codeBound(symbol);
+  const { rows } = await getTableRows<Record<string, unknown>>({
+    code,
+    scope: code,
+    table: "drawjobs",
+    lower_bound: bound,
+    upper_bound: bound,
+    key_type: "i64",
+    limit: 1,
+  });
+  const kind = Number(rows[0]?.kind ?? 0);
+  if (kind !== 1 && kind !== 2) return null;
+  return { kind, pot: rainRaw(rows[0]?.pot) };
 }
 
 export async function readStat(code: string, symbol: string) {
