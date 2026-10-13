@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
+import { useWallet } from "@/hooks/useWallet";
+import { listManagerTokens } from "@/services/managerApi";
 import { tokenStepValid } from "@/components/launch/draftPlan";
 import { ContractPickModal } from "@/components/launch/ContractPickModal";
 import { ProgramDots } from "@/components/token/ProgramDots";
@@ -21,7 +24,62 @@ type Props = {
   draft: LaunchDraft;
   patch: (p: Partial<LaunchDraft>) => void;
   onNext: () => void;
+  onReset: () => void;
 };
+
+export function DeployedActions({ draft, onReset }: { draft: LaunchDraft; onReset: () => void }) {
+  const { actor } = useWallet();
+  const [saved, setSaved] = useState<{ contract: string; symbol: string }[]>([]);
+  const tokenContract = flexAccount(draft.program);
+
+  useEffect(() => {
+    if (!actor) {
+      setSaved([]);
+      return;
+    }
+    let live = true;
+    void listManagerTokens({ issuer: actor })
+      .then((rows) => {
+        if (!live) return;
+        setSaved(
+          rows
+            .filter((row) => row.createTx && row.symbol && row.contract)
+            .map((row) => ({ contract: row.contract, symbol: row.symbol }))
+        );
+      })
+      .catch(() => {
+        if (live) setSaved([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, [actor]);
+
+  if (!draft.createTx) return null;
+
+  const tokens = [
+    ...(draft.symbol ? [{ contract: tokenContract, symbol: draft.symbol }] : []),
+    ...saved.filter((row) => row.symbol !== draft.symbol || row.contract !== tokenContract),
+  ];
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground">This token is already deployed.</p>
+      <button type="button" className="btn btn-accent btn-lg w-full" onClick={onReset}>
+        Start a new launch
+      </button>
+      {tokens.map((row) => (
+        <Link
+          key={`${row.contract}:${row.symbol}`}
+          to={`/token/${row.contract}/${row.symbol}`}
+          className="btn btn-outline btn-lg w-full"
+        >
+          {tokens.length > 1 ? `Manage Launched Tokens · $${row.symbol}` : "Manage Launched Tokens"}
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 function MaxSupplyField({
   value,
@@ -99,7 +157,7 @@ function MaxSupplyField({
   );
 }
 
-export function TokenDetailsStep({ draft, patch, onNext }: Props) {
+export function TokenDetailsStep({ draft, patch, onNext, onReset }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const invalid = tokenStepValid(draft);
   const [pinning, setPinning] = useState(false);
@@ -154,11 +212,7 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
       }
     >
       <InfoPanel open={guideOpen} paras={LAUNCH_GUIDE_PARAS} />
-      {programLocked ? (
-        <p className="text-xs text-warning">
-          Token is already on-chain. Token fields are static so execute preflight cannot drift.
-        </p>
-      ) : null}
+      {programLocked ? <DeployedActions draft={draft} onReset={onReset} /> : null}
       <div
         className={`grid grid-cols-1 items-end gap-3 ${
           draft.program === "easyflex"
@@ -437,6 +491,11 @@ export function TokenDetailsStep({ draft, patch, onNext }: Props) {
         </Field>
       </div>
 
+      {programLocked ? (
+        <div className="border-t border-border pt-5">
+          <DeployedActions draft={draft} onReset={onReset} />
+        </div>
+      ) : null}
       {invalid ? <p className="text-xs font-medium text-warning">{invalid}</p> : null}
     </StepShell>
   );

@@ -188,15 +188,8 @@ export default function Launch() {
         </div>
 
         <div className="order-1 lg:order-2">
-          {draft.addpoolTx && (step === 0 || step === EXECUTE_STEP) ? (
-            <div className="mb-4 flex justify-end">
-              <button type="button" className="btn btn-outline btn-sm" onClick={startNewLaunch}>
-                New launch
-              </button>
-            </div>
-          ) : null}
           {step === 0 ? (
-            <TokenDetailsStep draft={draft} patch={patch} onNext={() => setStep(1)} />
+            <TokenDetailsStep draft={draft} patch={patch} onNext={() => setStep(1)} onReset={startNewLaunch} />
           ) : step === 1 ? (
             <FlexonomicsStep
               draft={draft}
@@ -215,7 +208,13 @@ export default function Launch() {
             <ReviewStep draft={draft} onNext={() => setStep(6)} onBack={() => setStep(4)} />
           ) : (
             <>
-              <ExecuteStep draft={draft} patch={patch} onBack={() => setStep(5)} onDone={() => setCelebrate(true)} />
+              <ExecuteStep
+                draft={draft}
+                patch={patch}
+                onBack={() => setStep(5)}
+                onDone={() => setCelebrate(true)}
+                onReset={startNewLaunch}
+              />
               <EasyHoldNotice active />
             </>
           )}

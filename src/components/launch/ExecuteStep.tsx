@@ -15,6 +15,7 @@ import {
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
 import { planFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
+import { DeployedActions } from "@/components/launch/TokenDetailsStep";
 import { StatusIcon, StepShell, TxLink } from "@/components/launch/ui";
 import {
   activepoolTransfer,
@@ -47,6 +48,7 @@ type Props = {
   patch: (p: Partial<LaunchDraft>) => void;
   onBack: () => void;
   onDone: () => void;
+  onReset: () => void;
 };
 
 const EASY_SWAP = alcorSwapUrl(XPR_SYMBOL, EOSIO_TOKEN, EASY_SYMBOL, MON3Y);
@@ -238,7 +240,7 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
   ];
 }
 
-export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
+export function ExecuteStep({ draft, patch, onBack, onDone, onReset }: Props) {
   const { actor, isLoggedIn, transact } = useWallet();
   const plan = useMemo(() => planFromDraft(draft), [draft]);
   const steps = useMemo(() => execSteps(draft), [draft]);
@@ -491,6 +493,8 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
         </>
       }
     >
+      {draft.createTx ? <DeployedActions draft={draft} onReset={onReset} /> : null}
+
       {!draft.createTx ? (
         <div className="space-y-2 rounded-xl border border-border bg-background/40 p-3">
           <div className="flex items-center justify-between">
@@ -786,6 +790,12 @@ export function ExecuteStep({ draft, patch, onBack, onDone }: Props) {
           >
             {busyId === "addpool" ? "Signing…" : `Add ${plan.quote.symbol} reward pool`}
           </button>
+        </div>
+      ) : null}
+
+      {draft.createTx ? (
+        <div className="border-t border-border pt-5">
+          <DeployedActions draft={draft} onReset={onReset} />
         </div>
       ) : null}
     </StepShell>

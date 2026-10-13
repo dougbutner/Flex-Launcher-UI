@@ -62,7 +62,7 @@ export function LiftoffModal({ draft, onClose, onReset }: Props) {
             </a>
           ) : null}
           <button type="button" className="btn btn-ghost w-full" onClick={onReset}>
-            Launch another
+            Start a new launch
           </button>
         </div>
         <p className="mt-5 text-center text-xs text-muted-foreground">
