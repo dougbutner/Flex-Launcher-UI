@@ -6,6 +6,7 @@ import { TokenIcon } from "@/components/TokenIcon";
 import { DecimalText } from "@/components/Amount";
 import { fmtUsd } from "@/services/money";
 import { CHIP_BORDER, CHIP_TONE, type TokenCalEvent } from "@/components/cal/tokenCalEvents";
+import { alcorSwapUrl } from "@/config/launch";
 
 function pctLabel(n: number) {
   return `${n.toFixed(2)}%`;
@@ -158,19 +159,33 @@ export function TokenEventChip({
           </div>
         </div>
 
-        {event.splits.length ? (
+        {event.splits.some((s) => s.label !== "Protocol") || (event.quoteSymbol && event.quoteContract) ? (
           <div className="mt-2 grid grid-cols-2 gap-1">
-            {event.splits.map((s) => (
-              <div key={s.label} className="border border-border bg-secondary px-1.5 py-1">
-                <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">
-                  {s.label}
-                  {s.hint ? ` ${s.hint}` : ""}
-                </p>
-                <p className="font-mono text-xs font-bold">
-                  <DecimalText text={pctLabel(s.pct)} />
-                </p>
-              </div>
-            ))}
+            {event.splits
+              .filter((s) => s.label !== "Protocol")
+              .map((s) => (
+                <div key={s.label} className="border border-border bg-secondary px-1.5 py-1">
+                  <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">
+                    {s.label}
+                    {s.hint ? ` ${s.hint}` : ""}
+                  </p>
+                  <p className="font-mono text-xs font-bold">
+                    <DecimalText text={pctLabel(s.pct)} />
+                  </p>
+                </div>
+              ))}
+            {event.quoteSymbol && event.quoteContract ? (
+              <a
+                href={alcorSwapUrl(event.quoteSymbol, event.quoteContract, event.symbol, event.contract)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="border border-border bg-secondary px-1.5 py-1 hover:border-primary/50"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">Swap</p>
+                <p className="font-mono text-xs font-bold text-primary">Open</p>
+              </a>
+            ) : null}
           </div>
         ) : null}
       </article>

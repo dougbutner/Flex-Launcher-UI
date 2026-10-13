@@ -1,4 +1,4 @@
-import { flexAccount, isFlexQuoteToken, type FlexProgram } from "@/config/launch";
+import { flexAccount, type FlexProgram } from "@/config/launch";
 import { readSettings } from "@/services/flexTables";
 import type { CalEvent } from "@/services/launchEvents";
 import type { BoardToken } from "@/services/leaderboardStore";
@@ -82,11 +82,10 @@ function prettyName(symbol: string) {
   return s.charAt(0) + s.slice(1).toLowerCase();
 }
 
-function splitsFor(program: FlexProgram, spec?: Pick<MockSpec, "reflectionRate" | "burnRate" | "projectRate" | "angelBps" | "jackpotBps" | "quote">): SplitPct[] {
+function splitsFor(program: FlexProgram, spec?: Pick<MockSpec, "reflectionRate" | "burnRate" | "projectRate" | "angelBps" | "jackpotBps">): SplitPct[] {
   const reflect = bpsPct(spec?.reflectionRate ?? 0);
   const burn = bpsPct(spec?.burnRate ?? 0);
   const project = bpsPct(spec?.projectRate ?? 0);
-  const protocol = spec?.quote?.flex === false ? 0.5 : 0;
   if (program === "easyflex") {
     return [
       { label: "Reflect", pct: reflect },
@@ -106,7 +105,6 @@ function splitsFor(program: FlexProgram, spec?: Pick<MockSpec, "reflectionRate" 
     { label: "Project", pct: project },
     { label: "Angel", pct: bpsPct(spec?.angelBps ?? 0), hint: "of rain" },
     { label: "Jackpot", pct: bpsPct(spec?.jackpotBps ?? 0), hint: "of rain" },
-    { label: "Protocol", pct: protocol },
   ];
 }
 
@@ -210,12 +208,6 @@ export async function attachChainSplits(events: TokenCalEvent[]): Promise<TokenC
         projectRate: num(row, "project_rate"),
         angelBps: num(row, "angel_numbers_bps"),
         jackpotBps: num(row, "jackpot_bps"),
-        quote: {
-          symbol: ev.quoteSymbol,
-          contract: ev.quoteContract,
-          precision: 0,
-          flex: isFlexQuoteToken(ev.quoteSymbol, ev.quoteContract),
-        },
       }),
     };
   });

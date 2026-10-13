@@ -13,17 +13,18 @@ const PIECES = Array.from({ length: 42 }, (_, i) => ({
 
 type Props = {
   draft: LaunchDraft;
+  onClose: () => void;
   onReset: () => void;
 };
 
-export function LiftoffModal({ draft, onReset }: Props) {
+export function LiftoffModal({ draft, onClose, onReset }: Props) {
   const quote = quoteFromDraft(draft);
   const tokenContract = flexAccount(draft.program);
   const swap = alcorSwapUrl(quote.symbol, quote.contract, draft.symbol, tokenContract);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
-      <button type="button" className="absolute inset-0 bg-black/75" aria-label="Close" onClick={onReset} />
+      <button type="button" className="absolute inset-0 bg-black/75" aria-label="Close" onClick={onClose} />
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         {PIECES.map((p, i) => (
           <span
@@ -47,7 +48,7 @@ export function LiftoffModal({ draft, onReset }: Props) {
           <a href={swap} target="_blank" rel="noopener noreferrer" className="btn btn-accent w-full">
             Swap ${draft.symbol} on Alcor
           </a>
-          <Link to={`/token/${tokenContract}/${draft.symbol}`} className="btn btn-primary w-full" onClick={onReset}>
+          <Link to={`/token/${tokenContract}/${draft.symbol}`} className="btn btn-primary w-full">
             Open token page
           </Link>
           {draft.liftoffTx && draft.liftoffTx !== "ok" ? (
@@ -65,7 +66,7 @@ export function LiftoffModal({ draft, onReset }: Props) {
           </button>
         </div>
         <p className="mt-5 text-center text-xs text-muted-foreground">
-          <Link to="/manager" className="link" onClick={onReset}>
+          <Link to="/manager" className="link">
             Open Dev Tools
           </Link>
           {" · "}

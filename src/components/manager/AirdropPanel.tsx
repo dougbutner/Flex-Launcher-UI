@@ -522,18 +522,28 @@ export function AirdropPanel(props: {
       );
       const id = txIdFromResult(res) || "ok";
       setTx(id);
-      if (plan) setFrozen(plan);
-      setSent((cur) => {
-        const next = new Set(cur);
-        for (const row of checked) next.add(row.account);
-        return next;
-      });
+      setFrozen(null);
+      const nextSent = new Set(sent);
+      for (const row of checked) nextSent.add(row.account);
+      if (
+        (plan ?? []).some((row) => row.amountRaw > 0n && !nextSent.has(row.account) && !excluded.has(row.account))
+      ) {
+        setSent(nextSent);
+        if (page + 1 < pages) setBatch(page + 1);
+      } else {
+        setSent(new Set());
+        setExcluded(new Set());
+        setPick("");
+        setKyc(false);
+        setAlsoKey("");
+        setScan("");
+        setBatch(0);
+      }
       setWallet((cur) =>
         (cur ?? []).map((row) =>
           tokenKey(row.contract, row.symbol) === dropKey ? { ...row, balanceRaw: fresh - debit } : row
         )
       );
-      if (page + 1 < pages) setBatch(page + 1);
     } catch (err) {
       const text = txErrorMessage(err);
       const hint = hintForError(text);
@@ -916,7 +926,27 @@ export function AirdropPanel(props: {
         </div>
       ) : null}
 
-      <div className="flex justify-center">
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {sent.size > 0 || frozen ? (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => {
+              setFrozen(null);
+              setSent(new Set());
+              setExcluded(new Set());
+              setPick("");
+              setKyc(false);
+              setAlsoKey("");
+              setScan("");
+              setBatch(0);
+              setTx("");
+              setMsg("");
+            }}
+          >
+            New drop
+          </button>
+        ) : null}
         <button
           type="button"
           className="btn btn-airdrop"

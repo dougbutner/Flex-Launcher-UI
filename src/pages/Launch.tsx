@@ -134,6 +134,10 @@ export default function Launch() {
 
   const dismissLiftoff = () => {
     setCelebrate(false);
+  };
+
+  const startNewLaunch = () => {
+    setCelebrate(false);
     reset();
     setStep(0);
   };
@@ -184,6 +188,13 @@ export default function Launch() {
         </div>
 
         <div className="order-1 lg:order-2">
+          {draft.addpoolTx && (step === 0 || step === EXECUTE_STEP) ? (
+            <div className="mb-4 flex justify-end">
+              <button type="button" className="btn btn-outline btn-sm" onClick={startNewLaunch}>
+                New launch
+              </button>
+            </div>
+          ) : null}
           {step === 0 ? (
             <TokenDetailsStep draft={draft} patch={patch} onNext={() => setStep(1)} />
           ) : step === 1 ? (
@@ -215,7 +226,9 @@ export default function Launch() {
         </div>
       </div>
 
-      {celebrate && draft.addpoolTx ? <LiftoffModal draft={draft} onReset={dismissLiftoff} /> : null}
+      {celebrate && draft.addpoolTx ? (
+        <LiftoffModal draft={draft} onClose={dismissLiftoff} onReset={startNewLaunch} />
+      ) : null}
     </div>
   );
 }
