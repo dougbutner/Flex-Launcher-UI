@@ -143,8 +143,56 @@ export async function loadCalendarEventsFresh(): Promise<{ events: CalEvent[]; r
   return assembleCalendar(board, rooms);
 }
 
+/** Cached snapshots can omit presale rows. Read any club that has no insider or launch date. */
+async function withPresaleDates(snap: { events: CalEvent[]; rooms: LaunchRoom[] }) {
+  const missing = snap.rooms.filter(
+    (room) =>
+      room.program !== "core" &&
+      !snap.events.some(
+        (ev) =>
+          ev.contract === room.contract &&
+          ev.symbol === room.symbol &&
+          (ev.kind === "presale" || ev.kind === "launch")
+      )
+  );
+  if (!missing.length) return snap;
+  const extra: CalEvent[] = [];
+  await Promise.all(
+    missing.map(async (room) => {
+      const presale = await readPresale(room.contract, room.symbol).catch(() => null);
+      const base = {
+        contract: room.contract,
+        symbol: room.symbol,
+        program: room.program,
+        quoteSymbol: room.quoteSymbol,
+        quoteContract: room.quoteContract,
+        poolId: room.poolId,
+      };
+      const insiderMs = unixToMs(Number(presale?.insider_time ?? 0));
+      const launchMs = unixToMs(Number(presale?.launch_time ?? 0));
+      if (insiderMs) {
+        pushEvent(extra, { ...base, id: `presale:${room.contract}:${room.symbol}`, kind: "presale", at: insiderMs });
+      }
+      if (launchMs) {
+        pushEvent(extra, { ...base, id: `launch:${room.contract}:${room.symbol}`, kind: "launch", at: launchMs });
+      }
+    })
+  );
+  if (!extra.length) return snap;
+  return { rooms: snap.rooms, events: [...snap.events, ...extra].sort((a, b) => a.at - b.at) };
+}
+
+export function agoShort(ms: number, now = Date.now()): string {
+  if (!(ms > 1e11) || ms > now) return "";
+  const mins = Math.floor((now - ms) / 60_000);
+  if (mins < 60) return `${Math.max(1, mins)}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
 export async function loadCalendarEvents(opts?: { force?: boolean }): Promise<{ events: CalEvent[]; rooms: LaunchRoom[] }> {
-  return liveOr(
+  const snap = await liveOr(
     CACHE_KEYS.calendar,
     async () => {
       if (typeof window === "undefined") return loadCalendarEventsFresh();
@@ -156,4 +204,5 @@ export async function loadCalendarEvents(opts?: { force?: boolean }): Promise<{ 
     },
     opts
   );
+  return withPresaleDates(snap);
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  agoShort,
   clubDateEvents,
   dayKey,
   eventKindLabel,
@@ -46,5 +47,12 @@ describe("launchEvents calendar", () => {
     expect(monthEvents(list, 2026, 7)).toEqual([]);
     expect(eventKindLabel("presale")).toBe("Insiders");
     expect(eventKindLabel("launch")).toBe("Launch");
+  });
+
+  it("shortens how long a launch has been live", () => {
+    const now = Date.UTC(2026, 9, 14, 12, 0, 0);
+    expect(agoShort(now - 3 * 86_400_000, now)).toBe("3d");
+    expect(agoShort(now - 5 * 3_600_000, now)).toBe("5h");
+    expect(agoShort(now + 86_400_000, now)).toBe("");
   });
 });

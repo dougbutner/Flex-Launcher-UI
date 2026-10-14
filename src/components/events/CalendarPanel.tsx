@@ -102,13 +102,44 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
     () => tokenEvents.filter((ev) => lit.has(calTokenKey(ev))),
     [tokenEvents, lit]
   );
+  const launchedKeys = useMemo(
+    () => new Set(rooms.filter((r) => r.program !== "core" && r.launched).map((r) => `${r.contract}:${r.symbol}`)),
+    [rooms]
+  );
   const monthList = useMemo(
     () =>
       shownEvents
         .filter((ev) => ev.launchAt.getFullYear() === year && ev.launchAt.getMonth() === month)
+        .filter((ev) => !launchedKeys.has(`${ev.contract}:${ev.symbol}`))
         .sort((a, b) => a.launchAt.getTime() - b.launchAt.getTime()),
-    [shownEvents, year, month]
+    [shownEvents, year, month, launchedKeys]
   );
+  const liveCards = useMemo(() => {
+    return rooms
+      .filter((r) => r.program !== "core" && r.launched)
+      .map((r) => {
+        const dated = events.find(
+          (ev) =>
+            ev.contract === r.contract &&
+            ev.symbol === r.symbol &&
+            (ev.kind === "launch" || ev.kind === "liftoff")
+        );
+        const seen = board.find((t) => t.contract === r.contract && t.symbol === r.symbol);
+        const at = dated?.at || (seen && seen.firstSeenAt > 1e11 ? seen.firstSeenAt : 0);
+        return {
+          id: `live:${r.contract}:${r.symbol}`,
+          kind: "launch" as const,
+          at,
+          contract: r.contract,
+          symbol: r.symbol,
+          program: r.program,
+          quoteSymbol: r.quoteSymbol,
+          quoteContract: r.quoteContract,
+          poolId: r.poolId,
+        };
+      })
+      .sort((a, b) => b.at - a.at);
+  }, [rooms, events, board]);
 
   const quoteOnView = () => {
     const ev = tokenEvents.find((row) => row.launchAt.getFullYear() === year && row.launchAt.getMonth() === month);
@@ -199,12 +230,15 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
         <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
           Insiders and launches
         </h2>
-        {monthList.length === 0 ? (
+        {monthList.length === 0 && liveCards.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">No insider or launch dates this month.</p>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {monthList.map((ev) => (
               <CalTokenCard key={ev.id} ev={asCalEvent(ev)} picked={dayKey(ev.launchAt.getTime()) === picked} />
+            ))}
+            {liveCards.map((ev) => (
+              <CalTokenCard key={ev.id} ev={ev} live picked={dayKey(ev.at) === picked} />
             ))}
           </div>
         )}

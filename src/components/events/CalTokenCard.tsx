@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { TokenIcon } from "@/components/TokenIcon";
 import { ProgramDots } from "@/components/token/ProgramDots";
-import { eventKindLabel, type CalEvent } from "@/services/launchEvents";
+import { agoShort, eventKindLabel, type CalEvent } from "@/services/launchEvents";
 import type { FlexProgram } from "@/config/launch";
 import { MOCK_CLUB_LOCKS, mockTokenLogo } from "@/test/sandbox/data";
 
@@ -14,7 +14,7 @@ function startLabel(ms: number) {
   });
 }
 
-export function CalTokenCard({ ev, picked = false }: { ev: CalEvent; picked?: boolean }) {
+export function CalTokenCard({ ev, picked = false, live = false }: { ev: CalEvent; picked?: boolean; live?: boolean }) {
   const program = ev.program === "core" ? "easyflex" : (ev.program as FlexProgram);
   const logo = MOCK_CLUB_LOCKS[ev.symbol] ? mockTokenLogo(ev.symbol) : undefined;
   return (
@@ -51,8 +51,17 @@ export function CalTokenCard({ ev, picked = false }: { ev: CalEvent; picked?: bo
           </span>
         </span>
         <span className="font-mono text-[10px] leading-tight text-muted-foreground">
-          <span className="block text-[9px] uppercase tracking-wide">starts</span>
-          <span className="font-semibold text-foreground">{startLabel(ev.at)}</span>
+          {live ? (
+            <>
+              <span className="block text-[9px] uppercase tracking-wide">live</span>
+              <span className="font-semibold text-foreground">{agoShort(ev.at) || "-"}</span>
+            </>
+          ) : (
+            <>
+              <span className="block text-[9px] uppercase tracking-wide">starts</span>
+              <span className="font-semibold text-foreground">{startLabel(ev.at)}</span>
+            </>
+          )}
         </span>
       </span>
     </Link>

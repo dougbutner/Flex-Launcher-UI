@@ -140,9 +140,6 @@ export async function readPresale(code: string, symbol: string) {
     code,
     scope: symbol,
     table: "presales",
-    lower_bound: codeBound(symbol),
-    upper_bound: codeBound(symbol),
-    key_type: "i64",
     limit: 1,
   });
   return withSiteSandbox(rows[0] ?? null, (mod, live) => mod.mergePresale(code, symbol, live));
