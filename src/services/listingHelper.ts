@@ -1,4 +1,4 @@
-import type { FlexProgram } from "@/config/launch";
+import { flexAccount, type FlexProgram } from "@/config/launch";
 import { validPrecision, validSymbol } from "@/services/assets";
 import { validImageUrl } from "@/services/tokenLogo";
 import type { ManagerToken } from "@/services/managerStore";
@@ -36,20 +36,11 @@ export function airdropsLogoPath(symbol: string, contract: string) {
   return `logos/${airdropsLogoFilename(symbol, contract)}`;
 }
 
-export function listingVersionLabel(program: FlexProgram | null | undefined) {
-  if (program === "easyflex") return "easy";
-  if (program === "complexflex") return "complex";
-  if (program === "flexforex") return "forex";
-  return "";
-}
-
 export function logoRequestTooltip(symbol: string, program?: FlexProgram | null) {
   const ticker = symbol.trim().toUpperCase() || "SYMBOL";
-  const version = listingVersionLabel(program);
-  if (version) {
-    return `In Telegram, tell us the symbol ${ticker} and that you are using ${version} (easy, complex, or forex).`;
-  }
-  return `In Telegram, tell us the symbol ${ticker} and whether you are using easy, complex, or forex.`;
+  const account = program ? flexAccount(program) : "";
+  if (account) return `In Telegram, tell us the symbol ${ticker} on ${account}.`;
+  return `In Telegram, tell us the symbol ${ticker} and the contract (3asy, fl3x, or for3x).`;
 }
 
 export type ListingDraft = {

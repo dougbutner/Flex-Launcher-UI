@@ -289,7 +289,7 @@ export default function Preview() {
                   </a>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {previewIssued.program} @ {previewIssued.contract} · live
+                  {previewIssued.contract} · live
                 </div>
               </div>
               <span className="btn btn-outline btn-sm pointer-events-none">Manage</span>
@@ -345,7 +345,7 @@ export default function Preview() {
                 </a>
               </div>
               <div className="text-xs text-muted-foreground">
-                {h.program} @ {h.contract} · {h.quoteSymbol} pair · reflections active
+                {h.contract} · {h.quoteSymbol} pair · reflections active
               </div>
             </div>
             <div className="text-right">

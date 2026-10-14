@@ -563,8 +563,7 @@ export default function Admin() {
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-black tracking-tight">Admin</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Signed in as <span className="font-mono">{actor}</span>
-        {program ? ` (${program})` : ""}. Check token.proton live before signing (reg vs update vs remove). Match is
+        Signed in as <span className="font-mono">{actor}</span>. Check token.proton live before signing (reg vs update vs remove). Match is
         contract + ticker, not precision. Alcor and eos-airdrops checks read the public GitHub files. PRs go out from
         the dougbutner forks after a sync with upstream. Set GITHUB_TOKEN on the server (repo scope).
       </p>

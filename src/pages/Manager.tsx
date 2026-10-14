@@ -480,7 +480,7 @@ export default function Manager() {
           <div>
             <p className="font-mono text-lg font-bold">${view.token.symbol}</p>
             <p className="text-xs text-muted-foreground">
-              {view.token.program} @ {view.token.contract}
+              {view.token.contract}
             </p>
           </div>
           {views.length > 1 ? (
@@ -532,7 +532,7 @@ export default function Manager() {
                           <span className="text-muted-foreground">${v.token.symbol}</span>
                         </span>
                         <span className="block text-xs text-muted-foreground">
-                          {v.token.program} @ {v.token.contract} ·{" "}
+                          {v.token.contract} ·{" "}
                           {v.chain && !v.chain.launched && v.chain.poolId
                             ? "insiders"
                             : v.inProgress
@@ -573,10 +573,10 @@ export default function Manager() {
                     <p className="mt-1 text-xs text-muted-foreground">{rainMsg}</p>
                   ) : null}
                   <p className="text-xs text-muted-foreground">
-                    {view.token.precision} decimals · {view.token.program} @ {view.token.contract}
+                    {view.token.precision} decimals · {view.token.contract}
                     {view.token.maxSupply ? ` · max ${formatManagerSupply(view.token.maxSupply)}` : ""}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">Ticker, precision, and program are fixed on chain.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Ticker, precision, and contract stay as they were created.</p>
                 </div>
               </div>
 

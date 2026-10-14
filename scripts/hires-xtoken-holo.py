@@ -4,7 +4,8 @@
 Sources are vector logos (1024px PNG in public/tokens/xtokenpng).
 512holoxtokens is the foil still. 512holoxtokensanimated is a WebP.
 512holoxtokensapng is the same loop as an APNG (.png), transparent background.
-128holoxtokensapng is that APNG at 128px. 128holoxtokensshiny moves the foil
+128holoxtokensapng is that APNG at 128px. 256holoxtokensapng is the same
+loop at 256px, colors trimmed so the files stay small. 128holoxtokensshiny moves the foil
 lines with the gold streak, same 128px size and timing.
 14 fps for a 1 second sweep, then a 2 second hold, infinite loop.
 The sweep matches the site gold line (.tetra-shimmer / .btn::before).
@@ -27,12 +28,19 @@ STILL = PARENT / "512holoxtokens"
 ANIM = PARENT / "512holoxtokensanimated"
 APNG = PARENT / "512holoxtokensapng"
 APNG128 = PARENT / "128holoxtokensapng"
+APNG256 = PARENT / "256holoxtokensapng"
 SHINY128 = PARENT / "128holoxtokensshiny"
 CACHE = Path("/tmp/xtoken-logo-src")
 SHARP = Path("/tmp/raster/node_modules/sharp")
 SIZE = 1024
 OUT = 512
 FONT = "/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf"
+HOUSE = {
+    "EASY": ROOT / "public" / "tokens" / "easy.png",
+    "WON": ROOT / "public" / "tokens" / "won.png",
+    "GRAMS": ROOT / "public" / "tokens" / "grams.png",
+    "MEME": ROOT / "public" / "tokens" / "meme.png",
+}
 
 SPOTHQ = "https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/{}.svg"
 W3 = "https://raw.githubusercontent.com/0xa3k5/web3icons/main/raw-svgs/tokens/branded/{}.svg"
@@ -327,6 +335,27 @@ def write_apng(still: Image.Image, dest: Path, frames: list[Image.Image] | None 
     )
 
 
+def write_apng256(still: Image.Image, dest: Path) -> None:
+    """256px APNG. 32 colors per frame keeps the sweep and cuts the file size."""
+    small = still if still.size == (256, 256) else still.resize((256, 256), Image.Resampling.LANCZOS)
+    frames, durations = anim_frames(small)
+    crushed = [
+        fr.quantize(colors=32, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).convert("RGBA")
+        for fr in frames
+    ]
+    crushed[0].save(
+        dest,
+        save_all=True,
+        append_images=crushed[1:],
+        duration=durations,
+        loop=0,
+        format="PNG",
+        disposal=1,
+        blend=0,
+        compress_level=9,
+    )
+
+
 def shiny_frames(logo: Image.Image) -> list[Image.Image]:
     """Foil lines slide one band-spacing while the gold streak crosses."""
     frames: list[Image.Image] = []
@@ -351,6 +380,7 @@ def main() -> int:
     ANIM.mkdir(parents=True, exist_ok=True)
     APNG.mkdir(parents=True, exist_ok=True)
     APNG128.mkdir(parents=True, exist_ok=True)
+    APNG256.mkdir(parents=True, exist_ok=True)
     SHINY128.mkdir(parents=True, exist_ok=True)
     CACHE.mkdir(parents=True, exist_ok=True)
     for symbol in symbols:
@@ -360,14 +390,34 @@ def main() -> int:
         foiled.save(STILL / f"{symbol}.png", "PNG")
         write_anim(foiled, ANIM / f"{symbol}.webp")
         write_apng(foiled, APNG / f"{symbol}.png")
+        write_apng256(foiled, APNG256 / f"{symbol}.png")
         small = foiled.resize((128, 128), Image.Resampling.LANCZOS)
         write_apng(small, APNG128 / f"{symbol}.png")
         write_apng(small, SHINY128 / f"{symbol}.png", shiny_frames(logo))
         kb = (ANIM / f"{symbol}.webp").stat().st_size / 1024
         apng_kb = (APNG / f"{symbol}.png").stat().st_size / 1024
         print(f"{symbol}  webp {kb:.0f}kb  apng {apng_kb:.0f}kb")
+    write_house()
     print(f"{len(symbols)} -> {PARENT}")
     return 0
+
+
+def write_house() -> None:
+    """EASY, WON, GRAMS, MEME into the same holo folders as the xtokens."""
+    for folder in (PARENT, STILL, ANIM, APNG, APNG128, APNG256, SHINY128):
+        folder.mkdir(parents=True, exist_ok=True)
+    for symbol, path in HOUSE.items():
+        logo = Image.open(path).convert("RGBA")
+        logo.save(PARENT / f"{symbol}.png", "PNG")
+        foiled = foil(logo, OUT)
+        foiled.save(STILL / f"{symbol}.png", "PNG")
+        write_anim(foiled, ANIM / f"{symbol}.webp")
+        write_apng(foiled, APNG / f"{symbol}.png")
+        small = foiled.resize((128, 128), Image.Resampling.LANCZOS)
+        write_apng(small, APNG128 / f"{symbol}.png")
+        write_apng256(foiled, APNG256 / f"{symbol}.png")
+        write_apng(small, SHINY128 / f"{symbol}.png", shiny_frames(logo))
+        print(symbol, "house")
 
 
 if __name__ == "__main__":

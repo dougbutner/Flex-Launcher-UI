@@ -25,6 +25,7 @@ import {
   planDrop,
   ramPerNewHolder,
   readBalanceRaw,
+  readContractAccounts,
   readDropTax,
   readFreeRam,
   readHoldingAccounts,
@@ -122,6 +123,7 @@ export function AirdropPanel(props: {
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [pick, setPick] = useState<"" | "exclude" | "only">("");
   const [kyc, setKyc] = useState(false);
+  const [contracts, setContracts] = useState(false);
   const [alsoKey, setAlsoKey] = useState("");
   const [scan, setScan] = useState("");
   const [sent, setSent] = useState<Set<string>>(new Set());
@@ -139,6 +141,7 @@ export function AirdropPanel(props: {
   const listRef = useRef<HTMLUListElement>(null);
   const heldRef = useRef(new Map<string, Set<string>>());
   const kycRef = useRef<{ key: string; accounts: Set<string> } | null>(null);
+  const codeRef = useRef<{ key: string; accounts: Set<string> } | null>(null);
 
   const issuedKey = issued.map((row) => tokenKey(row.contract, row.symbol)).join("|");
 
@@ -291,7 +294,7 @@ export function AirdropPanel(props: {
   }, [audience?.contract, audience?.symbol, audience?.precision, drop?.contract, count, actor]);
 
   useEffect(() => {
-    if (!holders || (!pick && !kyc && !alsoKey)) return;
+    if (!holders || (!pick && !kyc && !alsoKey && !contracts)) return;
     const rows = holders;
     const names = rows.map((row) => row.account);
     const listKey = names.join(",");
@@ -320,7 +323,8 @@ export function AirdropPanel(props: {
         let dropSet: Set<string> | null = dropSame ? new Set(names) : null;
         let alsoSet: Set<string> | null = alsoSame ? new Set(names) : null;
         let verified: Set<string> | null = null;
-        if ((pick && drop && !dropSame) || (also && !alsoSame) || kyc) setScan("Reading…");
+        let coded: Set<string> | null = null;
+        if ((pick && drop && !dropSame) || (also && !alsoSame) || kyc || contracts) setScan("Reading…");
         if (pick && drop && !dropSame) jobs.push(held(drop).then((set) => { dropSet = set; }));
         if (also && !alsoSame) jobs.push(held(also).then((set) => { alsoSet = set; }));
         if (kyc) {
@@ -329,6 +333,15 @@ export function AirdropPanel(props: {
             (hit && hit.key === listKey ? Promise.resolve(hit.accounts) : readVerifiedAccounts(names, ctrl.signal)).then((set) => {
               kycRef.current = { key: listKey, accounts: set };
               verified = set;
+            })
+          );
+        }
+        if (contracts) {
+          const hit = codeRef.current;
+          jobs.push(
+            (hit && hit.key === listKey ? Promise.resolve(hit.accounts) : readContractAccounts(names, ctrl.signal)).then((set) => {
+              codeRef.current = { key: listKey, accounts: set };
+              coded = set;
             })
           );
         }
@@ -343,6 +356,7 @@ export function AirdropPanel(props: {
             if (pick === "exclude" && holdsDrop) skip = true;
             if (pick === "only" && drop && !holdsDrop) skip = true;
             if (kyc && verified && !verified.has(row.account)) skip = true;
+            if (contracts && coded && coded.has(row.account)) skip = true;
             if (also && alsoSet && !alsoSet.has(row.account)) skip = true;
             if (skip) next.add(row.account);
           }
@@ -354,7 +368,7 @@ export function AirdropPanel(props: {
       }
     })();
     return () => ctrl.abort();
-  }, [pick, kyc, alsoKey, holders, drop, audience, audienceOptions]);
+  }, [pick, kyc, contracts, alsoKey, holders, drop, audience, audienceOptions]);
 
   const livePlan = useMemo(() => (holders ? planDrop(mode, budgetRaw ?? 0n, holders) : null), [holders, budgetRaw, mode]);
   const plan = frozen ?? livePlan;
@@ -375,6 +389,7 @@ export function AirdropPanel(props: {
   const release = () => {
     setPick("");
     setKyc(false);
+    setContracts(false);
     setAlsoKey("");
     setScan("");
   };
@@ -411,7 +426,7 @@ export function AirdropPanel(props: {
     setScan("");
     if (pick === next) {
       setPick("");
-      if (!kyc && !alsoKey) setExcluded(new Set());
+      if (!kyc && !alsoKey && !contracts) setExcluded(new Set());
       return;
     }
     setPick(next);
@@ -535,6 +550,7 @@ export function AirdropPanel(props: {
         setExcluded(new Set());
         setPick("");
         setKyc(false);
+        setContracts(false);
         setAlsoKey("");
         setScan("");
         setBatch(0);
@@ -730,6 +746,7 @@ export function AirdropPanel(props: {
           <p>You sign each batch yourself. One transaction sends to the checked accounts, 100 at a time.</p>
           <p>Unchecking an account skips it. Simple sends the per account amount to each checked account. Proportional amounts stay fixed from the total and the list.</p>
           <p>Exclude holders unchecks anyone who already has any balance of the token you are dropping.</p>
+          <p>Exclude contracts unchecks accounts that are contracts.</p>
           <p>Holders only checks people who already hold the token you are dropping, and unchecks the rest. The drop goes to people who already hold that token.</p>
           <p>Both only change which boxes are checked. Amounts stay as they are.</p>
           <p>Wallet to wallet transfers can add tax on top of what the receiver gets. Your balance has to cover the send plus that tax. Fee opt-out skips the tax.</p>
@@ -765,6 +782,7 @@ export function AirdropPanel(props: {
                   setExcluded(new Set());
                   setPick("");
                   setKyc(false);
+                  setContracts(false);
                   setAlsoKey("");
                   setScan("");
                   setBatch(0);
@@ -846,7 +864,7 @@ export function AirdropPanel(props: {
                       setScan("");
                       if (kyc) {
                         setKyc(false);
-                        if (!pick && !alsoKey) setExcluded(new Set());
+                        if (!pick && !alsoKey && !contracts) setExcluded(new Set());
                         return;
                       }
                       setKyc(true);
@@ -868,6 +886,24 @@ export function AirdropPanel(props: {
                   <input
                     type="checkbox"
                     className="h-3.5 w-3.5 shrink-0"
+                    checked={contracts}
+                    disabled={!holders || holdersBusy}
+                    onChange={() => {
+                      setScan("");
+                      if (contracts) {
+                        setContracts(false);
+                        if (!pick && !kyc && !alsoKey) setExcluded(new Set());
+                        return;
+                      }
+                      setContracts(true);
+                    }}
+                  />
+                  Exclude contracts
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 shrink-0"
                     checked={pick === "only"}
                     disabled={!holders || holdersBusy || !drop}
                     onChange={() => choose("only")}
@@ -884,7 +920,7 @@ export function AirdropPanel(props: {
                       const value = e.target.value;
                       setScan("");
                       setAlsoKey(value);
-                      if (!value && !pick && !kyc) setExcluded(new Set());
+                      if (!value && !pick && !kyc && !contracts) setExcluded(new Set());
                     }}
                   >
                     <option value="">-</option>
@@ -937,6 +973,7 @@ export function AirdropPanel(props: {
               setExcluded(new Set());
               setPick("");
               setKyc(false);
+              setContracts(false);
               setAlsoKey("");
               setScan("");
               setBatch(0);

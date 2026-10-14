@@ -374,8 +374,7 @@ export default function Portfolio() {
                   <div>
                   <SymbolLinks contract={t.contract} symbol={t.symbol} />
                   <div className="text-xs text-muted-foreground">
-                    {t.program} @ {t.contract} ·{" "}
-                    {t.launched ? "live" : t.poolId ? "insiders" : "in progress"}
+                    {t.contract} · {t.launched ? "live" : t.poolId ? "insiders" : "in progress"}
                   </div>
                   </div>
                 </div>
@@ -402,7 +401,7 @@ export default function Portfolio() {
                   <div>
                     <SymbolLinks contract={t.contract} symbol={t.symbol} />
                     <div className="text-xs text-muted-foreground">
-                      {t.program} @ {t.contract} · {t.launched ? "live" : t.poolId ? "insiders" : "in progress"}
+                      {t.contract} · {t.launched ? "live" : t.poolId ? "insiders" : "in progress"}
                     </div>
                   </div>
                   <span className="insiders-club-badge">{t.mark === "proven" ? "proven" : "insider"}</span>
@@ -439,7 +438,7 @@ export default function Portfolio() {
                     <SymbolLinks contract={h.contract} symbol={h.symbol} large />
                     <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                       <ProgramDots program={h.program} />
-                      {coreTokenOf(h.contract, h.symbol) ? h.contract : `${h.program} @ ${h.contract}`}
+                      {h.contract}
                       {h.quoteSymbol ? (
                         <>
                           {" · "}

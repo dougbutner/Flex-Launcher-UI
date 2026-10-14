@@ -36,7 +36,6 @@ export function ContractPickModal({ program, symbol, onClose }: Props) {
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{doc.codeName}</p>
             <h2
               id="contract-pick-title"
               className={`mt-1 font-black tracking-tight ${titled ? "text-xl" : "font-mono text-2xl"}`}

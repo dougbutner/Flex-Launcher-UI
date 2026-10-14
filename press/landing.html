@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin: 0; height: 100%; background: #050705; }
+  .home {
+    position: relative;
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    background: #050705;
+    --home-gold: #d4af37;
+    --home-light: #ffe566;
+    --home-touch: #22c55e;
+    --home-gx: 12%;
+    --home-gy: 18%;
+  }
+  .home-glow {
+    position: absolute;
+    inset: -20%;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at var(--home-gx) var(--home-gy), color-mix(in srgb, var(--home-gold) 28%, transparent), transparent 42%),
+      radial-gradient(ellipse at 88% 12%, color-mix(in srgb, var(--home-light) 22%, transparent), transparent 38%),
+      radial-gradient(ellipse at 70% 88%, color-mix(in srgb, var(--home-touch) 14%, transparent), transparent 44%);
+  }
+  .home-field {
+    position: absolute;
+    inset: -24%;
+    pointer-events: none;
+    opacity: 0.28;
+    background-image: url("../public/tetra/pattern-field.svg");
+    background-size: 208px 180px;
+  }
+</style>
+</head>
+<body>
+  <div class="home">
+    <div class="home-glow"></div>
+    <div class="home-field"></div>
+  </div>
+</body>
+</html>

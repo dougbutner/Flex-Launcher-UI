@@ -3,7 +3,7 @@ import { fmtPrice, planFromDraft, quoteFromDraft, taxFromDraft } from "@/compone
 import { FlexPairHoldTip } from "@/components/launch/FlexPairHoldTip";
 import { StatusIcon } from "@/components/launch/ui";
 import { TokenIcon } from "@/components/TokenIcon";
-import { easyHoldNeed, flexMeta, holdEasyToLaunch, holdKindOf, QUOTE_PRESETS } from "@/config/launch";
+import { easyHoldNeed, flexAccount, flexMeta, holdEasyToLaunch, holdKindOf, QUOTE_PRESETS } from "@/config/launch";
 import { formatSupplyCommas } from "@/services/assets";
 import { formatBpsPercent, taxSum } from "@/services/taxRates";
 
@@ -65,7 +65,7 @@ export function LaunchPreview({
         <div className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-xs text-muted-foreground">
           ${showSymbol}
           <span aria-hidden>·</span>
-          {draft.program}
+          {flexAccount(draft.program)}
           <span aria-hidden>·</span>
           <TokenIcon contract={quote.contract} symbol={quote.symbol} size={14} />
           {quote.symbol} pair

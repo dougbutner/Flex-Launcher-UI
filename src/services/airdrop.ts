@@ -474,6 +474,26 @@ export async function readFreeRam(account: string): Promise<number> {
   return Math.max(0, quota - usage);
 }
 
+/** Accounts in `accounts` that have deployed contract code. */
+export async function readContractAccounts(accounts: readonly string[], signal?: AbortSignal): Promise<Set<string>> {
+  const have = new Set<string>();
+  for (let i = 0; i < accounts.length; i += 10) {
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    const slice = accounts.slice(i, i + 10);
+    const found = await Promise.all(
+      slice.map(async (account) => {
+        const row = await eosusaPost<{ last_code_update?: string }>("/v1/chain/get_account", {
+          account_name: account,
+        });
+        const updated = String(row.last_code_update ?? "");
+        return updated && !updated.startsWith("1970-01-01") ? account : "";
+      })
+    );
+    for (const account of found) if (account) have.add(account);
+  }
+  return have;
+}
+
 /** Accounts in `accounts` that already have any balance of this token. */
 export async function readHoldingAccounts(args: {
   contract: string;

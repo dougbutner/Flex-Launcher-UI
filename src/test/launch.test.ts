@@ -1012,9 +1012,9 @@ describe("execute gates and pool id", () => {
     expect(prompt).toContain("Do not commit to alcorexchange/alcor-ui");
     expect(prompt).not.toContain("/upload/master/");
     expect(logoRequestTooltip("FOO", "flexforex")).toContain("FOO");
-    expect(logoRequestTooltip("FOO", "flexforex")).toContain("forex");
-    expect(logoRequestTooltip("BAR", "easyflex")).toContain("easy");
-    expect(logoRequestTooltip("ZZZ", "complexflex")).toContain("complex");
+    expect(logoRequestTooltip("FOO", "flexforex")).toContain("for3x");
+    expect(logoRequestTooltip("BAR", "easyflex")).toContain("3asy");
+    expect(logoRequestTooltip("ZZZ", "complexflex")).toContain("fl3x");
     expect(listingPacketJson({
       name: "Foo Coin",
       url: "",
