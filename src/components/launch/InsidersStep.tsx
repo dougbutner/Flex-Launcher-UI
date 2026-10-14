@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { ClubTimeField } from "@/components/launch/ClubTimeField";
+import { planFromDraft, quoteFromDraft } from "@/components/launch/draftPlan";
 import { PctBpsField } from "@/components/launch/PctBpsField";
 import { Field, InfoBody, InfoLink, StepShell } from "@/components/launch/ui";
 import { INSIDERS_GUIDE_PARAS } from "@/content/launchGuide";
 import { defaultClubTimes, insidersStepValid } from "@/services/insidersClub";
+import { formatNiceNumber, fmtUsd } from "@/services/money";
+import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
 
 type Props = {
   draft: LaunchDraft;
@@ -33,6 +36,23 @@ function featOn(draft: LaunchDraft, id: Feat): boolean {
   return draft.presaleLockedInsiderBps > 0 || draft.presaleLockSecs > 0 || draft.presaleLockedLpMin > 0;
 }
 
+function shareBps(n: number): number {
+  return n > 0 && n <= 10000 ? n : 0;
+}
+
+function shareNote(draft: LaunchDraft, bps: number, quoteUsd: number): string {
+  const whole = shareBps(bps);
+  const supply = Number(draft.maxSupply);
+  const plan = planFromDraft(draft);
+  if (!whole || !(supply > 0) || !plan) return "";
+  const tokens = supply * (whole / 10000);
+  const start = Math.min(plan.quotePerTokenLower, plan.quotePerTokenUpper);
+  const quoteAmt = tokens * (start > 0 ? start : 0);
+  const usd = quoteUsd > 0 ? quoteAmt * quoteUsd : 0;
+  const money = usd > 0 ? fmtUsd(usd) : `${formatNiceNumber(quoteAmt)} ${plan.quote.symbol}`;
+  return `In your price range, that is about ${formatNiceNumber(tokens)} ${plan.launched.symbol}, about ${money} at your start price. A tighter range counts as more. A wider range counts as less.`;
+}
+
 function clearFeat(id: Feat): Partial<LaunchDraft> {
   if (id === "invites") return { presaleInviteList: "" };
   if (id === "nft") return { presaleCollection: "", presaleSchema: "", presaleNftMin: 0 };
@@ -48,8 +68,8 @@ export function InsidersStep({ draft, patch, onNext, onBack }: Props) {
   const signed = Boolean(draft.presaleTx);
   const lockDays = draft.presaleLockSecs > 0 ? Math.round(draft.presaleLockSecs / 86400) : 0;
   const [infoOpen, setInfoOpen] = useState(false);
-  const [lpInfo, setLpInfo] = useState(false);
-  const [bonusLpInfo, setBonusLpInfo] = useState(false);
+  const [quoteUsd, setQuoteUsd] = useState(0);
+  const quote = quoteFromDraft(draft);
   const [open, setOpen] = useState<Record<Feat, boolean>>({
     invites: featOn(draft, "invites"),
     nft: featOn(draft, "nft"),
@@ -58,6 +78,20 @@ export function InsidersStep({ draft, patch, onNext, onBack }: Props) {
     kyc: featOn(draft, "kyc"),
     bonus: featOn(draft, "bonus"),
   });
+
+  useEffect(() => {
+    let live = true;
+    void fetchAlcorUsdPrice(quote.contract, quote.symbol)
+      .then((n) => {
+        if (live) setQuoteUsd(n);
+      })
+      .catch(() => {
+        if (live) setQuoteUsd(0);
+      });
+    return () => {
+      live = false;
+    };
+  }, [quote.contract, quote.symbol]);
 
   const enable = (next: boolean) => {
     if (signed) return;
@@ -254,29 +288,21 @@ export function InsidersStep({ draft, patch, onNext, onBack }: Props) {
           ) : null}
 
           {open.lp ? (
-            <Field
-              label="Launch pool liquidity"
-              hint="Minimum Alcor liquidity (L) a buyer needs in your launch pool. Not the pool id."
-              sentence
-              aside={<InfoLink open={lpInfo} onToggle={() => setLpInfo((v) => !v)} />}
-            >
-              <input
-                className="input font-mono"
-                inputMode="numeric"
-                placeholder="0"
-                value={draft.presaleLpMin || ""}
+            <>
+              <PctBpsField
+                sentence
+                emptyZero
+                label="Pool liquidity"
+                hint="Percent of the liquidity you lock. Their positions in your pool must add up to this before they can join. 100% means all of it."
+                placeholder="1"
+                bps={shareBps(draft.presaleLpMin)}
                 disabled={signed}
-                onChange={(e) => patch({ presaleLpMin: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                onBps={(presaleLpMin) => patch({ presaleLpMin })}
               />
-              {lpInfo ? (
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  Buyers pass when their positions in your launch pool add up to at least this liquidity number. Alcor
-                  shows it as liquidity on the position, not as tokens and not as the pool id. After the pool exists,
-                  open it on Alcor. The pool id is the number in the URL, and it is listed under the pool name. Each
-                  position shows liquidity below the range. Use that figure here. Leave 0 to skip this gate.
-                </p>
+              {shareNote(draft, draft.presaleLpMin, quoteUsd) ? (
+                <p className="text-xs leading-relaxed text-muted-foreground">{shareNote(draft, draft.presaleLpMin, quoteUsd)}</p>
               ) : null}
-            </Field>
+            </>
           ) : null}
 
           {open.bonus ? (
@@ -308,28 +334,21 @@ export function InsidersStep({ draft, patch, onNext, onBack }: Props) {
                   }}
                 />
               </Field>
-              <Field
-                label="Bonus LP liquidity"
-                hint="Liquidity (L) the locked position must have. Not the pool id."
+              <PctBpsField
                 sentence
-                aside={<InfoLink open={bonusLpInfo} onToggle={() => setBonusLpInfo((v) => !v)} />}
-              >
-                <input
-                  className="input font-mono"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={draft.presaleLockedLpMin || ""}
-                  disabled={signed}
-                  onChange={(e) => patch({ presaleLockedLpMin: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-                />
-                {bonusLpInfo ? (
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    Same Alcor liquidity number as the join gate, for the locked position they prove to unlock the
-                    higher cap. Open the pool on Alcor, copy liquidity from under the position (the pool id in the URL
-                    is a different number), and paste it here.
-                  </p>
-                ) : null}
-              </Field>
+                emptyZero
+                label="Locked liquidity"
+                hint="Percent of the liquidity you lock. Their locked position must be at least this big to unlock the higher buy cap. 100% means all of yours. Leave empty and any size qualifies."
+                placeholder="1"
+                bps={shareBps(draft.presaleLockedLpMin)}
+                disabled={signed}
+                onBps={(presaleLockedLpMin) => patch({ presaleLockedLpMin })}
+              />
+              {shareNote(draft, draft.presaleLockedLpMin, quoteUsd) ? (
+                <p className="-mt-2 text-xs leading-relaxed text-muted-foreground sm:col-span-2">
+                  {shareNote(draft, draft.presaleLockedLpMin, quoteUsd)}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </>

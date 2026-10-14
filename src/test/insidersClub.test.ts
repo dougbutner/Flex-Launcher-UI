@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { planFromDraft } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
+import { liquidityShareRaw } from "@/services/launchMath";
 import {
   clubMarkOf,
   clubSignActions,
@@ -93,6 +95,26 @@ describe("insidersClub", () => {
     expect(actions[0].data.mode).toBe(1);
     expect(clubSignActions("3asy", "FOO", { ...draft, presaleMode: 0 })[0].data.mode).toBe(1);
     expect(actions[1].data.accounts).toBe("alice,bob");
+  });
+
+  it("turns a liquidity percent into the launch position share", () => {
+    const draft = {
+      ...emptyDraft(),
+      name: "Foo",
+      symbol: "FOO",
+      presaleEnabled: true,
+      presaleInsiderTime: "2026-09-20T12:00",
+      presaleLaunchTime: "2026-09-27T12:00",
+      presaleLpMin: 10000,
+      presaleLockedLpMin: 100,
+      presaleLockSecs: 7 * 86400,
+    };
+    const plan = planFromDraft(draft);
+    expect(plan).not.toBeNull();
+    const actions = clubSignActions("3asy", "FOO", draft);
+    expect(String(actions[0].data.lp_min)).toBe(liquidityShareRaw(plan!, draft.maxSupply, 10000));
+    expect(String(actions[0].data.locked_lp_min)).toBe(liquidityShareRaw(plan!, draft.maxSupply, 100));
+    expect(String(actions[0].data.lp_min)).not.toBe("10000");
   });
 
   it("marks approved insiders, and proven after lock proof", () => {

@@ -493,6 +493,20 @@ function makeBook(plan: LaunchPlan, maxSupply: string): TickBook | null {
   };
 }
 
+const INT64_MAX = 9223372036854775807n;
+
+/** Share of the one-sided launch position, in Alcor liquidity units. Null when it does not fit int64. */
+export function liquidityShareRaw(plan: LaunchPlan, maxSupply: string, bps: number): string | null {
+  const whole = Math.floor(bps);
+  if (whole <= 0) return "0";
+  if (whole > 10000) return null;
+  const book = makeBook(plan, maxSupply);
+  if (!book) return null;
+  const share = (book.positionL * BigInt(whole)) / 10000n;
+  if (share > INT64_MAX) return null;
+  return share.toString();
+}
+
 type WalkState = { i: number; sqrt: bigint };
 
 function startState(book: TickBook): WalkState {

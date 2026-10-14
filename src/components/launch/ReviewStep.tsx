@@ -200,7 +200,9 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
                 <Row k="LP bonus" v={`${draft.presaleLockedInsiderBps / 100}% of supply`} />
               ) : null}
               {lockDays > 0 ? <Row k="Insider LP lock" v={`${lockDays} days`} /> : null}
-              {draft.presaleLockedLpMin > 0 ? <Row k="Bonus LP min" v={String(draft.presaleLockedLpMin)} mono /> : null}
+              {draft.presaleLockedLpMin > 0 && draft.presaleLockedLpMin <= 10000 ? (
+                <Row k="Locked liquidity" v={`${draft.presaleLockedLpMin / 100}% of your locked pool`} />
+              ) : null}
               {invites.length ? <Row k="Invites" v={invites.join(", ")} mono /> : null}
               {nftOn ? (
                 <Row
@@ -216,7 +218,9 @@ export function ReviewStep({ draft, onNext, onBack }: Props) {
                   mono
                 />
               ) : null}
-              {draft.presaleLpMin > 0 ? <Row k="LP min" v={String(draft.presaleLpMin)} mono /> : null}
+              {draft.presaleLpMin > 0 && draft.presaleLpMin <= 10000 ? (
+                <Row k="Pool liquidity" v={`${draft.presaleLpMin / 100}% of your locked pool`} />
+              ) : null}
               {draft.presaleNeedKyc ? <Row k="KYC" v="WebAuth verified" /> : null}
               <Row k="Gates" v={draft.presaleGatesAll ? "All" : "Any"} />
             </>

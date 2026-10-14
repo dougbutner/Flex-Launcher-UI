@@ -1,5 +1,7 @@
+import { planFromDraft } from "@/components/launch/draftPlan";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { assetAmountNumber, parseAsset, validAccount } from "@/services/assets";
+import { liquidityShareRaw } from "@/services/launchMath";
 import { marksCacheKey } from "@/services/cacheKeys";
 import { readInsiders } from "@/services/flexTables";
 import { liveOr } from "@/services/readThrough";
@@ -148,7 +150,30 @@ export function insidersStepValid(draft: LaunchDraft): string | null {
   if ((draft.presaleLockedLpMin > 0 || draft.presaleLockedInsiderBps > 0) && draft.presaleLockSecs <= 0) {
     return "LP provider bonus needs Insider LP lock days.";
   }
+  const shareErr = liquidityShareError(draft);
+  if (shareErr) return shareErr;
   return inviteListError(draft.presaleInviteList);
+}
+
+function liquidityShareError(draft: LaunchDraft): string | null {
+  const shares = [draft.presaleLpMin, draft.presaleLockedLpMin];
+  if (!shares.some((bps) => bps > 0 && bps <= 10000)) return null;
+  const plan = planFromDraft(draft);
+  if (!plan) return "Set the price range before choosing a liquidity share.";
+  for (const bps of shares) {
+    if (bps > 0 && bps <= 10000 && liquidityShareRaw(plan, draft.maxSupply, bps) == null) {
+      return "That share is too large for this price range. Use a smaller percent or a wider range.";
+    }
+  }
+  return null;
+}
+
+function shareArg(draft: LaunchDraft, bps: number): number | string {
+  if (bps > 10000) return Math.floor(bps);
+  if (bps <= 0) return 0;
+  const plan = planFromDraft(draft);
+  if (!plan) return 0;
+  return liquidityShareRaw(plan, draft.maxSupply, bps) ?? 0;
 }
 
 export function setpresaleArgsFromDraft(draft: LaunchDraft): SetPresaleArgs {
@@ -163,8 +188,8 @@ export function setpresaleArgsFromDraft(draft: LaunchDraft): SetPresaleArgs {
     nftMin: draft.presaleNftMin,
     minTokenQuantity: draft.presaleMinTokenQty,
     minTokenContract: draft.presaleMinTokenContract,
-    lpMin: draft.presaleLpMin,
-    lockedLpMin: draft.presaleLockedLpMin,
+    lpMin: shareArg(draft, draft.presaleLpMin),
+    lockedLpMin: shareArg(draft, draft.presaleLockedLpMin),
     lockSecs: draft.presaleLockSecs,
     needKyc: draft.presaleNeedKyc,
     gatesAll: draft.presaleGatesAll,

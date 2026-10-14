@@ -10,7 +10,7 @@ import {
   setpresaleAction,
   type ChainAction,
 } from "@/services/launchActions";
-import { readInsiders, readLaunch, readPresale } from "@/services/flexTables";
+import { readInsiders, readLaunch, readPosition, readPresale } from "@/services/flexTables";
 import {
   defaultClubTimes,
   localToUnix,
@@ -104,6 +104,18 @@ function featOn(form: PresaleAdjust, id: Feat): boolean {
   return form.lockedInsiderBps > 0 || form.lockSecs > 0 || form.lockedLpMin > 0;
 }
 
+function shareOfPool(raw: number, liq: bigint): number {
+  if (!(raw > 0) || liq <= 0n || liq > BigInt(Number.MAX_SAFE_INTEGER)) return 0;
+  const bps = (BigInt(Math.floor(raw)) * 10000n) / liq;
+  if (bps > 10000n) return 10000;
+  return Number(bps);
+}
+
+function rawFromShare(bps: number, liq: bigint): number {
+  if (bps <= 0 || liq <= 0n || liq > BigInt(Number.MAX_SAFE_INTEGER)) return 0;
+  return Number((liq * BigInt(Math.min(10000, Math.floor(bps)))) / 10000n);
+}
+
 function clearFeat(id: Feat): Partial<PresaleAdjust> {
   if (id === "invites") return { inviteList: "" };
   if (id === "nft") return { collection: "", schema: "", nftMin: 0 };
@@ -126,6 +138,7 @@ export function ManagerPresale({ contract, symbol, actor, transact }: Props) {
   const [launched, setLaunched] = useState(false);
   const [hasRow, setHasRow] = useState(false);
   const [poolId, setPoolId] = useState(0);
+  const [poolL, setPoolL] = useState(0n);
   const [insiders, setInsiders] = useState<Record<string, unknown>[]>([]);
   const [form, setForm] = useState<PresaleAdjust>(emptyForm);
   const [open, setOpen] = useState<Record<Feat, boolean>>({
@@ -153,12 +166,21 @@ export function ManagerPresale({ contract, symbol, actor, transact }: Props) {
       readPresale(contract, symbol).catch(() => null),
       readInsiders(contract, symbol).catch(() => [] as Record<string, unknown>[]),
     ])
-      .then(([launch, presale, rows]) => {
+      .then(async ([launch, presale, rows]) => {
         if (cancelled) return;
         const next = formFromRow(presale);
+        const pool = Number(launch?.pure_liquid_alcor_pool_id ?? 0);
+        const pos = Number(launch?.position_id ?? 0);
+        let liq = 0n;
+        if (pool > 0 && pos > 0) {
+          const row = await readPosition(pool, pos).catch(() => null);
+          const digits = String(row?.liquidity ?? "0").split(".")[0].replace(/\D/g, "");
+          if (digits) liq = BigInt(digits);
+        }
         setLaunched(Boolean(launch?.launched));
         setHasRow(Boolean(presale));
-        setPoolId(Number(launch?.pure_liquid_alcor_pool_id ?? 0));
+        setPoolId(pool);
+        setPoolL(liq);
         setInsiders(rows);
         setForm(next);
         setOpen({
@@ -420,16 +442,22 @@ export function ManagerPresale({ contract, symbol, actor, transact }: Props) {
           ) : null}
 
           {open.lp || featOn(form, "lp") ? (
-            <Field label="Launch pool liquidity" hint="Minimum Alcor liquidity (L) in the launch pool. Not the pool id." sentence>
-              <input
-                className="input font-mono"
-                inputMode="numeric"
-                placeholder="0"
-                value={form.lpMin || ""}
-                disabled={signing}
-                onChange={(e) => setForm((f) => ({ ...f, lpMin: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))}
+            poolL > 0n && poolL <= BigInt(Number.MAX_SAFE_INTEGER) ? (
+              <PctBpsField
+                sentence
+                emptyZero
+                label="Pool liquidity"
+                hint="Percent of the liquidity you locked. Their positions in your pool must add up to this. 100% means all of it."
+                placeholder="1"
+                bps={shareOfPool(form.lpMin, poolL)}
+                disabled={signing || !writable}
+                onBps={(bps) => setForm((f) => ({ ...f, lpMin: rawFromShare(bps, poolL) }))}
               />
-            </Field>
+            ) : (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Pool liquidity is a percent of the liquidity you lock. Set it on the launch form. 100% means all of it.
+              </p>
+            )
           ) : null}
 
           {open.bonus || featOn(form, "bonus") ? (
@@ -461,18 +489,22 @@ export function ManagerPresale({ contract, symbol, actor, transact }: Props) {
                   }}
                 />
               </Field>
-              <Field label="Bonus LP liquidity" hint="Liquidity (L) the locked position must have." sentence>
-                <input
-                  className="input font-mono"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={form.lockedLpMin || ""}
-                  disabled={signing}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, lockedLpMin: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))
-                  }
+              {poolL > 0n && poolL <= BigInt(Number.MAX_SAFE_INTEGER) ? (
+                <PctBpsField
+                  sentence
+                  emptyZero
+                  label="Locked liquidity"
+                  hint="Percent of the liquidity you locked. Their locked position must be at least this big. 100% means all of yours. Leave empty and any size qualifies."
+                  placeholder="1"
+                  bps={shareOfPool(form.lockedLpMin, poolL)}
+                  disabled={signing || !writable}
+                  onBps={(bps) => setForm((f) => ({ ...f, lockedLpMin: rawFromShare(bps, poolL) }))}
                 />
-              </Field>
+              ) : (
+                <p className="text-xs leading-relaxed text-muted-foreground sm:col-span-2">
+                  Locked liquidity is a percent of the liquidity you lock. Set it on the launch form. 100% means all of yours. Leave it empty and any size qualifies.
+                </p>
+              )}
             </div>
           ) : null}
 

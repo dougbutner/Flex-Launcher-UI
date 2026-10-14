@@ -27,8 +27,7 @@ export function TokenIcon({
   const [step, setStep] = useState(0);
   const src = places[step];
   const letter = (symbol || "?").slice(0, 1).toUpperCase();
-  const shape =
-    rounded === "full" ? "rounded-full" : rounded === "md" ? "rounded-md" : fill ? "rounded-none" : "rounded-2xl";
+  const shape = "rounded-none";
   const box = fill ? undefined : { width: size, height: size, fontSize: Math.max(10, size * 0.4) };
 
   useEffect(() => {
@@ -70,7 +69,7 @@ export function TokenIcon({
       width={fill ? undefined : size}
       height={fill ? undefined : size}
       decoding="async"
-      className={`shrink-0 bg-background ${fill ? "h-full w-full object-cover" : "object-contain"} ${shape} ${className}`}
+      className={`shrink-0 bg-transparent object-contain ${fill ? "h-full w-full" : ""} ${shape} ${className}`}
       onLoad={() => {
         if (src && !src.startsWith("/") && !src.startsWith("data:") && !src.startsWith("blob:")) storeLogoQuiet(contract, symbol, src);
       }}

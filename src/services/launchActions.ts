@@ -440,6 +440,15 @@ export function setminAction(tokenContract: string, tokenSymbol: string, reflect
   };
 }
 
+function chainInt(n: number | string | undefined): number | string {
+  if (typeof n === "string" && /^\d+$/.test(n.trim())) {
+    const t = n.trim().replace(/^0+(?=\d)/, "");
+    return t.length > 15 ? t : Number(t);
+  }
+  const v = Math.max(0, Math.floor(Number(n) || 0));
+  return Number.isSafeInteger(v) ? v : "0";
+}
+
 /** Modes: 0 freeze, 1-3 insider window (UI uses 0 or 1). */
 export type SetPresaleArgs = {
   launchTime: number;
@@ -452,8 +461,9 @@ export type SetPresaleArgs = {
   nftMin?: number;
   minTokenQuantity?: string;
   minTokenContract?: string;
-  lpMin?: number;
-  lockedLpMin?: number;
+  /** Raw Alcor liquidity, or a decimal string when it does not fit a JS number. */
+  lpMin?: number | string;
+  lockedLpMin?: number | string;
   lockSecs?: number;
   needKyc?: boolean;
   /** false = any set gate passes. true = every set gate must pass. */
@@ -477,8 +487,8 @@ export function setpresaleAction(tokenContract: string, tokenSymbol: string, arg
       schema: (args.schema || "").trim() || "",
       nft_min: Math.max(0, Math.floor(args.nftMin ?? 0)),
       min_token: extendedAsset(minQty || "0.0000 FOO", minContract || tokenContract),
-      lp_min: Math.max(0, Math.floor(args.lpMin ?? 0)),
-      locked_lp_min: Math.max(0, Math.floor(args.lockedLpMin ?? 0)),
+      lp_min: chainInt(args.lpMin),
+      locked_lp_min: chainInt(args.lockedLpMin),
       lock_secs: Math.max(0, Math.floor(args.lockSecs ?? 0)),
       need_kyc: Boolean(args.needKyc),
       gates_all: Boolean(args.gatesAll),
