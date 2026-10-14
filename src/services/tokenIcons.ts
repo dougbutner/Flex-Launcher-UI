@@ -124,17 +124,20 @@ export async function storeLogoFile(contract: string, symbol: string, cid: strin
   }
 }
 
-/** Local file, then Alcor, then eos-airdrops, then the IPFS (or other http) icon. One at a time. */
+/** Hash file, then the saved copy of that hash, then Alcor, eos-airdrops, and the gateway. One at a time. */
 export function tokenIconPlaces(contract: string | undefined, symbol: string, fallback?: string): string[] {
   const picked = (fallback || "").trim();
   if (picked.startsWith("data:") || picked.startsWith("blob:")) return [picked];
   const id = logoAccount(contract, symbol);
   const remote = httpIcon(picked) || remoteTokenIconSrc(contract, symbol);
+  const cid = ipfsCid(remote);
   const places: string[] = [];
   const add = (url?: string) => {
     if (url && !places.includes(url)) places.push(url);
   };
   add(localTokenIconSrc(contract, symbol));
+  add(localLogoSrc(contract, symbol, remote));
+  if (id && cid && remote) add(flexApi(`/api/logo/${id.acct}/${id.code}-${cid}`, `url=${encodeURIComponent(remote)}`));
   if (id) add(`/tokens/${id.acct}/${id.code}.png`);
   if (id) {
     add(alcorLogoRawUrl(id.code, id.acct));

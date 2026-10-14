@@ -81,6 +81,7 @@ import {
   logoRequestTooltip,
   mergeAdminTokenRefs,
 } from "@/services/listingHelper";
+import { flexApi } from "@/services/flexApi";
 import { ipfsCid, localLogoSrc, localTokenIconSrc, rememberRemoteTokenIcon, tokenIconKey, tokenIconPlaces, tokenIconSrc } from "@/services/tokenIcons";
 import { hintForError, logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
@@ -781,15 +782,18 @@ describe("local token icons", () => {
     const cid = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG";
     expect(ipfsCid(`https://gateway.pinata.cloud/ipfs/${cid}`)).toBe(cid);
     expect(ipfsCid("https://example.com/z.png")).toBe("");
-    rememberRemoteTokenIcon("fl3x", "ZZZ", `https://gateway.pinata.cloud/ipfs/${cid}`);
-    expect(tokenIconPlaces("fl3x", "ZZZ")).toEqual([
-      "/tokens/fl3x/ZZZ.png",
-      "https://raw.githubusercontent.com/alcorexchange/alcor-ui/master/assets/tokens/proton/zzz_fl3x.png",
-      "https://raw.githubusercontent.com/eoscafe/eos-airdrops/master/logos/zzz-fl3x.png",
-      `https://gateway.pinata.cloud/ipfs/${cid}`,
-    ]);
-    expect(tokenIconSrc("fl3x", "ZZZ")).toBe("/tokens/fl3x/ZZZ.png");
+    const pinata = `https://gateway.pinata.cloud/ipfs/${cid}`;
+    rememberRemoteTokenIcon("fl3x", "ZZZ", pinata);
     const alcor = "https://raw.githubusercontent.com/alcorexchange/alcor-ui/master/assets/tokens/proton/zzz_fl3x.png";
+    expect(tokenIconPlaces("fl3x", "ZZZ")).toEqual([
+      `/tokens/fl3x/ZZZ-${cid}.png`,
+      flexApi(`/api/logo/fl3x/ZZZ-${cid}`, `url=${encodeURIComponent(pinata)}`),
+      "/tokens/fl3x/ZZZ.png",
+      alcor,
+      "https://raw.githubusercontent.com/eoscafe/eos-airdrops/master/logos/zzz-fl3x.png",
+      pinata,
+    ]);
+    expect(tokenIconSrc("fl3x", "ZZZ")).toBe(`/tokens/fl3x/ZZZ-${cid}.png`);
     expect(tokenIconPlaces("fl3x", "ZZZ", alcor)[0]).toBe(alcor);
     expect(tokenIconPlaces("fl3x", "ZZZ", alcor).at(-1)).toBe("/tokens/fl3x/ZZZ.png");
     expect(localLogoSrc("fl3x", "ZZZ", `https://gateway.pinata.cloud/ipfs/${cid}`)).toBe(`/tokens/fl3x/ZZZ-${cid}.png`);

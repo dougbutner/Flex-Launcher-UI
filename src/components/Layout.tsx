@@ -8,14 +8,19 @@ import { DISCLAIMER_PARAS, LEGAL_TERMS_URL } from "@/content/disclaimer";
 import { JARGON_ENTRIES, JARGON_TITLE, NUMBERS_JARGON, NUMBERS_JARGON_TITLE } from "@/content/jargon";
 import { useTetraChrome } from "@/hooks/useTetraChrome";
 import {
+  COMPLEXFLEX_CONTRACT,
+  EASYFLEX_CONTRACT,
   EOSIO_TOKEN,
   EASY_SYMBOL,
+  FLEXFOREX_CONTRACT,
   MON3Y,
   PROJECT_CORE_TOKENS,
   XPR_SYMBOL,
   alcorAnalyticsUrl,
   alcorSwapUrl,
 } from "@/config/launch";
+import { listManagerTokens } from "@/services/managerApi";
+import { rememberRemoteTokenIcon } from "@/services/tokenIcons";
 
 const EASY_SWAP = alcorSwapUrl(XPR_SYMBOL, EOSIO_TOKEN, EASY_SYMBOL, MON3Y);
 const DOCS = "https://flex.report";
@@ -55,6 +60,23 @@ export function Layout() {
   useEffect(() => {
     sync();
   }, [location.pathname, sync]);
+
+  useEffect(() => {
+    const pull = () => {
+      for (const contract of [EASYFLEX_CONTRACT, COMPLEXFLEX_CONTRACT, FLEXFOREX_CONTRACT]) {
+        void listManagerTokens({ contract })
+          .then((rows) => {
+            for (const row of rows) {
+              if (row.imageUrl) rememberRemoteTokenIcon(row.contract, row.symbol, row.imageUrl);
+            }
+          })
+          .catch(() => undefined);
+      }
+    };
+    pull();
+    window.addEventListener("flex-manager-updated", pull);
+    return () => window.removeEventListener("flex-manager-updated", pull);
+  }, []);
 
   useEffect(() => {
     const el = footerRef.current;

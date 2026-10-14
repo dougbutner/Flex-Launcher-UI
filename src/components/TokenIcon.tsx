@@ -35,7 +35,7 @@ export function TokenIcon({
   }, [contract, srcProp, symbol]);
 
   useEffect(() => {
-    setStep((n) => (list.split("|")[n] ? n : 0));
+    setStep(0);
   }, [list]);
 
   if (!src) {
