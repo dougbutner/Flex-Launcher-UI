@@ -1,6 +1,6 @@
 import { FLEX_PROGRAMS, flexAccount, type FlexProgram } from "@/config/launch";
 import { parseAsset } from "@/services/assets";
-import { readLaunch, readLaunches, readStat } from "@/services/flexTables";
+import { readLaunch, readLaunches, readPresale, readStat } from "@/services/flexTables";
 import type { ChainIssuerToken } from "@/services/managerStore";
 import { symbolCodeOf } from "@/services/preflight";
 import { getActions } from "@/services/rpc";
@@ -41,9 +41,10 @@ async function collectForProgram(issuer: string, program: FlexProgram): Promise<
   }
   const out: ChainIssuerToken[] = [];
   for (const [symbol, hint] of symbols) {
-    const [stat, launch] = await Promise.all([
+    const [stat, launch, presale] = await Promise.all([
       readStat(code, symbol).catch(() => null),
       readLaunch(code, symbol).catch(() => null),
+      readPresale(code, symbol).catch(() => null),
     ]);
     const owner = String(pick(stat, "issuer") ?? "");
     if (owner && owner !== issuer) continue;
@@ -60,6 +61,7 @@ async function collectForProgram(issuer: string, program: FlexProgram): Promise<
       symbol,
       precision,
       launched: Boolean(pick(launch, "launched")),
+      launchTime: Number(pick(presale, "launch_time") ?? 0) || 0,
       poolId: poolIdOf(launch),
       supplyPositive: Boolean(supply && Number(supply.amount) > 0),
       hasLaunch: Boolean(launch),

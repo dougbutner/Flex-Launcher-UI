@@ -426,6 +426,7 @@ export type ChainIssuerToken = {
   symbol: string;
   precision: number;
   launched: boolean;
+  launchTime?: number;
   poolId: number | null;
   supplyPositive: boolean;
   hasLaunch: boolean;

@@ -138,6 +138,8 @@ export function ManagerPresale({ contract, symbol, actor, transact }: Props) {
   const [launched, setLaunched] = useState(false);
   const [hasRow, setHasRow] = useState(false);
   const [poolId, setPoolId] = useState(0);
+  const [liveAt, setLiveAt] = useState(0);
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [poolL, setPoolL] = useState(0n);
   const [insiders, setInsiders] = useState<Record<string, unknown>[]>([]);
   const [form, setForm] = useState<PresaleAdjust>(emptyForm);
@@ -154,6 +156,11 @@ export function ManagerPresale({ contract, symbol, actor, transact }: Props) {
   const [msg, setMsg] = useState("");
   const [tx, setTx] = useState("");
   const [reload, setReload] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -179,6 +186,7 @@ export function ManagerPresale({ contract, symbol, actor, transact }: Props) {
         }
         setLaunched(Boolean(launch?.launched));
         setHasRow(Boolean(presale));
+        setLiveAt(Number(presale?.launch_time ?? 0) || 0);
         setPoolId(pool);
         setPoolL(liq);
         setInsiders(rows);
@@ -518,11 +526,16 @@ export function ManagerPresale({ contract, symbol, actor, transact }: Props) {
               <button
                 type="button"
                 className="btn btn-accent btn-sm"
-                disabled={signing || actor.length === 0}
+                disabled={signing || actor.length === 0 || liveAt > now}
                 onClick={() => void run([goliveAction(contract, symbol)])}
               >
                 Launch
               </button>
+            ) : null}
+            {hasRow && poolId > 0 && liveAt > now ? (
+              <p className="w-full text-xs text-muted-foreground">
+                Public trading opens {new Date(liveAt * 1000).toLocaleString()}.
+              </p>
             ) : null}
           </div>
         </>

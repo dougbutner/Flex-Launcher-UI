@@ -105,6 +105,12 @@ export default function Manager() {
   }, [isLoggedIn, actor, load]);
 
   const view = views?.find((v) => managerTokenKey(v.token.contract, v.token.symbol) === selected) ?? null;
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const early = (view?.chain?.launchTime ?? 0) > now;
 
   useEffect(() => {
     if (!view) {
@@ -807,9 +813,9 @@ export default function Manager() {
                     <button
                       type="button"
                       className="btn btn-accent btn-sm"
-                      disabled={busy || !actor}
+                      disabled={busy || !actor || early}
                       onClick={() => {
-                        if (!actor) return;
+                        if (!actor || early) return;
                         setBusy(true);
                         setError("");
                         void transact([goliveAction(view.token.contract, view.token.symbol)])
@@ -824,6 +830,11 @@ export default function Manager() {
                     >
                       Launch
                     </button>
+                    {early ? (
+                      <p className="w-full text-xs text-muted-foreground">
+                        Public trading opens {new Date((view?.chain?.launchTime ?? 0) * 1000).toLocaleString()}.
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

@@ -344,11 +344,14 @@ export function PresalePanel({
           <button
             type="button"
             className="btn btn-accent btn-sm"
-            disabled={disabled || !(poolId > 0)}
+            disabled={disabled || !(poolId > 0) || launchTime > now}
             onClick={() => void run(goliveAction(contract, symbol))}
           >
             {signing ? "Signing…" : "Launch (open to everyone)"}
           </button>
+          {launchTime > now ? (
+            <p className="text-xs text-muted-foreground">Public trading opens {fmtUnix(launchTime, now)}.</p>
+          ) : null}
         </div>
       ) : null}
 
