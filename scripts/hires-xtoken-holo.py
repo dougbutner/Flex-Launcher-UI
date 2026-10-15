@@ -5,8 +5,8 @@ Sources are vector logos (1024px PNG in public/tokens/xtokenpng).
 512holoxtokens is the foil still. 512holoxtokensanimated is a WebP.
 512holoxtokensapng is the same loop as an APNG (.png), transparent background.
 128holoxtokensapng is that APNG at 128px. 256holoxtokensapng is the same
-loop at 256px, colors trimmed so the files stay small. 128holoxtokensshiny moves the foil
-lines with the gold streak, same 128px size and timing.
+loop at 256px, full color. 256holoxtokensshiny is the moving-line foil at 256px.
+128holoxtokensshiny moves the foil lines with the gold streak at 128px.
 14 fps for a 1 second sweep, then a 2 second hold, infinite loop.
 The sweep matches the site gold line (.tetra-shimmer / .btn::before).
 
@@ -30,6 +30,7 @@ APNG = PARENT / "512holoxtokensapng"
 APNG128 = PARENT / "128holoxtokensapng"
 APNG256 = PARENT / "256holoxtokensapng"
 SHINY128 = PARENT / "128holoxtokensshiny"
+SHINY256 = PARENT / "256holoxtokensshiny"
 CACHE = Path("/tmp/xtoken-logo-src")
 SHARP = Path("/tmp/raster/node_modules/sharp")
 SIZE = 1024
@@ -335,37 +336,42 @@ def write_apng(still: Image.Image, dest: Path, frames: list[Image.Image] | None 
     )
 
 
-def write_apng256(still: Image.Image, dest: Path) -> None:
-    """256px APNG. 32 colors per frame keeps the sweep and cuts the file size."""
-    small = still if still.size == (256, 256) else still.resize((256, 256), Image.Resampling.LANCZOS)
-    frames, durations = anim_frames(small)
-    crushed = [
-        fr.quantize(colors=32, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).convert("RGBA")
+def save_fit(frames: list[Image.Image], dest: Path, limit: int = 1024 * 1024) -> None:
+    """Full color first. If that is over 1 MB, dither to 128 colors (not the old 32)."""
+    write_apng(frames[0], dest, frames)
+    if dest.stat().st_size <= limit:
+        return
+    fitted = [
+        fr.quantize(colors=128, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.FLOYDSTEINBERG).convert("RGBA")
         for fr in frames
     ]
-    crushed[0].save(
-        dest,
-        save_all=True,
-        append_images=crushed[1:],
-        duration=durations,
-        loop=0,
-        format="PNG",
-        disposal=1,
-        blend=0,
-        compress_level=9,
-    )
+    write_apng(fitted[0], dest, fitted)
 
 
-def shiny_frames(logo: Image.Image) -> list[Image.Image]:
-    """Foil lines slide one band-spacing while the gold streak crosses."""
+def write_apng256(still: Image.Image, dest: Path) -> None:
+    """256px APNG. Full color, with a light dither only when the file would pass 1 MB."""
+    small = still if still.size == (256, 256) else still.resize((256, 256), Image.Resampling.LANCZOS)
+    save_fit(list(anim_frames(small)[0]), dest)
+
+
+def shiny_frames(logo: Image.Image, size: int = 128) -> list[Image.Image]:
+    """Foil lines slide one band-spacing while the gold streak crosses.
+
+    128px still foils at 512 and scales down. 256px is drawn at 256 so the
+    file stays near 1 MB without a color cut.
+    """
+    render = OUT if size < 256 else size
     frames: list[Image.Image] = []
     for i in range(14):
         t = i / 13
-        foiled = foil(logo, OUT, phase_shift=t * 2, ridge_gain=0.34)
-        small = foiled.resize((128, 128), Image.Resampling.LANCZOS)
-        frames.append(shimmer(small, i))
-    rest = foil(logo, OUT, phase_shift=0, ridge_gain=0.34)
-    frames.append(rest.resize((128, 128), Image.Resampling.LANCZOS))
+        foiled = foil(logo, render, phase_shift=t * 2, ridge_gain=0.34)
+        if foiled.size != (size, size):
+            foiled = foiled.resize((size, size), Image.Resampling.LANCZOS)
+        frames.append(shimmer(foiled, i))
+    rest = foil(logo, render, phase_shift=0, ridge_gain=0.34)
+    if rest.size != (size, size):
+        rest = rest.resize((size, size), Image.Resampling.LANCZOS)
+    frames.append(rest)
     return frames
 
 
@@ -381,6 +387,7 @@ def main() -> int:
     APNG.mkdir(parents=True, exist_ok=True)
     APNG128.mkdir(parents=True, exist_ok=True)
     APNG256.mkdir(parents=True, exist_ok=True)
+    SHINY256.mkdir(parents=True, exist_ok=True)
     SHINY128.mkdir(parents=True, exist_ok=True)
     CACHE.mkdir(parents=True, exist_ok=True)
     for symbol in symbols:
@@ -391,6 +398,7 @@ def main() -> int:
         write_anim(foiled, ANIM / f"{symbol}.webp")
         write_apng(foiled, APNG / f"{symbol}.png")
         write_apng256(foiled, APNG256 / f"{symbol}.png")
+        save_fit(shiny_frames(logo, 256), SHINY256 / f"{symbol}.png")
         small = foiled.resize((128, 128), Image.Resampling.LANCZOS)
         write_apng(small, APNG128 / f"{symbol}.png")
         write_apng(small, SHINY128 / f"{symbol}.png", shiny_frames(logo))
@@ -404,7 +412,7 @@ def main() -> int:
 
 def write_house() -> None:
     """EASY, WON, GRAMS, MEME into the same holo folders as the xtokens."""
-    for folder in (PARENT, STILL, ANIM, APNG, APNG128, APNG256, SHINY128):
+    for folder in (PARENT, STILL, ANIM, APNG, APNG128, APNG256, SHINY128, SHINY256):
         folder.mkdir(parents=True, exist_ok=True)
     for symbol, path in HOUSE.items():
         logo = Image.open(path).convert("RGBA")
@@ -416,6 +424,7 @@ def write_house() -> None:
         small = foiled.resize((128, 128), Image.Resampling.LANCZOS)
         write_apng(small, APNG128 / f"{symbol}.png")
         write_apng256(foiled, APNG256 / f"{symbol}.png")
+        save_fit(shiny_frames(logo, 256), SHINY256 / f"{symbol}.png")
         write_apng(small, SHINY128 / f"{symbol}.png", shiny_frames(logo))
         print(symbol, "house")
 
