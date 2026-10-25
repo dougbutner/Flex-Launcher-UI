@@ -247,7 +247,7 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
             <thead className="sticky top-0 z-20 bg-card">
               <tr className="h-11 border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                 <th className="w-8 px-3 font-medium">#</th>
-                <th className="sticky left-0 z-20 w-44 bg-card px-3 font-medium">Token</th>
+                <th className="sticky left-0 z-20 w-[13rem] max-w-[13rem] bg-card px-3 font-medium">Token</th>
                 <th className="min-w-[88px] px-3 font-medium">
                   <HeaderSort label="Age" active={sort === "age"} dir={dir} onClick={() => setTab("age")} />
                 </th>
@@ -295,7 +295,7 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                     >
                       <td className="px-3 py-3 font-mono tabular-nums text-muted-foreground">{i + 1}</td>
                       <td
-                        className={`sticky left-0 z-10 w-44 max-w-[11rem] px-3 py-3 ${
+                        className={`sticky left-0 z-10 w-[13rem] max-w-[13rem] px-3 py-3 ${
                           hi === i ? "bg-muted" : "bg-card"
                         } group-hover:bg-muted`}
                       >
@@ -307,26 +307,27 @@ export default function BoardView({ tokens, extras, extrasBusy }: WinnerViewProp
                             size={20}
                             rounded="md"
                           />
-                          <span className="min-w-0">
-                            <span className="flex items-center gap-1">
-                              <span className="truncate text-[21px] font-semibold leading-none">{t.symbol}</span>
-                              {t.pre ? (
-                                <span className="text-[9px] font-bold uppercase leading-none tracking-[0.16em] text-primary">PRE</span>
-                              ) : null}
-                              {hasInsider(t.symbol) ? (
-                                <Handshake className="h-3 w-3 text-muted-foreground" aria-label="Insider" title="Insider" />
-                              ) : null}
-                              {launchToday ? (
-                                <Rocket className="h-3 w-3 text-muted-foreground" aria-label="Launches today" title="Launches today" />
-                              ) : null}
-                            </span>
+                          <span className="flex items-center gap-1">
+                            <span className="shrink-0 whitespace-nowrap text-[21px] font-semibold leading-none">{t.symbol}</span>
+                            {hasInsider(t.symbol) ? (
+                              <Handshake className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Insider" title="Insider" />
+                            ) : null}
+                            {launchToday ? (
+                              <Rocket className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Launches today" title="Launches today" />
+                            ) : null}
                           </span>
                           <span className="ml-auto flex items-center self-center">
                             <ProgramDots program={t.program} />
                           </span>
                         </span>
                       </td>
-                      <td className="px-3 py-3 font-mono tabular-nums text-muted-foreground">{fmtAge(t.firstSeenAt)}</td>
+                      <td className="whitespace-nowrap px-3 py-3">
+                        {t.pre ? (
+                          <span className="text-[9px] font-bold uppercase leading-none tracking-[0.16em] text-primary">PRE</span>
+                        ) : (
+                          <span className="font-mono tabular-nums text-muted-foreground">{fmtAge(t.firstSeenAt)}</span>
+                        )}
+                      </td>
                       <td className="px-3 py-3 text-right font-mono tabular-nums">
                         <DecimalText text={fmtUsd(t.mcapUsd)} />
                       </td>

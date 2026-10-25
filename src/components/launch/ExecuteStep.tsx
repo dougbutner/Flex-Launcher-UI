@@ -14,7 +14,7 @@ import {
 } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
 import { useWallet } from "@/hooks/useWallet";
-import { planFromDraft, taxFromDraft } from "@/components/launch/draftPlan";
+import { planFromDraft, formatPriceInput, taxFromDraft } from "@/components/launch/draftPlan";
 import { DeployedActions } from "@/components/launch/TokenDetailsStep";
 import { StatusIcon, StepShell, TxLink } from "@/components/launch/ui";
 import {
@@ -33,8 +33,9 @@ import {
   supplyAction,
   type ChainAction,
 } from "@/services/launchActions";
-import { unlockTimeUnix, type LaunchPlan } from "@/services/launchMath";
-import { readAlcorSystem, readPool, resolvePoolIdAfterCreatepool } from "@/services/flexTables";
+import { unlockTimeUnix, adjustEdgeRange, edgeAdjustCopy, type EdgeRange, type LaunchPlan } from "@/services/launchMath";
+import { fetchAlcorUsdPrice } from "@/services/xtokenCatalog";
+import { issuerRange, readAlcorSystem, readPool, readPositions, resolvePoolIdAfterCreatepool } from "@/services/flexTables";
 import { assetAmountNumber, formatAsset, parseAsset, zeroAsset } from "@/services/assets";
 import { getCurrencyBalance } from "@/services/rpc";
 import { hintForError, txErrorMessage, txIdFromResult } from "@/services/txParse";
@@ -115,7 +116,13 @@ const TX_KEY: Record<string, keyof LaunchDraft> = {
   lockpos: "lockTx",
 };
 
-function execSteps(draft: LaunchDraft): ExecDef[] {
+function poolSqrt(pool: Record<string, unknown> | null): bigint | null {
+  const slot = pool?.currSlot as { sqrtPriceX64?: string | number } | undefined;
+  const raw = String(slot?.sqrtPriceX64 ?? "");
+  return /^\d+$/.test(raw) ? BigInt(raw) : null;
+}
+
+function execSteps(draft: LaunchDraft, edge: EdgeRange | null): ExecDef[] {
   const code = flexAccount(draft.program);
   const meta = flexMeta(draft.program);
   return [
@@ -223,7 +230,15 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       txOf: (d) => d.rangeTx,
       build: async ({ actor, plan, draft: d }) => {
         if (d.poolId == null) throw new Error("Missing pool id.");
-        return [addliquidAction(actor, d.poolId, plan)];
+        const ranged = edge
+          ? { ...plan, tickLower: edge.tickLower, tickUpper: edge.tickUpper }
+          : plan;
+        const actions: ChainAction[] = [];
+        if (edge) {
+          actions.push(startlaunchAction(code, ranged, Number(d.proofPoolId || 0), d.swapUnderlyingDefault));
+        }
+        actions.push(addliquidAction(actor, d.poolId, ranged));
+        return actions;
       },
     },
     {
@@ -232,10 +247,12 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
       detail: `≥ ${LOCK_UI_MIN_DAYS} days - collect still works, subliquid fails`,
       sig: `${SWAP_ALCOR}::lockpos`,
       txOf: (d) => d.lockTx,
-      build: async ({ actor, plan, draft: d }) => {
-        if (d.poolId == null) throw new Error("Missing pool id.");
-        return [lockposAction(actor, d.poolId, plan, unlockTimeUnix(d.lockDays))];
-      },
+        build: async ({ actor, plan, draft: d }) => {
+          if (d.poolId == null) throw new Error("Missing pool id.");
+          const rows = await readPositions(d.poolId).catch(() => []);
+          const range = issuerRange(rows, actor, plan);
+          return [lockposAction(actor, d.poolId, { ...plan, ...range }, unlockTimeUnix(d.lockDays))];
+        },
     },
   ];
 }
@@ -243,7 +260,10 @@ function execSteps(draft: LaunchDraft): ExecDef[] {
 export function ExecuteStep({ draft, patch, onBack, onDone, onReset }: Props) {
   const { actor, isLoggedIn, transact } = useWallet();
   const plan = useMemo(() => planFromDraft(draft), [draft]);
-  const steps = useMemo(() => execSteps(draft), [draft]);
+  const [edge, setEdge] = useState<(EdgeRange & { quoteUsd: number }) | null>(null);
+  const [edgeReady, setEdgeReady] = useState(false);
+  const [edgeSteps, setEdgeSteps] = useState(0);
+  const steps = useMemo(() => execSteps(draft, edge), [draft, edge]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [preflight, setPreflight] = useState<PreflightItem[] | null>(null);
@@ -266,6 +286,34 @@ export function ExecuteStep({ draft, patch, onBack, onDone, onReset }: Props) {
   const quoteSymbol = plan?.quote.symbol ?? "";
   const presaleOn = draft.presaleEnabled;
   const presaleSigned = Boolean(draft.presaleTx);
+
+  useEffect(() => {
+    if (!plan || draft.poolId == null || draft.rangeTx) {
+      setEdge(null);
+      return;
+    }
+    let live = true;
+    const poolId = draft.poolId;
+    setEdgeReady(false);
+    void (async () => {
+      try {
+        const sqrt = poolSqrt(await readPool(poolId).catch(() => null));
+        const adj = sqrt ? adjustEdgeRange(plan, sqrt, edgeSteps) : null;
+        if (!live) return;
+        if (!adj) {
+          setEdge(null);
+          return;
+        }
+        const quoteUsd = await fetchAlcorUsdPrice(plan.quote.contract, plan.quote.symbol).catch(() => 0);
+        if (live) setEdge({ ...adj, quoteUsd });
+      } finally {
+        if (live) setEdgeReady(true);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [plan, draft.poolId, draft.rangeTx, edgeSteps]);
 
   const checkGates = useCallback(async () => {
     if (!actor || draft.createTx) return;
@@ -306,11 +354,19 @@ export function ExecuteStep({ draft, patch, onBack, onDone, onReset }: Props) {
       const txId = txIdFromResult(result) || "ok";
       const key = TX_KEY[step.id];
       if (key) wrapPatch({ [key]: txId } as Partial<LaunchDraft>);
+      if (step.id === "addliquid" && edge) {
+        wrapPatch({
+          priceLower: formatPriceInput(edge.priceLower),
+          priceUpper: formatPriceInput(edge.priceUpper),
+          rangeWidthId: null,
+        });
+      }
       await step.after?.({ result, patch: wrapPatch, plan });
       void persistLaunchDraft(actor, next);
     } catch (err) {
       const msg = txErrorMessage(err);
       const hint = hintForError(msg);
+      if (step.id === "addliquid" && /InvalidUpdateWithZeroLiquidity/i.test(msg)) setEdgeSteps((n) => n + 1);
       setErrors((e) => ({ ...e, [step.id]: hint ? `${msg} - ${hint}` : msg }));
     } finally {
       setBusyId(null);
@@ -388,7 +444,9 @@ export function ExecuteStep({ draft, patch, onBack, onDone, onReset }: Props) {
     setBusyId("liftoff");
     setLiftoffError("");
     try {
-      const actions: ChainAction[] = [liftoffAction(code, plan, draft.poolId)];
+      const rows = await readPositions(draft.poolId).catch(() => []);
+      const ranged = { ...plan, ...issuerRange(rows, actor, plan) };
+      const actions: ChainAction[] = [liftoffAction(code, ranged, draft.poolId)];
       if (!presaleOn && buyFirst && buyUnits > 0) {
         actions.push(
           firstBuySwapAction(
@@ -532,7 +590,7 @@ export function ExecuteStep({ draft, patch, onBack, onDone, onReset }: Props) {
           const prevDone = i === 0 || Boolean(steps[i - 1].txOf(draft));
           const needsPool = ["activate", "addliquid", "lockpos"].includes(step.id);
           const gateBlock = step.id === "create" && !gatesOk;
-          const ready = prevDone && (!needsPool || draft.poolId != null) && !gateBlock;
+          const ready = prevDone && (!needsPool || draft.poolId != null) && !gateBlock && (step.id !== "addliquid" || edgeReady);
           const busy = busyId === step.id;
           const err = errors[step.id];
           return (
@@ -548,8 +606,18 @@ export function ExecuteStep({ draft, patch, onBack, onDone, onReset }: Props) {
                   <span className="text-sm font-semibold">{step.label}</span>
                   {tx ? <TxLink tx={tx} /> : null}
                 </div>
-                <p className="truncate text-xs text-muted-foreground">{step.detail}</p>
-                <p className="font-mono text-[11px] text-muted-foreground">{tx ? "Signed" : "Wallet will ask for"} {step.sig}</p>
+                <p className={step.id === "addliquid" && edge && !tx ? "text-xs font-medium" : "truncate text-xs text-muted-foreground"}>
+                  {step.id === "addliquid" && !tx && !edgeReady
+                    ? "Checking the range…"
+                    : step.id === "addliquid" && edge && !tx
+                      ? edgeAdjustCopy(quoteSymbol, edge.quotePerToken, edge.previousQuotePerToken, edge.quoteUsd)
+                      : step.detail}
+                </p>
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  {step.id === "addliquid" && edge && !tx
+                    ? "Wallet will ask to move the range, then add the tokens."
+                    : `${tx ? "Signed" : "Wallet will ask for"} ${step.sig}`}
+                </p>
                 {err ? <p className="mt-1 text-xs font-medium text-destructive">{err}</p> : null}
               </div>
               {!tx ? (

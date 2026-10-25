@@ -236,6 +236,47 @@ export async function readPool(poolId: number) {
   return rows[0] ?? null;
 }
 
+function rowTick(row: Record<string, unknown>, a: string, b: string): number {
+  const n = Number(row[a] ?? row[b]);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/** Issuer position on a pool. Prefer the planned ticks, else the one that holds liquidity. */
+export function pickIssuerPosition(
+  rows: Record<string, unknown>[],
+  owner: string,
+  prefer?: { tickLower: number; tickUpper: number }
+): Record<string, unknown> | null {
+  const who = owner.toLowerCase();
+  const mine = rows.filter((r) => String(r.owner ?? "").toLowerCase() === who);
+  const liquid = mine.filter((r) => {
+    const n = Number(r.liquidity ?? 0);
+    return Number.isFinite(n) && n > 0;
+  });
+  const pool = liquid.length ? liquid : mine;
+  if (prefer) {
+    const exact = pool.find(
+      (r) => rowTick(r, "tickLower", "tick_lower") === prefer.tickLower && rowTick(r, "tickUpper", "tick_upper") === prefer.tickUpper
+    );
+    if (exact) return exact;
+  }
+  return pool[0] ?? null;
+}
+
+export function issuerRange(
+  rows: Record<string, unknown>[],
+  owner: string,
+  prefer: { tickLower: number; tickUpper: number }
+): { tickLower: number; tickUpper: number } {
+  const row = pickIssuerPosition(rows, owner, prefer);
+  const lower = row ? rowTick(row, "tickLower", "tick_lower") : NaN;
+  const upper = row ? rowTick(row, "tickUpper", "tick_upper") : NaN;
+  return {
+    tickLower: Number.isFinite(lower) ? lower : prefer.tickLower,
+    tickUpper: Number.isFinite(upper) ? upper : prefer.tickUpper,
+  };
+}
+
 export async function readPositions(poolId: number) {
   const rows = await getAllTableRows<Record<string, unknown>>(
     { code: SWAP_ALCOR, scope: String(poolId), table: "positions", limit: 100 },

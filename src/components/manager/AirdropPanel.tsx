@@ -7,6 +7,7 @@ import { AIRDROP_AUDIENCES } from "@/data/airdropAudiences";
 import { validAccount } from "@/services/assets";
 import {
   AIRDROP_BATCH,
+  AUDIENCE_EXTRAS,
   airdropTransfers,
   batchCount,
   batchOf,
@@ -87,6 +88,11 @@ function buildAudience(issued: IssuedRef[], wallet: WalletDrop[]): Audience[] {
     else if (row.owned) cur.owned = true;
   }
   for (const row of AIRDROP_AUDIENCES) {
+    const key = tokenKey(row.contract, row.symbol);
+    if (map.has(key)) continue;
+    map.set(key, { contract: row.contract, symbol: row.symbol, precision: row.precision, owned: false });
+  }
+  for (const row of AUDIENCE_EXTRAS) {
     const key = tokenKey(row.contract, row.symbol);
     if (map.has(key)) continue;
     map.set(key, { contract: row.contract, symbol: row.symbol, precision: row.precision, owned: false });

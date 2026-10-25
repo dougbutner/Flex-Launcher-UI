@@ -1,6 +1,8 @@
 # Logs
 logs
 *.log
+__pycache__/
+*.pyc
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -41,3 +43,18 @@ src/Project Contracts/
 
 # Local HOLOFLX card studies: generator and renders stay off the repo.
 holoflx/
+
+# Geom shimmer stays on disk. GitHub gets 256px for the marks the site shows.
+# 128px and 512px, and the other symbols, are about 92% of those files.
+public/tokens/xtokenpng/128geomshimmer/
+public/tokens/xtokenpng/512geomshimmer/
+public/tokens/xtokenpng/256geomshimmer/*
+!public/tokens/xtokenpng/256geomshimmer/EASY-*
+!public/tokens/xtokenpng/256geomshimmer/MEME-*
+!public/tokens/xtokenpng/256geomshimmer/WON-*
+!public/tokens/xtokenpng/256geomshimmer/GRAMS-*
+!public/tokens/xtokenpng/256geomshimmer/XBTC-*
+!public/tokens/xtokenpng/256geomshimmer/XETH-*
+!public/tokens/xtokenpng/256geomshimmer/XSOL-*
+!public/tokens/xtokenpng/256geomshimmer/XDOGE-*
+!public/tokens/xtokenpng/256geomshimmer/XXRP-*

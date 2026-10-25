@@ -9,6 +9,7 @@ import {
   holdEasyToLaunch,
   quoteNeedsProof,
   QUOTE_PRESETS,
+  WRAP_ALCOR,
   XTOKENS,
   type QuotePreset,
 } from "@/config/launch";
@@ -94,6 +95,10 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const [xtokenLoading, setXtokenLoading] = useState(false);
   /** Picker open: show the xtoken grid. Closed after pick (or never opened). */
   const [xtokenPickerOpen, setXtokenPickerOpen] = useState(false);
+  const [wraps, setWraps] = useState<XtokenRow[]>([
+    { symbol: "USDC", precision: 6, usdPrice: 1, score: 0, volume: 0 },
+    { symbol: "USDT", precision: 6, usdPrice: 1, score: 0, volume: 0 },
+  ]);
   const [infoOpen, setInfoOpen] = useState(false);
   const [proofHint, setProofHint] = useState("");
   const [proofBusy, setProofBusy] = useState(false);
@@ -114,7 +119,20 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   const flexPresets = useMemo(() => QUOTE_PRESETS.filter((p) => FLEX_IDS.has(p.id)), []);
   const chainPresets = useMemo(() => QUOTE_PRESETS.filter((p) => CHAIN_IDS.has(p.id)), []);
   const xtokenPreset = QUOTE_PRESETS.find((p) => p.id === "xtoken")!;
+  const wrapPreset = QUOTE_PRESETS.find((p) => p.id === "wrap")!;
   const geasyPreset = QUOTE_PRESETS.find((p) => p.id === "geasy")!;
+
+  useEffect(() => {
+    let live = true;
+    void fetchXtokensByPopularity(WRAP_ALCOR)
+      .then((rows) => {
+        if (live && rows.length) setWraps(rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
 
   useEffect(() => {
     const contracts = [...new Set(QUOTE_PRESETS.map((p) => p.contract))];
@@ -213,6 +231,22 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
     autofillProof(row.symbol, XTOKENS);
   };
 
+  const selectWrap = (row: XtokenRow) => {
+    if (locked) return;
+    setXtokenPickerOpen(false);
+    patch({
+      quoteId: "wrap",
+      xtokenSymbol: row.symbol,
+      xtokenPrecision: row.precision,
+      priceLower: wrapPreset.priceLower,
+      priceUpper: wrapPreset.priceUpper,
+      rangeWidthId: null,
+      proofPoolId: draft.proofPoolId || "",
+    });
+    setProofHint("");
+    autofillProof(row.symbol, WRAP_ALCOR);
+  };
+
   const selectPreset = (p: QuotePreset) => {
     if (locked) return;
     setXtokenPickerOpen(false);
@@ -242,7 +276,7 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
   return (
     <StepShell
       title="Pick the quote"
-      desc="What buyers pay in. Flex quotes need no proof pool. XPR, XMD, LOAN, and xtokens need a non-zero Alcor proof pool vs XUSDC or XPR."
+      desc="What buyers pay in. Flex quotes need no proof pool. XPR, XMD, LOAN, xtokens, and wrapped USDC and USDT need a non-zero Alcor proof pool vs XUSDC or XPR."
       titleAside={<InfoLink open={infoOpen} onToggle={() => setInfoOpen((v) => !v)} />}
       footer={
         <>
@@ -298,6 +332,36 @@ export function QuoteStep({ draft, patch, onNext, onBack, locked = false }: Prop
               onSelect={() => selectPreset(p)}
             />
           ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="label">Wrapped</p>
+        <p className="mb-2 text-xs text-muted-foreground">USDC and USDT. Same EASY hold as XPR.</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {wraps.map((row) => {
+            const on = draft.quoteId === "wrap" && draft.xtokenSymbol === row.symbol;
+            return (
+              <button
+                key={row.symbol}
+                type="button"
+                disabled={locked || live[WRAP_ALCOR] === false}
+                onClick={() => selectWrap(row)}
+                className={`rounded-2xl border p-4 text-left transition-all ${
+                  on ? "border-primary bg-primary/10" : "border-input bg-background/50 hover:border-primary/40"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <TokenIcon contract={WRAP_ALCOR} symbol={row.symbol} size={28} />
+                  <span className="font-mono text-base font-bold">{row.symbol}</span>
+                </span>
+                <div className="mt-1 font-mono text-xs text-muted-foreground">@{WRAP_ALCOR}</div>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Cap: {wrapPreset.priceLower} - {wrapPreset.priceUpper} {row.symbol} / token
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

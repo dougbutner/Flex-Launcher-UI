@@ -62,18 +62,29 @@ export function TokenIcon({
     );
   }
 
-  return (
+  const easy = !fill && symbol.trim().toUpperCase() === "EASY";
+  const img = (
     <img
       src={src}
       alt={symbol}
-      width={fill ? undefined : size}
-      height={fill ? undefined : size}
+      width={easy ? undefined : fill ? undefined : size}
+      height={easy ? undefined : fill ? undefined : size}
       decoding="async"
-      className={`shrink-0 bg-transparent object-contain ${fill ? "h-full w-full" : ""} ${shape} ${className}`}
+      className={
+        easy
+          ? "h-full w-full origin-center scale-[1.28] object-cover"
+          : `shrink-0 bg-transparent object-contain ${fill ? "h-full w-full" : ""} ${shape} ${className}`
+      }
       onLoad={() => {
         if (src && !src.startsWith("/") && !src.startsWith("data:") && !src.startsWith("blob:")) storeLogoQuiet(contract, symbol, src);
       }}
       onError={() => setStep((n) => n + 1)}
     />
+  );
+  if (!easy) return img;
+  return (
+    <span className={`inline-flex shrink-0 overflow-hidden rounded-full ${className}`} style={box}>
+      {img}
+    </span>
   );
 }

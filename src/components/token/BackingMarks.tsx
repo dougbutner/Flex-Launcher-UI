@@ -32,7 +32,6 @@ export function BackingMarks({ marks, size = 28 }: { marks: Mark[]; size?: numbe
             contract={mark.contract}
             symbol={mark.symbol}
             size={size}
-            className="ring-2 ring-background"
           />
         );
         const style = { position: "absolute" as const, left: i * step, top: 0, zIndex: i + 1 };

@@ -5,6 +5,7 @@ import {
   programFromAccount,
   PROJECT_CORE_TOKENS,
   QUOTE_PRESETS,
+  WRAP_ALCOR,
   XPR_PRECISION,
   XPR_SYMBOL,
   XTOKENS,
@@ -38,12 +39,20 @@ const SEND_EXTRAS = [
   { contract: XTOKENS, symbol: "METAL", precision: 8 },
 ] as const;
 
+/** Always listed under "Drop to holders of", even with a zero balance. */
+export const AUDIENCE_EXTRAS = [
+  { contract: EOSIO_TOKEN, symbol: XPR_SYMBOL, precision: XPR_PRECISION },
+  { contract: WRAP_ALCOR, symbol: "USDC", precision: 6 },
+  { contract: WRAP_ALCOR, symbol: "USDT", precision: 6 },
+] as const;
+
 /** Plain transfers to these accounts fail or park the tokens. */
 export const SKIP_ACCOUNTS = ["swap.alcor", "alcor", "eosio", "eosio.token", "eosio.proton", "vibrrairdrop"] as const;
 
 const CORE_PRECISION = new Map<string, number>([
   ...QUOTE_PRESETS.filter((q) => q.flexQuote).map((q) => [`${q.contract}:${q.symbol}`, q.precision] as const),
   ...SEND_EXTRAS.map((q) => [`${q.contract}:${q.symbol}`, q.precision] as const),
+  ...AUDIENCE_EXTRAS.map((q) => [`${q.contract}:${q.symbol}`, q.precision] as const),
 ]);
 
 export type DropMode = "uniform" | "proportional";
@@ -74,6 +83,7 @@ export function isDroppableToken(contract: string, symbol: string): boolean {
   if (programFromAccount(code)) return true;
   if (PROJECT_CORE_TOKENS.some((t) => t.contract === code && t.symbol === sym)) return true;
   if (SEND_EXTRAS.some((t) => t.contract === code && t.symbol === sym)) return true;
+  if (code === WRAP_ALCOR && validSymbol(sym)) return true;
   return AUDIENCE_KEYS.has(`${code}:${sym}`);
 }
 
@@ -99,7 +109,7 @@ export function ramPerNewHolder(contract: string): number {
   if (program === "flexforex") return 480;
   if (program === "complexflex") return 320;
   if (program === "easyflex") return 280;
-  if (contract === EOSIO_TOKEN || contract === LOAN_TOKEN || contract === XTOKENS) return 124;
+  if (contract === EOSIO_TOKEN || contract === LOAN_TOKEN || contract === XTOKENS || contract === WRAP_ALCOR) return 124;
   return 360;
 }
 

@@ -31,6 +31,12 @@ APNG128 = PARENT / "128holoxtokensapng"
 APNG256 = PARENT / "256holoxtokensapng"
 SHINY128 = PARENT / "128holoxtokensshiny"
 SHINY256 = PARENT / "256holoxtokensshiny"
+GEOM = {
+    128: PARENT / "128geomshimmer",
+    256: PARENT / "256geomshimmer",
+    512: PARENT / "512geomshimmer",
+}
+GEOM_KINDS = ("hex", "triangle", "pentagon", "diamond", "rings", "chevron", "square", "star", "shards")
 CACHE = Path("/tmp/xtoken-logo-src")
 SHARP = Path("/tmp/raster/node_modules/sharp")
 SIZE = 1024
@@ -233,7 +239,8 @@ def soft_light(base: np.ndarray, blend: np.ndarray) -> np.ndarray:
     )
 
 
-def foil(im: Image.Image, size: int, phase_shift: float = 0.0, ridge_gain: float = 0.2) -> Image.Image:
+def foil_prep(im: Image.Image, size: int) -> dict:
+    """Rainbow foil before the ridge lines. Ridges are painted on later."""
     im = im.convert("RGBA")
     if im.size != (size, size):
         im = im.resize((size, size), Image.Resampling.LANCZOS)
@@ -253,17 +260,39 @@ def foil(im: Image.Image, size: int, phase_shift: float = 0.0, ridge_gain: float
     dark = np.clip((0.32 - lum) / 0.32, 0, 1)[..., None]
     out = rgb * 0.46 + soft * 0.54
     out = out * (1 - dark * 0.6) + screened * (dark * 0.6)
-    phase = diag * 14 + 0.9 * np.sin(yn * 4.5 + xn) + phase_shift
-    ridge = np.clip(np.cos(phase * np.pi), 0, 1) ** 4
-    out = np.clip(out + foil_rgb * ridge[..., None] * ridge_gain, 0, 1)
     gloss = np.exp(-((xn * 0.75 - yn * 0.55 - 0.12) ** 2) / 0.018) * np.clip(a, 0, 1)
-    out = 1 - (1 - out) * (1 - gloss[..., None] * 0.34)
     rng = np.random.default_rng(20261001)
     spark = (rng.random((h, w)) > 0.996).astype(np.float32) * (a > 0.92)
-    out = np.clip(out + spark[..., None] * foil_rgb * 0.7, 0, 1)
+    return {
+        "out": out,
+        "foil_rgb": foil_rgb,
+        "a": a,
+        "gloss": gloss,
+        "spark": spark,
+        "diag": diag,
+        "xn": xn,
+        "yn": yn,
+    }
+
+
+def wavy_ridge(prep: dict, phase_shift: float) -> np.ndarray:
+    phase = prep["diag"] * 14 + 0.9 * np.sin(prep["yn"] * 4.5 + prep["xn"]) + phase_shift
+    return np.clip(np.cos(phase * np.pi), 0, 1) ** 4
+
+
+def foil_finish(prep: dict, ridge: np.ndarray, ridge_gain: float) -> Image.Image:
+    out = np.clip(prep["out"] + prep["foil_rgb"] * ridge[..., None] * ridge_gain, 0, 1)
+    out = 1 - (1 - out) * (1 - prep["gloss"][..., None] * 0.34)
+    out = np.clip(out + prep["spark"][..., None] * prep["foil_rgb"] * 0.7, 0, 1)
+    a = prep["a"]
     out = out * (a > 0.004)[..., None]
     rgba = np.dstack([np.clip(out, 0, 1), np.clip(a, 0, 1)])
     return Image.fromarray((rgba * 255).astype(np.uint8), "RGBA")
+
+
+def foil(im: Image.Image, size: int, phase_shift: float = 0.0, ridge_gain: float = 0.2) -> Image.Image:
+    prep = foil_prep(im, size)
+    return foil_finish(prep, wavy_ridge(prep, phase_shift), ridge_gain)
 
 
 def ease(x: float) -> float:
@@ -337,21 +366,149 @@ def write_apng(still: Image.Image, dest: Path, frames: list[Image.Image] | None 
 
 
 def save_fit(frames: list[Image.Image], dest: Path, limit: int = 1024 * 1024) -> None:
-    """Full color first. If that is over 1 MB, dither to 128 colors (not the old 32)."""
+    """Full color first. If that is over 1 MB, dither down until it fits (not the old 32)."""
     write_apng(frames[0], dest, frames)
     if dest.stat().st_size <= limit:
         return
-    fitted = [
-        fr.quantize(colors=128, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.FLOYDSTEINBERG).convert("RGBA")
-        for fr in frames
-    ]
-    write_apng(fitted[0], dest, fitted)
+    for colors in (128, 96, 80, 64):
+        fitted = [
+            fr.quantize(colors=colors, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.FLOYDSTEINBERG).convert("RGBA")
+            for fr in frames
+        ]
+        write_apng(fitted[0], dest, fitted)
+        if dest.stat().st_size <= limit:
+            return
 
 
 def write_apng256(still: Image.Image, dest: Path) -> None:
     """256px APNG. Full color, with a light dither only when the file would pass 1 MB."""
     small = still if still.size == (256, 256) else still.resize((256, 256), Image.Resampling.LANCZOS)
     save_fit(list(anim_frames(small)[0]), dest)
+
+
+def _groove(z: np.ndarray, sharp: float = 8.0) -> np.ndarray:
+    m = np.abs(z - np.round(z))
+    return np.clip(1 - m * sharp, 0, 1)
+
+
+def geom_mask(h: int, w: int, kind: str, t: float, flip: bool, scale: float, spark: bool, seed: int) -> np.ndarray:
+    """Repeating ridge stand-in for the wavy foil lines. t=0 and t=1 match."""
+    y, x = np.mgrid[0:h, 0:w]
+    xn = x / (w - 1) * 2 - 1
+    yn = y / (h - 1) * 2 - 1
+    if flip:
+        xn = -xn
+    direction = -1.0 if flip else 1.0
+    off = t * 2.0 * direction
+    sc = scale
+
+    if kind == "hex":
+        s = 0.34 * sc
+        q = (2.0 / 3.0) * xn / s
+        r = (-1.0 / 3.0) * xn / s + (np.sqrt(3) / 3.0) * yn / s
+        ss = -q - r
+        rq, rr, rs = np.round(q), np.round(r), np.round(ss)
+        dq, dr, ds = np.abs(rq - q), np.abs(rr - r), np.abs(rs - ss)
+        rq = np.where((dq > dr) & (dq > ds), -rr - rs, rq)
+        rr = np.where((dr > dq) & (dr > ds), -rq - rs, rr)
+        dist = np.maximum(np.maximum(np.abs(q - rq), np.abs(r - rr)), np.abs((-q - r) - (-rq - rr)))
+        edge = np.clip((dist - 0.28) / 0.16, 0, 1)
+        wave = np.clip(np.cos((rq + rr + off) * np.pi), 0, 1) ** 2
+        mask = edge * (0.35 + 0.65 * wave)
+    elif kind == "triangle":
+        u = xn * 4.2 * sc + off
+        v = (xn * 0.5 + yn * 0.866) * 4.2 * sc
+        ww = (xn * -0.5 + yn * 0.866) * 4.2 * sc
+        mask = np.clip(_groove(u) + _groove(v) + _groove(ww), 0, 1)
+    elif kind == "pentagon":
+        ang = np.arctan2(yn, xn)
+        rad = np.hypot(xn, yn)
+        coord = rad * (0.72 + 0.28 * np.cos(5 * ang)) * 6.5 * sc + off
+        mask = _groove(coord, 7.0)
+    elif kind == "diamond":
+        gx = np.abs(np.mod(xn * 3.2 * sc + off, 2) - 1)
+        gy = np.abs(np.mod(yn * 3.2 * sc + off, 2) - 1)
+        mask = _groove(gx + gy, 5.0)
+    elif kind == "rings":
+        rad = np.hypot(xn, yn) * 8.0 * sc - off
+        mask = _groove(rad, 7.0)
+    elif kind == "chevron":
+        mask = _groove(xn * 5.0 * sc + np.abs(yn) * 3.4 * sc + off, 8.0)
+    elif kind == "square":
+        zx = _groove(xn * 4.0 * sc + off, 12.0)
+        zy = _groove(yn * 4.0 * sc + off, 12.0)
+        mask = np.clip(zx + zy, 0, 1)
+    elif kind == "star":
+        up = _groove(xn * 4.2 * sc + off) + _groove((xn * 0.5 + yn * 0.866) * 4.2 * sc) + _groove((xn * -0.5 + yn * 0.866) * 4.2 * sc)
+        down = _groove(xn * 4.2 * sc - off) + _groove((xn * 0.5 - yn * 0.866) * 4.2 * sc) + _groove((xn * -0.5 - yn * 0.866) * 4.2 * sc)
+        mask = np.clip(up * down, 0, 1)
+    else:
+        turn = off * np.pi
+        n = np.sin(xn * 8 * sc + turn) + np.sin(yn * 6 * sc - turn) + np.sin((xn + yn) * 5 * sc + turn)
+        mask = _groove(n, 4.5)
+
+    if spark:
+        rng = np.random.default_rng(seed & 0xFFFFFFFF)
+        spec = (rng.random((h, w)) > 0.985).astype(np.float32)
+        pulse = 0.45 + 0.55 * np.cos(off * np.pi)
+        mask = np.clip(mask + spec * pulse, 0, 1)
+    return mask.astype(np.float32)
+
+
+def geom_variants(symbol: str) -> list[tuple[str, str, bool, bool, float]]:
+    """Ten treatments. The first keeps the wavy lines. Every one still gets the gold streak."""
+    rng = np.random.default_rng(zlib_crc(symbol))
+    out = [("classic", "classic", False, False, 1.0)]
+    for kind in GEOM_KINDS:
+        spark = bool(rng.random() < 0.55)
+        flip = bool(rng.random() < 0.5)
+        scale = float(rng.choice([0.86, 1.0, 1.16]))
+        slug = kind + ("-spark" if spark else "")
+        out.append((slug, kind, spark, flip, scale))
+    return out
+
+
+def zlib_crc(symbol: str) -> int:
+    import zlib
+    return zlib.crc32(symbol.encode()) & 0xFFFFFFFF
+
+
+def ridge_for(prep: dict, kind: str, t: float, spark: bool, flip: bool, scale: float, seed: int) -> np.ndarray:
+    if kind == "classic":
+        return wavy_ridge(prep, t * 2)
+    h, w = prep["a"].shape
+    return geom_mask(h, w, kind, t, flip, scale, spark, seed)
+
+
+def apply_variant(prep: dict, kind: str, spark: bool, flip: bool, scale: float, seed: int) -> list[Image.Image]:
+    """Gold streak on every frame. The ridge is either the waves or one geometry."""
+    frames: list[Image.Image] = []
+    for i in range(14):
+        t = i / 13
+        ridge = ridge_for(prep, kind, t, spark, flip, scale, seed)
+        frames.append(shimmer(foil_finish(prep, ridge, 0.34), i))
+    rest = foil_finish(prep, ridge_for(prep, kind, 0.0, spark, flip, scale, seed), 0.34)
+    frames.append(rest)
+    return frames
+
+
+def write_geom(symbol: str, logo: Image.Image) -> None:
+    """Ten APNG treatments at 128, 256, and 512. Classic waves are always first."""
+    prep = foil_prep(logo, OUT)
+    for size, folder in GEOM.items():
+        folder.mkdir(parents=True, exist_ok=True)
+    for slug, kind, spark, flip, scale in geom_variants(symbol):
+        frames = apply_variant(prep, kind, spark, flip, scale, zlib_crc(symbol))
+        for size, folder in GEOM.items():
+            if size == 512:
+                sized = frames
+            else:
+                sized = [fr.resize((size, size), Image.Resampling.LANCZOS) for fr in frames]
+            dest = folder / f"{symbol}-{slug}.png"
+            if size == 256:
+                save_fit(sized, dest)
+            else:
+                write_apng(sized[0], dest, sized)
 
 
 def shiny_frames(logo: Image.Image, size: int = 128) -> list[Image.Image]:

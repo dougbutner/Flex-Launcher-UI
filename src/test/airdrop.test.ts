@@ -32,6 +32,8 @@ describe("airdrop", () => {
     expect(isDroppableToken("loan.token", "LOAN")).toBe(true);
     expect(isDroppableToken("xtokens", "METAL")).toBe(true);
     expect(isDroppableToken("xtokens", "XUSDC")).toBe(true);
+    expect(isDroppableToken("wrap.alcor", "USDC")).toBe(true);
+    expect(isDroppableToken("wrap.alcor", "USDT")).toBe(true);
     expect(isDroppableToken("electronteam", "DANK")).toBe(true);
     expect(isDroppableToken("mon3y", "NOPE")).toBe(false);
   });

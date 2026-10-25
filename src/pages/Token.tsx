@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ClubFeed, WeekTopPost } from "@/components/insiders/ClubFeed";
 import { DecimalText } from "@/components/Amount";
@@ -28,6 +28,7 @@ import {
 import { listManagerTokens } from "@/services/managerApi";
 import { signRain, storedPayoutAction } from "@/services/rainDefaults";
 import { rememberRemoteTokenIcon } from "@/services/tokenIcons";
+import { draftFromSources } from "@/services/listingHelper";
 import { findProtonTokenRow } from "@/services/tokenProton";
 import type { BackingMark, SanityView } from "@/services/poolSanity";
 import { getAccount } from "@/services/rpc";
@@ -64,12 +65,18 @@ export default function Token() {
   const [insider, setInsider] = useState<Record<string, unknown> | null>(null);
   const [holderBalRaw, setHolderBalRaw] = useState(0);
   const [poking, setPoking] = useState<string | null>(null);
-  const [pokeMsg, setPokeMsg] = useState<{ tx?: string; err?: string }>({});
+  const [pokeMsg, setPokeMsg] = useState<{
+    tx?: string;
+    err?: string;
+    kind?: "rain" | "pullangel" | "pulljackpot";
+  }>({});
   const [iconSrc, setIconSrc] = useState("");
+  const [about, setAbout] = useState("");
   const [sanityEpoch, setSanityEpoch] = useState(0);
   const [marks, setMarks] = useState<BackingMark[]>([]);
   const [pair, setPair] = useState({ poolId: 0, quoteSymbol: "", quoteContract: "" });
   const [issuerBorn, setIssuerBorn] = useState(0);
+  const chatRef = useRef<HTMLDivElement>(null);
   const onMarks = useCallback((next: SanityView | null) => {
     setMarks(next?.marks ?? []);
   }, []);
@@ -125,14 +132,13 @@ export default function Token() {
       const prec = parseAsset(String(pick(s, "supply") ?? s?.max_supply ?? ""))?.precision ?? 4;
       const [proton, stored] = await Promise.all([
         findProtonTokenRow(code, prec, sym),
-        actor
-          ? listManagerTokens(actor === code ? { contract: code } : { issuer: actor }).catch(() => [])
-          : Promise.resolve([]),
+        listManagerTokens({ contract: code }).catch(() => []),
       ]);
       const sq = stored.find((row) => row.symbol === sym && row.contract === code);
       const url = proton?.iconurl || sq?.imageUrl || "";
       if (url) rememberRemoteTokenIcon(code, sym, url);
       setIconSrc(url);
+      setAbout(draftFromSources({ symbol: sym, proton, stored: sq ?? null }).desc);
     } catch (err) {
       setError(txErrorMessage(err));
     } finally {
@@ -142,7 +148,30 @@ export default function Token() {
   }, [actor, code, core, program, sym]);
 
   useEffect(() => {
+    const box = chatRef.current;
+    if (!box) return;
+    const fit = () => {
+      let h = 0;
+      box.querySelectorAll<HTMLElement>(".insiders-gif-pop, .insiders-post-gif").forEach((gif) => {
+        h = Math.max(h, gif.getBoundingClientRect().height);
+      });
+      const next = h > 0 ? `${Math.ceil(h + 2)}px` : "";
+      if (box.style.minHeight !== next) box.style.minHeight = next;
+    };
+    fit();
+    const watch = new ResizeObserver(fit);
+    const added = new MutationObserver(fit);
+    watch.observe(box);
+    added.observe(box, { childList: true, subtree: true });
+    return () => {
+      watch.disconnect();
+      added.disconnect();
+    };
+  }, [busy, launch]);
+
+  useEffect(() => {
     setMarks([]);
+    setAbout("");
   }, [code, sym]);
 
   useEffect(() => {
@@ -202,7 +231,10 @@ export default function Token() {
                 ? finishdrawAction(code, sym)
                 : pulljackpotAction(code, sym);
       const res = await signRain(transact, action);
-      setPokeMsg({ tx: txIdFromResult(res) || "ok" });
+      setPokeMsg({
+        tx: txIdFromResult(res) || "ok",
+        ...(kind === "checklock" ? {} : { kind }),
+      });
       void load(true);
     } catch (err) {
       const msg = txErrorMessage(err);
@@ -230,47 +262,123 @@ export default function Token() {
               Events
             </Link>
           </p>
-          <div className="mt-1 flex items-center gap-3">
+          <div className="[&:has(details[open])>p]:block">
+          <div className="mt-1 flex flex-wrap items-center gap-3">
             <TokenIcon contract={code} symbol={sym} src={iconSrc} size={48} />
             <h1 className="font-mono text-3xl font-black tracking-tight">${sym}</h1>
-            <ProgramDots program={program} />
+            <span className="inline-flex items-center gap-0.5">
+              <ProgramDots program={program} />
+              <span className="inline-flex items-center gap-1" style={{ height: 28 }}>
+                {liquid?.bare ? (
+                  <TokenIcon contract={code} symbol={sym} size={28} />
+                ) : liquid && liquid.quotes.length ? (
+                  <BackingMarks
+                    size={28}
+                    marks={
+                      marks.length
+                        ? marks.map((mark) => ({
+                            symbol: mark.symbol,
+                            contract: mark.contract,
+                            href:
+                              mark.positionId > 0
+                                ? `https://alcor.exchange/v/xpr/swap/positions/${mark.positionId}`
+                                : undefined,
+                            title: mark.symbol,
+                          }))
+                        : liquid.quotes.map((row) => ({ symbol: row.symbol, contract: row.contract, title: row.symbol }))
+                    }
+                  />
+                ) : quoteSymbol ? (
+                  <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={28} />
+                ) : null}
+                <span className="inline-flex items-center gap-1" style={{ height: 28 * 0.62 }}>
+                  {hasAngelChannels(program) ? (
+                    <span
+                      key={pokeMsg.kind === "pullangel" ? pokeMsg.tx : "angel"}
+                      className="payout"
+                      data-kind="angel"
+                      data-paid={pokeMsg.tx && pokeMsg.kind === "pullangel" ? "1" : undefined}
+                      tabIndex={0}
+                      role="img"
+                      aria-label="Angel"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6.4 3.8c1-.8 2.5-.8 3.5 0" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                        <circle cx="8.2" cy="6.7" r="2" fill="currentColor" />
+                        <path d="M8.2 8.9 4.8 17.8h6.8L8.2 8.9z" fill="currentColor" />
+                        <path d="M5.8 11c-2.2.1-2.8 2.4-1.2 3.3.7-1.1 1.4-2 1.2-3.3z" fill="currentColor" />
+                        <path className="horn" d="M11.2 11.6c2.4-.2 4.6-.9 6.1-1.8.55 1.05.55 2.15 0 3.2-1.5-.9-3.7-1.6-6.1-1.8z" fill="currentColor" />
+                      </svg>
+                    </span>
+                  ) : null}
+                  {hasAngelChannels(program) ? (
+                    <span
+                      key={pokeMsg.kind === "pulljackpot" ? pokeMsg.tx : "jackpot"}
+                      className="payout"
+                      data-kind="jackpot"
+                      data-paid={pokeMsg.tx && pokeMsg.kind === "pulljackpot" ? "1" : undefined}
+                      tabIndex={0}
+                      role="img"
+                      aria-label="Jackpot"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path className="spark" fill="currentColor" d="m12 2.8 2.1 6.2 6.5.5-5 4.1 1.6 6.4L12 16.6 6.8 20l1.6-6.4-5-4.1 6.5-.5z" />
+                      </svg>
+                    </span>
+                  ) : null}
+                  <span
+                    key={pokeMsg.kind === "rain" ? pokeMsg.tx : "rain"}
+                    className="payout"
+                    data-kind="rain"
+                    data-paid={pokeMsg.tx && pokeMsg.kind === "rain" ? "1" : undefined}
+                    tabIndex={0}
+                    role="img"
+                    aria-label={`Pending rain ${fmt(reflectionPool, precision)}`}
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path className="extra" fill="currentColor" d="M6.2 5.2c0 1.7-1.15 2.6-1.15 3.8a1.15 1.15 0 0 0 2.3 0C7.35 7.8 6.2 6.9 6.2 5.2z" />
+                      <path fill="currentColor" d="M12 3.2c0 4.6-3.7 6.6-3.7 10.1a3.7 3.7 0 0 0 7.4 0C15.7 9.8 12 7.8 12 3.2z" />
+                      <path className="extra" fill="currentColor" d="M18.4 6c0 1.6-1.05 2.4-1.05 3.5a1.05 1.05 0 0 0 2.1 0c0-1.1-1.05-1.9-1.05-3.5z" />
+                    </svg>
+                    <span className="rain-amt">
+                      <DecimalText text={fmt(reflectionPool, precision)} />
+                    </span>
+                  </span>
+                </span>
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-2">
             {isLoggedIn && actor ? (
               <button
                 type="button"
-                className="btn-rain btn-sm"
+                className="btn-rain btn-sm relative"
                 disabled={poking != null || !launched}
                 onClick={() => void poke("rain")}
               >
                 {poking === "rain" ? "Signing…" : "Make it rain"}
+                <span className="rain-amt">
+                  <DecimalText text={fmt(reflectionPool, precision)} />
+                </span>
               </button>
             ) : (
-              <button type="button" className="btn-rain btn-sm" onClick={() => void addWebAuthWallet()}>
+              <button type="button" className="btn-rain btn-sm relative" onClick={() => void addWebAuthWallet()}>
                 Make it rain
+                <span className="rain-amt">
+                  <DecimalText text={fmt(reflectionPool, precision)} />
+                </span>
               </button>
             )}
+            <details className="inline-flex">
+              <summary className="btn btn-outline btn-sm cursor-pointer list-none [&::-webkit-details-marker]:hidden [&::marker]:content-none">
+                Info
+              </summary>
+            </details>
+            </span>
             {pokeMsg.tx ? <TxLink tx={pokeMsg.tx} prefix="tx " /> : null}
-            {liquid?.bare ? (
-              <TokenIcon contract={code} symbol={sym} size={28} />
-            ) : liquid && liquid.quotes.length ? (
-              <BackingMarks
-                size={28}
-                marks={
-                  marks.length
-                    ? marks.map((mark) => ({
-                        symbol: mark.symbol,
-                        contract: mark.contract,
-                        href:
-                          mark.positionId > 0
-                            ? `https://alcor.exchange/v/xpr/swap/positions/${mark.positionId}`
-                            : undefined,
-                        title: mark.symbol,
-                      }))
-                    : liquid.quotes.map((row) => ({ symbol: row.symbol, contract: row.contract, title: row.symbol }))
-                }
-              />
-            ) : quoteSymbol ? (
-              <TokenIcon contract={quoteContract} symbol={quoteSymbol} size={28} />
-            ) : null}
+          </div>
+          <p className="mt-2 hidden max-w-xl whitespace-pre-wrap break-words text-sm text-muted-foreground">
+            {about.trim() || (busy ? "Loading…" : "No description yet.")}
+          </p>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {"@ "}
@@ -393,7 +501,7 @@ export default function Token() {
               {pokeMsg.err ? <span className="text-xs text-destructive">{pokeMsg.err}</span> : null}
             </div>
           </div>
-          <div className="max-h-[100dvh] min-h-0 overflow-y-auto border border-border bg-background/40 p-3 md:col-span-1">
+          <div ref={chatRef} className="token-chat max-h-[100dvh] overflow-y-auto border border-border bg-background/40 p-3 md:col-span-1">
             <ClubFeed contract={code} symbol={sym} poolId={launchPoolId} initialRange="all" />
             <WeekTopPost />
           </div>

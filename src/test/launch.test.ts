@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { formatAsset, formatSupplyCommas, parseAsset, parseSupplyInput, validPrecision, validSymbol, zeroAsset } from "@/services/assets";
 import { compareExtTokens, nameToU64, sortPair, symbolCodeToU64 } from "@/services/eosioName";
-import { buyScenario, planLaunch, rangeImpact, tickBucketCosts, walkCostToMultiple, walkCostToSupplyPct } from "@/services/launchMath";
+import { buyScenario, edgeAdjustCopy, planLaunch, positionLiquidity, adjustEdgeRange, rangeImpact, tickBucketCosts, walkCostToMultiple, walkCostToSupplyPct } from "@/services/launchMath";
+import { getSqrtPriceX64AtTick } from "@/services/tickMath";
+import { formatPriceInput } from "@/components/launch/draftPlan";
 import {
   createTokenAction,
   checklockAction,
@@ -85,6 +87,7 @@ import { flexApi } from "@/services/flexApi";
 import { ipfsCid, localLogoSrc, localTokenIconSrc, rememberRemoteTokenIcon, tokenIconKey, tokenIconPlaces, tokenIconSrc } from "@/services/tokenIcons";
 import { hintForError, logpoolIdFromResult } from "@/services/txParse";
 import { alcorInventoryItems, createGateItems } from "@/services/preflight";
+import { issuerRange } from "@/services/flexTables";
 import { applyRangeWidth, applyStartMarketCap, fmtPrice, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { amountToRaw, formatRainAsset, rainCutShort, reflectionPayFloorRaw } from "@/services/rainDefaults";
@@ -253,9 +256,69 @@ describe("launch plan", () => {
       expect(plan.startTick).toBeLessThan(plan.tickLower);
       expect(plan.tokenBDesired.startsWith("0.")).toBe(true);
     } else {
-      expect(plan.startTick).toBeGreaterThanOrEqual(plan.tickUpper);
+      expect(plan.startTick).toBeGreaterThan(plan.tickUpper);
       expect(plan.tokenADesired.startsWith("0.")).toBe(true);
     }
+  });
+
+  it("moves a price sitting inside the top edge so the one-sided deposit has liquidity", () => {
+    const plan = planLaunch({
+      symbol: "HOLOXPR",
+      precision: 6,
+      maxSupply: "10000",
+      contract: "for3x",
+      quote: { symbol: "XPR", contract: "eosio.token", precision: 4 },
+      fee: 10000,
+      priceLower: "1000",
+      priceUpper: "10000000",
+    });
+    expect(plan.launchedIsA).toBe(false);
+    expect(plan.startTick).toBeGreaterThan(plan.tickUpper);
+    expect(Math.abs(plan.startTick % plan.spacing)).toBe(0);
+    const onEdge = getSqrtPriceX64AtTick(plan.tickUpper - 1);
+    expect(positionLiquidity(plan, onEdge)).toBe(0n);
+    const adj = adjustEdgeRange(plan, onEdge);
+    expect(adj).toBeTruthy();
+    expect(adj!.tickUpper).toBeLessThan(plan.tickUpper);
+    expect(Math.abs(adj!.tickUpper % plan.spacing)).toBe(0);
+    expect(positionLiquidity({ ...plan, tickLower: adj!.tickLower, tickUpper: adj!.tickUpper }, onEdge)).toBeGreaterThan(0n);
+    const again = planLaunch({
+      symbol: "HOLOXPR",
+      precision: 6,
+      maxSupply: "10000",
+      contract: "for3x",
+      quote: { symbol: "XPR", contract: "eosio.token", precision: 4 },
+      fee: 10000,
+      priceLower: formatPriceInput(adj!.priceLower),
+      priceUpper: formatPriceInput(adj!.priceUpper),
+    });
+    expect(again.tickLower).toBe(adj!.tickLower);
+    expect(again.tickUpper).toBe(adj!.tickUpper);
+    const quoteUsd = 0.001;
+    const moved = Math.abs(adj!.quotePerToken - adj!.previousQuotePerToken) * quoteUsd;
+    expect(adj!.quotePerToken).toBeGreaterThan(0);
+    expect(moved).toBeGreaterThan(0);
+    expect(moved).toBeLessThan(adj!.previousQuotePerToken * quoteUsd * 0.05);
+    const further = adjustEdgeRange(plan, onEdge, 1);
+    expect(further!.tickUpper).toBeLessThan(adj!.tickUpper);
+    const text = edgeAdjustCopy("XPR", adj!.quotePerToken, adj!.previousQuotePerToken, quoteUsd);
+    expect(text.startsWith("Adjust position to ")).toBe(true);
+    expect(text).toContain("XPR");
+    expect(text).toMatch(/Changed by \$/);
+    expect(text).not.toMatch(/tick|sqrt|liquidity/i);
+  });
+
+  it("locks the position that holds the tokens when the planned range drifted", () => {
+    const rows = [{ owner: "holo.fl3x", tickLower: -108600, tickUpper: -16800, liquidity: "23400331760" }];
+    expect(issuerRange(rows, "holo.fl3x", { tickLower: -108600, tickUpper: -16600 })).toEqual({
+      tickLower: -108600,
+      tickUpper: -16800,
+    });
+    expect(issuerRange(rows, "holo.fl3x", { tickLower: -108600, tickUpper: -16800 })).toEqual({
+      tickLower: -108600,
+      tickUpper: -16800,
+    });
+    expect(issuerRange([], "holo.fl3x", { tickLower: -1, tickUpper: 1 })).toEqual({ tickLower: -1, tickUpper: 1 });
   });
 
   it("uses the chosen program contract", () => {
@@ -810,6 +873,7 @@ describe("XPR mainnet launcher defaults", () => {
     expect(QUOTE_PRESETS.find((q) => q.id === "easy")?.contract).toBe(MON3Y);
     expect(QUOTE_PRESETS.find((q) => q.id === "xtoken")?.symbol).toBe(XUSDC_SYMBOL);
     expect(QUOTE_PRESETS.find((q) => q.id === "xpr")?.contract).toBe("eosio.token");
+    expect(QUOTE_PRESETS.find((q) => q.id === "wrap")?.contract).toBe("wrap.alcor");
     expect(QUOTE_PRESETS.find((q) => q.id === "xmd")?.contract).toBe("xmd.token");
     expect(QUOTE_PRESETS.find((q) => q.id === "loan")?.contract).toBe("loan.token");
     const d = emptyDraft();

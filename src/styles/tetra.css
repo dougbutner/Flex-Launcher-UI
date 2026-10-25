@@ -1036,13 +1036,23 @@ body > [id*="anchor-link"] {
   cursor: default;
 }
 
+.token-chat {
+  --giphy-h: 12.5rem;
+  min-height: calc(var(--giphy-h) + 2px);
+}
+
+.token-chat .insiders-gif-pop,
+.token-chat .insiders-post-gif {
+  max-height: var(--giphy-h);
+}
+
 .insiders-gif-pop {
   position: absolute;
   left: 0;
   bottom: 1.4rem;
   z-index: 20;
   width: 320px;
-  max-height: 22rem;
+  max-height: var(--giphy-h, 12.5rem);
   overflow: auto;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--background));

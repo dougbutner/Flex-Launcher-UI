@@ -197,6 +197,24 @@ export function CoverGauge({
   );
 }
 
+/** Semicircle share, same arc as backing / market cap. The dial is the figure. */
+export function ShareGauge({ ratio, label }: { ratio: number | null; label: string }) {
+  const r = 52;
+  const cx = 70;
+  const cy = 66;
+  const end = ratio == null ? 0 : clamp01(ratio);
+  const arc = end > 0 ? semiArc(cx, cy, r, 0, end) : "";
+  return (
+    <svg viewBox="0 0 140 78" className="home-gauge" role="img" aria-label={label}>
+      <path d={semiArc(cx, cy, r, 0, 1)} fill="none" stroke={TRACK} strokeWidth="10" />
+      {arc ? <path d={arc} fill="none" stroke={GOLD} strokeWidth="10" /> : null}
+      <text x={cx} y={58} textAnchor="middle" fill={GOLD} fontSize="15" fontFamily="ui-monospace, monospace">
+        <DecimalText text={shareLabel(ratio)} svg />
+      </text>
+    </svg>
+  );
+}
+
 /** Square cut into vertical bands. Supply sitting in each place. */
 export function BandSquare({ parts }: { parts: readonly ShapePart[] }) {
   const live = parts.filter((part) => part.size > 0);

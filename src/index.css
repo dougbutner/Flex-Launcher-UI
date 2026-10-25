@@ -219,3 +219,170 @@
     opacity: 0;
   }
 }
+
+.payout {
+  position: relative;
+  display: inline-flex;
+  height: 100%;
+  aspect-ratio: 1;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: hsl(var(--primary));
+  cursor: default;
+  transition: transform 0.35s ease, color 0.35s ease;
+}
+
+.payout svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: visible;
+}
+
+.payout:hover,
+.payout:focus-visible {
+  color: hsl(var(--foreground));
+  transform: translateY(-1px);
+}
+
+.payout:focus-visible {
+  outline: 1px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.payout[data-paid="1"] {
+  animation: payout-lift 0.9s ease;
+}
+
+.payout .horn,
+.payout .spark,
+.payout .extra {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.payout[data-kind="angel"] .horn {
+  transform-origin: 0% 50%;
+  transition: transform 0.4s ease;
+}
+
+.payout[data-kind="angel"]:hover .horn,
+.payout[data-kind="angel"]:focus-visible .horn {
+  transform: scaleX(1.18) rotate(-8deg);
+}
+
+.payout[data-kind="angel"][data-paid="1"] .horn {
+  animation: payout-horn 0.9s ease;
+}
+
+.payout[data-kind="jackpot"] .spark {
+  transition: transform 0.45s ease;
+}
+
+.payout[data-kind="jackpot"]:hover .spark,
+.payout[data-kind="jackpot"]:focus-visible .spark {
+  transform: rotate(-12deg) scale(1.08);
+}
+
+.payout[data-kind="jackpot"][data-paid="1"] .spark {
+  animation: payout-spark 0.9s ease;
+}
+
+.payout[data-kind="rain"] .extra {
+  opacity: 0;
+  transform: translateY(-2px) scale(0.65);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.payout[data-kind="rain"]:hover .extra,
+.payout[data-kind="rain"]:focus-visible .extra {
+  opacity: 1;
+  transform: none;
+}
+
+.payout[data-kind="rain"][data-paid="1"] .extra {
+  animation: payout-drops 1s ease;
+}
+
+.rain-amt {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  z-index: 5;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+  background: hsl(var(--background));
+  padding: 0 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.payout[data-kind="rain"]:hover .rain-amt,
+.payout[data-kind="rain"]:focus-visible .rain-amt,
+.btn-rain:hover .rain-amt,
+.btn-rain:focus-visible .rain-amt {
+  opacity: 1;
+}
+
+@keyframes payout-lift {
+  0%,
+  100% {
+    transform: none;
+  }
+  40%,
+  65% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes payout-horn {
+  0%,
+  100% {
+    transform: none;
+  }
+  40%,
+  70% {
+    transform: scaleX(1.18) rotate(-8deg);
+  }
+}
+
+@keyframes payout-spark {
+  0%,
+  100% {
+    transform: none;
+  }
+  40%,
+  70% {
+    transform: rotate(-12deg) scale(1.08);
+  }
+}
+
+@keyframes payout-drops {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(-2px) scale(0.65);
+  }
+  35%,
+  70% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payout,
+  .payout .horn,
+  .payout .spark,
+  .payout .extra,
+  .rain-amt {
+    animation: none !important;
+    transition: none !important;
+  }
+}

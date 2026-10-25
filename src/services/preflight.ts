@@ -24,6 +24,7 @@ import {
   readLaunches,
   readLock,
   readPool,
+  pickIssuerPosition,
   readPositions,
   readStat,
 } from "@/services/flexTables";
@@ -216,12 +217,7 @@ export async function runPreflight(
     detail: pool ? `fee ${poolFee}, ${plan.tokenA.symbol}/${plan.tokenB.symbol}` : "pool not found",
   });
 
-  const pos = positions.find((p) => {
-    const owner = String(pick(p, "owner") ?? "");
-    const tl = num(pick(p, "tickLower", "tick_lower"));
-    const tu = num(pick(p, "tickUpper", "tick_upper"));
-    return owner === issuer && tl === plan.tickLower && tu === plan.tickUpper;
-  });
+  const pos = pickIssuerPosition(positions, issuer, { tickLower: plan.tickLower, tickUpper: plan.tickUpper });
   const liquidity = num(pick(pos, "liquidity"));
   items.push({
     id: "position",

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { FlexLogo } from "@/components/FlexLogo";
 import { isFlexContractActor } from "@/config/launch";
+import { HOLO_ISSUER } from "@/config/holoLaunch";
 import { useWallet } from "@/hooks/useWallet";
 import { walletTypeLabel } from "@/services/walletSessions";
 
@@ -10,6 +11,7 @@ const NAV = [
   { to: "/manager", label: "Dev Tools" },
   { to: "/events", label: "Events" },
   { to: "/leaderboard", label: "Tokens" },
+  { to: "/cards", label: "Cards" },
   { to: "/reflections", label: "Make it Rain" },
   { to: "/portfolio", label: "My Bags" },
 ];
@@ -32,6 +34,7 @@ export function Header({ collapsed, onExpand }: { collapsed: boolean; onExpand: 
   const location = useLocation();
   const nav = [
     ...NAV,
+    ...(actor?.toLowerCase() === HOLO_ISSUER ? [{ to: "/holoadmin", label: "Holo" }] : []),
     ...(isFlexContractActor(actor)
       ? [
           { to: "/admin", label: "Admin" },

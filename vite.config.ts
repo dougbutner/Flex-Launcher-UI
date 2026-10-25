@@ -3,6 +3,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { flexDbPlugin } from "./vite-plugin-flex-db";
 import { githubListingPlugin } from "./vite-plugin-github-listing";
+import { holoCardsPlugin } from "./vite-plugin-holo-cards";
 import { ipfsPinPlugin } from "./vite-plugin-ipfs-pin";
 
 export default defineConfig(({ mode }) => {
@@ -12,7 +13,7 @@ export default defineConfig(({ mode }) => {
       host: "::",
       port: 8080,
     },
-    plugins: [react(), ipfsPinPlugin(env), flexDbPlugin(env), githubListingPlugin(env)],
+    plugins: [react(), ipfsPinPlugin(env), flexDbPlugin(env), githubListingPlugin(env), holoCardsPlugin()],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

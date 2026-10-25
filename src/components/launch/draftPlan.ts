@@ -4,7 +4,6 @@ import {
   quoteNeedsProof,
   QUOTE_PRESETS,
   RANGE_WIDTH_PRESETS,
-  XTOKENS,
   type RangeWidthId,
 } from "@/config/launch";
 import type { LaunchDraft } from "@/hooks/useLaunchDraft";
@@ -30,10 +29,10 @@ export function taxFromDraft(draft: LaunchDraft): TaxDraft {
 
 export function quoteFromDraft(draft: LaunchDraft): ExtToken {
   const preset = QUOTE_PRESETS.find((q) => q.id === draft.quoteId) ?? QUOTE_PRESETS[0];
-  if (preset.id === "xtoken") {
+  if (preset.id === "xtoken" || preset.id === "wrap") {
     return {
       symbol: draft.xtokenSymbol.trim().toUpperCase(),
-      contract: XTOKENS,
+      contract: preset.contract,
       precision: draft.xtokenPrecision,
     };
   }
@@ -118,8 +117,8 @@ export function taxStepValid(draft: LaunchDraft): string | null {
 export function quoteStepValid(draft: LaunchDraft): string | null {
   const preset = presetFromDraft(draft);
   if (preset.id === "geasy" && !geasyQuoteAllowed(draft.program)) return "Pick another quote.";
-  if (preset.id === "xtoken") {
-    if (!validSymbol(draft.xtokenSymbol.trim().toUpperCase())) return "Enter a valid xtoken symbol.";
+  if (preset.id === "xtoken" || preset.id === "wrap") {
+    if (!validSymbol(draft.xtokenSymbol.trim().toUpperCase())) return "Enter a valid symbol.";
   }
   if (quoteNeedsProof(preset)) {
     if (!/^\d+$/.test(draft.proofPoolId.trim())) return "Paste the Alcor proof pool id.";

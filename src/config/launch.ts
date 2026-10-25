@@ -159,8 +159,8 @@ export function easyHoldPromoCopy(nowMs = Date.now()): string | null {
   const off = easyHoldOffPercent(nowMs);
   const other =
     off > 0
-      ? `XPR, XMD, LOAN, and xtokens are ${off}% off the EASY hold this month.`
-      : "XPR, XMD, LOAN, and xtokens are at the full EASY hold.";
+      ? `XPR, XMD, LOAN, xtokens, and wrapped USDC and USDT are ${off}% off the EASY hold this month.`
+      : "XPR, XMD, LOAN, xtokens, and wrapped USDC and USDT are at the full EASY hold.";
   return `EASY, WON, GRAMS, and MEME always use the 10% EASY hold, not the full hold. That price does not rise. GEASY on 3asy, fl3x, and for3x has no EASY hold on a verified first launch. ${other}`;
 }
 
@@ -187,6 +187,7 @@ export function isFlexContractActor(actor: string | null | undefined): boolean {
 
 export const EOSIO_TOKEN = "eosio.token";
 export const XTOKENS = "xtokens";
+export const WRAP_ALCOR = "wrap.alcor";
 export const XMD_TOKEN = "xmd.token";
 export const LOAN_TOKEN = "loan.token";
 export const XPR_SYMBOL = "XPR";
@@ -482,6 +483,16 @@ export const QUOTE_PRESETS: QuotePreset[] = [
     priceUpper: "1000000",
     flexQuote: false,
     label: "xtoken",
+  },
+  {
+    id: "wrap",
+    symbol: "USDC",
+    contract: WRAP_ALCOR,
+    precision: 6,
+    priceLower: "0.000001",
+    priceUpper: "1000000",
+    flexQuote: false,
+    label: "Wrapped",
   },
 ];
 

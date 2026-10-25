@@ -1,5 +1,11 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowUpRight } from "lucide-react";
+import { Amount } from "@/components/Amount";
+import { ShareGauge } from "@/components/token/StatShapes";
+import { Pulse } from "@/components/ui/Pulse";
+import { loadEasyDominance, loadHomeCounts, type HomeCounts } from "@/services/homeDash";
+import { fmtHolders } from "@/services/winnerBoard";
 import "./Home.css";
 
 const GOLDS = ["#c4a035", "#d4af37", "#e0b84a", "#b8952a", "#c9a227"] as const;
@@ -80,13 +86,252 @@ const BENEFITS = [
   },
 ] as const;
 
+const SWIMMERS = [
+  { x: 230, delay: "0s", body: "#22c55e", head: "#ffe566", lift: -18 },
+  { x: 390, delay: "-0.6s", body: "#d4af37", head: "#fff1a8", lift: -8 },
+  { x: 560, delay: "-1.3s", body: "#8b5cf6", head: "#f4f7f4", lift: -14 },
+  { x: 740, delay: "-0.2s", body: "#22c55e", head: "#ffe566", lift: -6 },
+] as const;
+
+/** Site logos, the same files the rest of the app shows. */
+const RAIN = [
+  { src: "/tokens/easy.png", x: 128, y: 140, s: 46, delay: "0s", dur: "4.6s" },
+  { src: "/tokens/eosio.token/XPR.png", x: 448, y: 108, s: 34, delay: "-1.2s", dur: "5.2s" },
+  { src: "/tokens/xtokens/XBTC.png", x: 668, y: 138, s: 40, delay: "-2.4s", dur: "4.2s" },
+  { src: "/tokens/meme.png", x: 848, y: 168, s: 30, delay: "-0.8s", dur: "5.6s" },
+  { src: "/tokens/won.png", x: 280, y: 186, s: 32, delay: "-3s", dur: "4.8s" },
+  { src: "/tokens/grams.png", x: 300, y: 292, s: 36, delay: "-1.6s", dur: "5.4s" },
+  { src: "/tokens/fl3x/GEASY.png", x: 482, y: 278, s: 42, delay: "-0.4s", dur: "4.4s" },
+  { src: "/tokens/won.png", x: 644, y: 300, s: 30, delay: "-2.8s", dur: "5s" },
+  { src: "/tokens/easy.png", x: 800, y: 304, s: 34, delay: "-1.4s", dur: "4.9s" },
+] as const;
+
+const HOLO_MARKS: Record<string, readonly string[]> = {
+  EASY: ["chevron", "classic", "diamond", "hex-spark", "pentagon", "rings-spark", "shards-spark", "square", "star", "triangle-spark"],
+  MEME: ["chevron-spark", "classic", "diamond-spark", "hex-spark", "pentagon-spark", "rings", "shards-spark", "square", "star-spark", "triangle"],
+  WON: ["chevron-spark", "classic", "diamond", "hex", "pentagon-spark", "rings-spark", "shards", "square", "star-spark", "triangle"],
+  GRAMS: ["chevron-spark", "classic", "diamond", "hex", "pentagon", "rings", "shards-spark", "square-spark", "star-spark", "triangle-spark"],
+  XBTC: ["chevron-spark", "classic", "diamond", "hex", "pentagon", "rings-spark", "shards", "square", "star-spark", "triangle-spark"],
+  XETH: ["chevron", "classic", "diamond-spark", "hex", "pentagon-spark", "rings", "shards", "square-spark", "star", "triangle"],
+  XSOL: ["chevron", "classic", "diamond", "hex", "pentagon", "rings", "shards-spark", "square", "star-spark", "triangle-spark"],
+  XDOGE: ["chevron-spark", "classic", "diamond-spark", "hex-spark", "pentagon-spark", "rings-spark", "shards", "square", "star", "triangle-spark"],
+  XXRP: ["chevron-spark", "classic", "diamond-spark", "hex", "pentagon-spark", "rings-spark", "shards", "square", "star-spark", "triangle-spark"],
+};
+
+const HOLO_CARDS = [
+  ["EASY", "diamond", "A"],
+  ["EASY", "gold", "K"],
+  ["MEME", "rose-gold", "Q"],
+  ["WON", "rose-silver", "J"],
+  ["BTC", "diamond", "A"],
+  ["BTC", "gold", "10"],
+] as const;
+
+type HoloSlide = { src: string; label: string; card: boolean };
+
+function holoCatalog(): HoloSlide[] {
+  const rows: HoloSlide[] = [];
+  for (const [symbol, marks] of Object.entries(HOLO_MARKS)) {
+    rows.push({ src: `/tokens/xtokenpng/512holoxtokens/${symbol}.png`, label: symbol, card: false });
+    for (const mark of marks) {
+      rows.push({ src: `/tokens/xtokenpng/256geomshimmer/${symbol}-${mark}.png`, label: symbol, card: false });
+    }
+  }
+  for (const [symbol, foil, rank] of HOLO_CARDS) {
+    rows.push({ src: `/holo-cards/${symbol}/${foil}/${rank}.png`, label: `${symbol} ${rank}`, card: true });
+  }
+  return rows;
+}
+
+const HOLO_POOL = holoCatalog();
+
+function shuffle<T>(rows: T[], rand: () => number) {
+  const copy = rows.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    const swap = copy[i];
+    copy[i] = copy[j];
+    copy[j] = swap;
+  }
+  return copy;
+}
+
+function pickHoloSlides(rand: () => number = Math.random): HoloSlide[] {
+  const cards = shuffle(HOLO_POOL.filter((row) => row.card), rand).slice(0, 4);
+  const marks = shuffle(HOLO_POOL.filter((row) => !row.card), rand).slice(0, 8);
+  return shuffle([...cards, ...marks], rand);
+}
+
+function LiquidityScene() {
+  return (
+    <svg className="home-pool" viewBox="0 0 1000 420" preserveAspectRatio="xMinYMid meet" aria-hidden>
+      <g className="home-pool__cloud home-pool__cloud--a">
+        <ellipse cx="120" cy="58" rx="46" ry="18" />
+        <ellipse cx="156" cy="48" rx="34" ry="20" />
+        <ellipse cx="190" cy="60" rx="40" ry="16" />
+      </g>
+      <g className="home-pool__cloud home-pool__cloud--b">
+        <ellipse cx="470" cy="42" rx="52" ry="18" />
+        <ellipse cx="512" cy="30" rx="36" ry="20" />
+        <ellipse cx="548" cy="44" rx="42" ry="16" />
+      </g>
+      <g className="home-pool__cloud home-pool__cloud--c">
+        <ellipse cx="800" cy="70" rx="44" ry="16" />
+        <ellipse cx="836" cy="58" rx="32" ry="18" />
+        <ellipse cx="868" cy="72" rx="36" ry="14" />
+      </g>
+
+      {RAIN.filter((drop) => drop.y < 250).map((drop) => (
+        <image
+          key={`${drop.src}-${drop.x}`}
+          className="home-pool__ball"
+          href={drop.src}
+          x={drop.x}
+          y={drop.y}
+          width={drop.s}
+          height={drop.s}
+          style={{ animationDelay: drop.delay, animationDuration: drop.dur }}
+        />
+      ))}
+
+      <ellipse cx="500" cy="318" rx="430" ry="72" fill="#14532d" />
+      <ellipse cx="500" cy="308" rx="390" ry="48" fill="#166534" />
+
+      {SWIMMERS.map((swimmer) => (
+        <g key={swimmer.x} className="home-pool__person" style={{ animationDelay: swimmer.delay }}>
+          <circle cx={swimmer.x} cy={252} r="13" fill={swimmer.head} />
+          <rect x={swimmer.x - 12} y={264} width="24" height="72" rx="10" fill={swimmer.body} />
+          <path
+            d={`M${swimmer.x - 12} 278l-16 ${swimmer.lift}M${swimmer.x + 12} 278l16 ${swimmer.lift + 6}`}
+            fill="none"
+            stroke={swimmer.head}
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        </g>
+      ))}
+
+      <ellipse cx="500" cy="340" rx="430" ry="52" fill="#166534" />
+      <ellipse cx="500" cy="328" rx="360" ry="22" fill="#22c55e" opacity="0.35" />
+
+      {RAIN.filter((drop) => drop.y >= 250).map((drop) => (
+        <image
+          key={`${drop.src}-${drop.x}`}
+          className="home-pool__ball"
+          href={drop.src}
+          x={drop.x}
+          y={drop.y}
+          width={drop.s}
+          height={drop.s}
+          style={{ animationDelay: drop.delay, animationDuration: drop.dur }}
+        />
+      ))}
+    </svg>
+  );
+}
+
+function HoloStrip() {
+  const railRef = useRef<HTMLDivElement>(null);
+  const [slides, setSlides] = useState<HoloSlide[] | null>(null);
+
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    let live = true;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting || !live) return;
+        setSlides((cur) => cur ?? pickHoloSlides());
+        io.disconnect();
+      },
+      { rootMargin: "240px" },
+    );
+    io.observe(rail);
+    return () => {
+      live = false;
+      io.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail || !slides?.length) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    let hold = 0;
+    const pause = () => {
+      hold = performance.now() + 2800;
+    };
+    const step = () => {
+      if (performance.now() > hold && rail.scrollWidth > rail.clientWidth) {
+        rail.scrollLeft += 0.55;
+        if (rail.scrollLeft >= rail.scrollWidth / 2) rail.scrollLeft = 0;
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    rail.addEventListener("pointerdown", pause);
+    rail.addEventListener("wheel", pause, { passive: true });
+    rail.addEventListener("touchstart", pause, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      rail.removeEventListener("pointerdown", pause);
+      rail.removeEventListener("wheel", pause);
+      rail.removeEventListener("touchstart", pause);
+    };
+  }, [slides]);
+
+  const row = slides ? [...slides, ...slides] : [];
+
+  return (
+    <section className="home-holo" aria-label="Holographic tokens">
+      <div className="home-holo__head">
+        <h2 className="home-holo__title">Holographic tokens</h2>
+        <p className="home-holo__blurb">Swipe the foil marks and the playing cards.</p>
+      </div>
+      <div className="home-holo__rail" ref={railRef}>
+        {row.length === 0
+          ? Array.from({ length: 6 }, (_, i) => <Pulse key={i} className="home-holo__ghost" />)
+          : row.map((slide, i) => (
+              <figure key={`${slide.src}-${i}`} className={`home-holo__card${slide.card ? " is-card" : ""}`} aria-hidden={i >= 12 ? true : undefined}>
+                <img
+                  src={slide.src}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  draggable={false}
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    if (img.dataset.fallback === "1") {
+                      img.closest("figure")?.remove();
+                      return;
+                    }
+                    img.dataset.fallback = "1";
+                    img.src = `/tokens/xtokenpng/512holoxtokens/${slide.label.split(" ")[0]}.png`;
+                  }}
+                />
+              </figure>
+            ))}
+      </div>
+    </section>
+  );
+}
+
+function countText(n: number | null) {
+  if (n == null) return "-";
+  if (n <= 0) return "0";
+  return fmtHolders(n);
+}
+
 export default function Home() {
   const wash = useMemo(() => pickWash(), []);
   const plates = useMemo(() => BENEFITS.map(() => pickWash()), []);
+  const [counts, setCounts] = useState<HomeCounts | null>(null);
+  const [dominance, setDominance] = useState<number | null | undefined>(undefined);
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const sections = Array.from(
-      document.querySelectorAll<HTMLElement>(".home-hero, .home-spread, .home-close")
+      document.querySelectorAll<HTMLElement>(".home-hero, .home-holo, .home-spread, .home-close")
     );
     const io = new IntersectionObserver(
       (entries) => {
@@ -127,6 +372,19 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    let live = true;
+    void loadHomeCounts().then((row) => {
+      if (live) setCounts(row);
+    });
+    void loadEasyDominance().then((ratio) => {
+      if (live) setDominance(ratio);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   return (
     <div
       className="home"
@@ -141,25 +399,81 @@ export default function Home() {
       <div className="home-glow" aria-hidden />
       <div className="home-field" data-parallax="0.08" aria-hidden />
 
-      <section className="home-hero" aria-label="Flex launcher">
-        <div className="home-hero__plate" style={plateStyle(wash)}>
-          <img className="home-art" src="/home/your-token-is-pure-liquid.jpg" alt="Your token is pure liquid" />
-        </div>
+      <section className="home-hero" aria-label="Flex dashboard">
+        <div className="home-hero__mesh" aria-hidden />
+        <div className="home-hero__wash" aria-hidden />
         <h1 className="home-hero__title">
           Your Token
           <br />
           is Pure Liquid
         </h1>
-        <p className="home-hero__standfirst">
-          Your Flex token is locked by trusted tokens like EASY, XPR, and XBTC. Liftoff process guides you to price and
-          protect the full supply on Alcor, crafting your fair launch. Trade day 1.
-        </p>
-        <p className="home-hero__cta">
-          <Link className="home-cta" to="/launch">
-            Launch your token
-          </Link>
-        </p>
+        <LiquidityScene />
+        <div className="home-dash">
+          <div className="home-dash__lead">
+            <Link className="home-trade" to="/leaderboard">
+              Trade now
+              <ArrowUpRight aria-hidden size={18} strokeWidth={2.25} />
+            </Link>
+            <p className="home-dash__blurb">
+              Locked by EASY, XPR, and XBTC. The full supply is priced and protected on Alcor. Trade day 1.
+            </p>
+          </div>
+          <div className="home-dash__stats">
+            <div className="home-stat">
+              <div className="home-stat__label">30 day transactions</div>
+              <div className="home-stat__value">
+                {counts ? countText(counts.tx30) : <Pulse className="mt-1 h-7 w-14" />}
+              </div>
+            </div>
+            <div className="home-stat home-stat--gauge">
+              <div className="home-stat__label">EASY dominance on Alcor</div>
+              <div className="home-stat__value">
+                {dominance === undefined ? (
+                  <Pulse className="mt-1 h-14 w-24" />
+                ) : (
+                  <ShareGauge ratio={dominance} label="EASY dominance on Alcor" />
+                )}
+              </div>
+            </div>
+            <div className="home-stat">
+              <div className="home-stat__label">Volume</div>
+              <div className="home-stat__value">
+                {counts ? <Amount value={counts.volumeUsd ?? 0} kind="usd" /> : <Pulse className="mt-1 h-7 w-16" />}
+              </div>
+            </div>
+            <div className="home-stat">
+              <div className="home-stat__label">Tokens launched</div>
+              <div className="home-stat__value home-stat__pair">
+                {counts ? (
+                  <>
+                    <span>{countText(counts.launched)}</span>
+                    <span className="home-stat__side">
+                      <span className="home-stat__side-n">{countText(counts.presale)}</span>
+                      <span className="home-pre">PRE</span>
+                    </span>
+                  </>
+                ) : (
+                  <Pulse className="mt-1 h-7 w-16" />
+                )}
+              </div>
+            </div>
+            <div className="home-stat">
+              <div className="home-stat__label">Holders</div>
+              <div className="home-stat__value">
+                {counts ? countText(counts.holders) : <Pulse className="mt-1 h-7 w-12" />}
+              </div>
+            </div>
+            <div className="home-stat">
+              <div className="home-stat__label">24h transactions</div>
+              <div className="home-stat__value">
+                {counts ? countText(counts.tx24) : <Pulse className="mt-1 h-7 w-14" />}
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
+
+      <HoloStrip />
 
       {BENEFITS.map((item, i) => {
         const side = i % 2 === 0 ? "a" : "b";

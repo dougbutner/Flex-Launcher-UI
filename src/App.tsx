@@ -13,6 +13,8 @@ import Portfolio from "./pages/Portfolio.tsx";
 import Token from "./pages/Token.tsx";
 import Preview from "./pages/Preview.tsx";
 import Manager from "./pages/Manager.tsx";
+import Cards from "./pages/Cards.tsx";
+import HoloAdmin from "./pages/HoloAdmin.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 function InsidersToken() {
@@ -85,6 +87,8 @@ export default function App() {
             <Route path="/preview" element={<Preview />} />
             <Route path="/manager" element={<Manager />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/cards" element={<Cards />} />
+            <Route path="/holoadmin" element={<HoloAdmin />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

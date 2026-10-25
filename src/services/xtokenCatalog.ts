@@ -1,4 +1,4 @@
-import { XTOKENS } from "@/config/launch";
+import { WRAP_ALCOR, XTOKENS } from "@/config/launch";
 import { CACHE_KEYS } from "@/services/cacheKeys";
 import { liveOr } from "@/services/readThrough";
 import { loadSiteSandbox, siteSandboxFlag } from "@/services/siteSandbox";
@@ -118,8 +118,8 @@ function rankRows(rows: XtokenRow[]): XtokenRow[] {
   });
 }
 
-/** Live xtokens ranked by Alcor market activity (volume), then score. */
-export async function fetchXtokensByPopularity(): Promise<XtokenRow[]> {
+/** Live tokens on `contract` ranked by Alcor market activity (volume), then score. */
+export async function fetchXtokensByPopularity(contract = XTOKENS): Promise<XtokenRow[]> {
   const [tokRes, mktRes] = await Promise.all([
     fetch(ALCOR_TOKENS),
     fetch(ALCOR_MARKETS),
@@ -135,7 +135,7 @@ export async function fetchXtokensByPopularity(): Promise<XtokenRow[]> {
     if (m.frozen) continue;
     const v = Number(m.volume24 || 0) + Number(m.volumeWeek || 0) * 0.05;
     for (const side of [m.base_token, m.quote_token]) {
-      if (!side || side.contract !== XTOKENS) continue;
+      if (!side || side.contract !== contract) continue;
       const sym = side.symbol?.name?.toUpperCase();
       if (!sym) continue;
       vol.set(sym, (vol.get(sym) || 0) + v);
@@ -144,7 +144,7 @@ export async function fetchXtokensByPopularity(): Promise<XtokenRow[]> {
 
   const rows: XtokenRow[] = [];
   for (const t of tokens) {
-    if (t.contract !== XTOKENS || t.is_scam || !t.symbol) continue;
+    if (t.contract !== contract || t.is_scam || !t.symbol) continue;
     const symbol = t.symbol.toUpperCase();
     if (!/^[A-Z]{1,7}$/.test(symbol)) continue;
     if (symbol === "FOOBAR") continue;
@@ -157,8 +157,15 @@ export async function fetchXtokensByPopularity(): Promise<XtokenRow[]> {
     });
   }
 
-  if (!rows.length) return rankRows(XTOKEN_FALLBACK);
+  if (!rows.length) return contract === XTOKENS ? rankRows(XTOKEN_FALLBACK) : wrapFallback();
   return rankRows(rows);
+}
+
+function wrapFallback(): XtokenRow[] {
+  return [
+    { symbol: "USDC", precision: 6, usdPrice: 1, score: 0, volume: 0 },
+    { symbol: "USDT", precision: 6, usdPrice: 1, score: 0, volume: 0 },
+  ];
 }
 
 type UsdCache = { at: number; rows: Map<string, number> };
@@ -222,6 +229,7 @@ export async function fetchAlcorUsdPrice(contract: string, symbol: string): Prom
   const hit = rows.get(tokenUsdKey(contract, symbol));
   if (hit && hit > 0) return hit;
   if (symbol.toUpperCase() === "XUSDC" && contract === XTOKENS) return 1;
+  if ((symbol.toUpperCase() === "USDC" || symbol.toUpperCase() === "USDT") && contract === WRAP_ALCOR) return 1;
   if (!siteSandboxFlag()) return 0;
   const overlay = await loadSiteSandbox();
   return overlay?.mergeUsdPrice(contract, symbol, 0) ?? 0;

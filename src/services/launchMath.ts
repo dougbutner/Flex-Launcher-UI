@@ -1,6 +1,7 @@
 import { ALCOR_MAX_TICK, ALCOR_MIN_TICK, EOSIO_MAX_TIME_SEC, LOCK_MIN_DAYS, tickSpacing, type FeeTier } from "@/config/launch";
 import { formatAsset, zeroAsset } from "@/services/assets";
 import { sortPair, type ExtToken } from "@/services/eosioName";
+import { formatNiceNumber, fmtUsd } from "@/services/money";
 import {
   getSqrtPriceX64AtTick,
   getTickAtSqrtRatio,
@@ -71,9 +72,7 @@ export function planLaunch(input: {
   tickLower = Math.max(ALCOR_MIN_TICK, tickLower);
   tickUpper = Math.min(ALCOR_MAX_TICK, tickUpper);
 
-  const startTick = launchedIsA
-    ? nearestUsableTick(tickLower - spacing, spacing)
-    : tickUpper;
+  const startTick = outsideStartTick(launchedIsA, tickLower, tickUpper, spacing);
   const sqrtPriceX64 = getSqrtPriceX64AtTick(startTick).toString();
   const fullSupply = formatAsset(input.maxSupply || "0", input.precision, input.symbol);
   const quoteZero = zeroAsset(quote.precision, quote.symbol);
@@ -177,6 +176,123 @@ function rawToNumber(raw: bigint, precision: number): number {
   const ip = raw / p;
   const fp = raw % p;
   return Number(ip) + Number(fp) / Number(p);
+}
+
+/** Pool price one spacing outside the position, so a one-sided deposit is not zero liquidity. */
+function outsideStartTick(launchedIsA: boolean, tickLower: number, tickUpper: number, spacing: number): number {
+  if (launchedIsA) {
+    let tick = nearestUsableTick(tickLower - spacing, spacing);
+    for (let i = 0; i < 4 && tick < tickLower; i++) {
+      if (getTickAtSqrtRatio(getSqrtPriceX64AtTick(tick)) < tickLower) return tick;
+      const next = tick - spacing;
+      if (next < ALCOR_MIN_TICK) break;
+      tick = next;
+    }
+    return Math.max(ALCOR_MIN_TICK, tick);
+  }
+  let tick = nearestUsableTick(tickUpper + spacing, spacing);
+  for (let i = 0; i < 4 && tick > tickUpper; i++) {
+    if (getTickAtSqrtRatio(getSqrtPriceX64AtTick(tick)) >= tickUpper) return tick;
+    const next = tick + spacing;
+    if (next > ALCOR_MAX_TICK) break;
+    tick = next;
+  }
+  return Math.min(ALCOR_MAX_TICK, tick);
+}
+
+function liquidityForAmounts(sqrt: bigint, sqrtA: bigint, sqrtB: bigint, amountA: bigint, amountB: bigint): bigint {
+  let lo = sqrtA;
+  let hi = sqrtB;
+  if (lo > hi) {
+    lo = sqrtB;
+    hi = sqrtA;
+  }
+  if (hi <= lo) return 0n;
+  if (sqrt <= lo) return getLiquidityForAmount0(lo, hi, amountA);
+  if (sqrt < hi) {
+    const fromA = getLiquidityForAmount0(sqrt, hi, amountA);
+    const fromB = getLiquidityForAmount1(lo, sqrt, amountB);
+    return fromA < fromB ? fromA : fromB;
+  }
+  return getLiquidityForAmount1(lo, hi, amountB);
+}
+
+/** One-sided liquidity at a pool price. Zero means the price is inside the position. */
+export function positionLiquidity(plan: LaunchPlan, sqrtPriceX64: bigint): bigint {
+  const amountA = decimalToRaw(plan.tokenADesired, plan.tokenA.precision);
+  const amountB = decimalToRaw(plan.tokenBDesired, plan.tokenB.precision);
+  return liquidityForAmounts(
+    sqrtPriceX64,
+    getSqrtPriceX64AtTick(plan.tickLower),
+    getSqrtPriceX64AtTick(plan.tickUpper),
+    amountA > 0n ? amountA : 0n,
+    amountB > 0n ? amountB : 0n
+  );
+}
+
+export type EdgeRange = {
+  tickLower: number;
+  tickUpper: number;
+  /** Quote per launched token at the edge that moved. */
+  quotePerToken: number;
+  previousQuotePerToken: number;
+  /** Both edges, cheap then rich, for rewriting the draft prices. */
+  priceLower: number;
+  priceUpper: number;
+};
+
+function edgeFrom(plan: LaunchPlan, tickLower: number, tickUpper: number, movedTick: number, previousTick: number): EdgeRange {
+  const at = (tick: number) => quotePerTokenFromTick(tick, plan.launchedIsA, plan.tokenA.precision, plan.tokenB.precision);
+  const cheap = Math.min(at(tickLower), at(tickUpper));
+  const rich = Math.max(at(tickLower), at(tickUpper));
+  return {
+    tickLower,
+    tickUpper,
+    quotePerToken: at(movedTick),
+    previousQuotePerToken: at(previousTick),
+    priceLower: cheap,
+    priceUpper: rich,
+  };
+}
+
+/**
+ * Move the near edge by tick spacing until a one-sided deposit has liquidity.
+ * `minSteps` forces extra moves after InvalidUpdateWithZeroLiquidity.
+ * Null when the current range already works.
+ */
+export function adjustEdgeRange(plan: LaunchPlan, sqrtPriceX64: bigint, minSteps = 0): EdgeRange | null {
+  const spacing = plan.spacing;
+  let tickLower = plan.tickLower;
+  let tickUpper = plan.tickUpper;
+  const previousTick = plan.launchedIsA ? plan.tickLower : plan.tickUpper;
+  let hits = 0;
+  for (let step = 0; step <= 8; step++) {
+    const ok = positionLiquidity({ ...plan, tickLower, tickUpper }, sqrtPriceX64) > 0n;
+    if (ok) {
+      if (step === 0 && minSteps === 0) return null;
+      if (hits === minSteps) return edgeFrom(plan, tickLower, tickUpper, plan.launchedIsA ? tickLower : tickUpper, previousTick);
+      hits += 1;
+    }
+    if (plan.launchedIsA) {
+      if (tickLower + spacing >= tickUpper) return null;
+      tickLower += spacing;
+    } else {
+      if (tickUpper - spacing <= tickLower) return null;
+      tickUpper -= spacing;
+    }
+  }
+  return null;
+}
+
+/** Shown before the corrected one-sided deposit is signed. */
+export function edgeAdjustCopy(symbol: string, next: number, prev: number, quoteUsd: number): string {
+  const token = `${formatNiceNumber(next)} ${symbol}`;
+  if (!(quoteUsd > 0)) return `Adjust position to ${token}.`;
+  const price = fmtUsd(next * quoteUsd);
+  const moved = fmtUsd(Math.abs(next - prev) * quoteUsd);
+  if (price === "-") return `Adjust position to ${token}.`;
+  if (moved === "-") return `Adjust position to ${token} (${price}).`;
+  return `Adjust position to ${token} (${price}). Changed by ${moved}.`;
 }
 
 function getLiquidityForAmount0(sqrtA: bigint, sqrtB: bigint, amount0: bigint): bigint {
