@@ -1,7 +1,7 @@
 import { validAccount, validSymbol } from "@/services/assets";
 import { TOKEN_PROTON_TNAME_MAX } from "@/services/tokenProton";
 import { rainRaw } from "@/services/rainRaw";
-import { validImageUrl } from "@/services/tokenLogo";
+import { imageSrc } from "@/services/tokenLogo";
 import type { FeeTier, FlexProgram } from "@/config/launch";
 
 export const LAUNCH_STEP_IDS = [
@@ -191,8 +191,9 @@ export function parseManagerToken(raw: unknown): ManagerToken | null {
   const fee = (FEES.has(feeN) ? feeN : 3000) as FeeTier;
   const poolRaw = o.poolId;
   const poolId = poolRaw == null || poolRaw === "" ? null : Math.max(0, Math.floor(num(poolRaw)));
-  const imageUrl = str(o.imageUrl, 1024);
-  if (imageUrl && !validImageUrl(imageUrl)) return null;
+  const rawImage = str(o.imageUrl, 1024);
+  const imageUrl = imageSrc(rawImage);
+  if (rawImage && !imageUrl) return null;
   const precision = Math.max(0, Math.min(8, Math.floor(num(o.precision, 6))));
   return {
     issuer,
@@ -260,8 +261,9 @@ export function sanitizeManagerMeta(patch: Partial<ManagerMetaPatch>): ManagerMe
   const twitter = str(patch.twitter, 80);
   const telegram = str(patch.telegram, 80);
   const farcaster = str(patch.farcaster, 80);
-  const imageUrl = str(patch.imageUrl, 1024);
-  if (imageUrl && !validImageUrl(imageUrl)) return "Use a full http(s) image URL. IPFS re-upload is not available here.";
+  const rawImage = str(patch.imageUrl, 1024);
+  const imageUrl = imageSrc(rawImage);
+  if (rawImage && !imageUrl) return "Use a full http(s) image URL. IPFS re-upload is not available here.";
   if (!name) return "Give the token a display name.";
   return { name, description, website, twitter, telegram, farcaster, imageUrl };
 }

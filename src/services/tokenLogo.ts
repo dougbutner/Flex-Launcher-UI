@@ -41,3 +41,21 @@ export function validImageUrl(value: string) {
     return false;
   }
 }
+
+/** Keep a public image URL. A dev-machine `/tokens/` file stays on this site. Other loopback URLs are dropped. */
+export function imageSrc(value: string): string {
+  const raw = value.trim();
+  if (!raw) return "";
+  if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "";
+    const host = u.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+      return u.pathname.startsWith("/tokens/") ? `${u.pathname}${u.search}` : "";
+    }
+    return raw;
+  } catch {
+    return "";
+  }
+}

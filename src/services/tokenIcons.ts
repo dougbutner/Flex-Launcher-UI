@@ -2,7 +2,7 @@ import { TOKEN_ICON_SRC } from "@/config/tokenIconManifest";
 import { XTOKENS } from "@/config/launch";
 import { flexApi } from "@/services/flexApi";
 import { airdropsLogoRawUrl, alcorLogoRawUrl } from "@/services/listingRepos";
-import { validImageUrl } from "@/services/tokenLogo";
+import { imageSrc } from "@/services/tokenLogo";
 
 const remoteIconSrc: Record<string, string> = {};
 const logoSaved = new Set<string>();
@@ -43,9 +43,9 @@ export function tokenIconEpoch() {
 }
 
 export function rememberRemoteTokenIcon(contract: string, symbol: string, url: string) {
-  if (!validImageUrl(url)) return;
+  const next = imageSrc(url);
+  if (!next) return;
   const key = tokenIconKey(contract, symbol);
-  const next = url.trim();
   if (remoteIconSrc[key] === next) return;
   remoteIconSrc[key] = next;
   logoEpoch += 1;
@@ -59,16 +59,9 @@ export function remoteTokenIconSrc(contract: string | undefined, symbol: string)
   return remoteIconSrc[tokenIconKey(acct, code)];
 }
 
-function fallbackIconSrc(url?: string) {
-  const u = (url || "").trim();
-  if (!u) return undefined;
-  if (u.startsWith("/") && !u.startsWith("//")) return u;
-  return validImageUrl(u) ? u : undefined;
-}
-
 function httpIcon(url?: string) {
-  const raw = fallbackIconSrc(url);
-  return raw && /^https?:\/\//i.test(raw) ? raw : undefined;
+  const raw = imageSrc(url || "");
+  return /^https?:\/\//i.test(raw) ? raw : undefined;
 }
 
 /** Remote icon URL for this token, when one is known. */
@@ -126,8 +119,9 @@ export async function storeLogoFile(contract: string, symbol: string, cid: strin
 
 /** Hash file, then the saved copy of that hash, then Alcor, eos-airdrops, and the gateway. One at a time. */
 export function tokenIconPlaces(contract: string | undefined, symbol: string, fallback?: string): string[] {
-  const picked = (fallback || "").trim();
-  if (picked.startsWith("data:") || picked.startsWith("blob:")) return [picked];
+  const rawPick = (fallback || "").trim();
+  if (rawPick.startsWith("data:") || rawPick.startsWith("blob:")) return [rawPick];
+  const picked = imageSrc(rawPick);
   const id = logoAccount(contract, symbol);
   const remote = httpIcon(picked) || remoteTokenIconSrc(contract, symbol);
   const cid = ipfsCid(remote);

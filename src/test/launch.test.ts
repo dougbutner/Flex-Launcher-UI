@@ -91,7 +91,7 @@ import { issuerRange } from "@/services/flexTables";
 import { applyRangeWidth, applyStartMarketCap, fmtPrice, tokenStepValid } from "@/components/launch/draftPlan";
 import { emptyDraft } from "@/hooks/useLaunchDraft";
 import { amountToRaw, formatRainAsset, rainCutShort, reflectionPayFloorRaw } from "@/services/rainDefaults";
-import { validImageUrl } from "@/services/tokenLogo";
+import { imageSrc, validImageUrl } from "@/services/tokenLogo";
 import { XTOKEN_FALLBACK, XTOKEN_TOP_N, findProofPoolId } from "@/services/xtokenCatalog";
 import { draftFromManager, managerFromDraft } from "@/services/managerDraft";
 import {
@@ -228,6 +228,8 @@ describe("token.proton logo", () => {
   it("requires a public image URL after a Pinata failure", () => {
     expect(validImageUrl("https://example.com/logo.png")).toBe(true);
     expect(validImageUrl("ipfs://Qm")).toBe(false);
+    expect(imageSrc("http://localhost:8080/tokens/holoxtokens/XDOGE.png")).toBe("/tokens/holoxtokens/XDOGE.png");
+    expect(imageSrc("http://127.0.0.1:8080/secret")).toBe("");
     const draft = { ...emptyDraft(), name: "Foo", symbol: "FOO", pinFailed: true };
     expect(tokenStepValid(draft)).toMatch(/Pinata failed/);
     expect(tokenStepValid({ ...draft, imageUrl: "https://example.com/logo.png" })).toBeNull();
@@ -1229,6 +1231,9 @@ describe("issuer manager store", () => {
     expect(back.rainMinHold).toBe(1000);
     expect(back.rainMinPool).toBe(50);
     expect(parseManagerToken({ ...row, imageUrl: "not-a-url" })).toBeNull();
+    expect(parseManagerToken({ ...row, imageUrl: "http://localhost:8080/tokens/easy.png" })?.imageUrl).toBe(
+      "/tokens/easy.png"
+    );
   });
 });
 

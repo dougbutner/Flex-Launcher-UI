@@ -4,7 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { Amount } from "@/components/Amount";
 import { ShareGauge } from "@/components/token/StatShapes";
 import { Pulse } from "@/components/ui/Pulse";
-import { loadEasyDominance, loadHomeCounts, type HomeCounts } from "@/services/homeDash";
+import { loadEasyDominance, loadHomeCounts, loadHomeVolumes, type HomeCounts, type VolumeRead } from "@/services/homeDash";
 import { fmtHolders } from "@/services/winnerBoard";
 import "./Home.css";
 
@@ -339,10 +339,23 @@ function countText(n: number | null) {
   return fmtHolders(n);
 }
 
+const EMPTY_VOLUME: VolumeRead = { usd: null, partial: false };
+
+function VolumeFigure({ row }: { row: VolumeRead }) {
+  return (
+    <span className="home-stat__figure">
+      {row.usd == null ? null : <Amount value={row.usd} kind="usd" />}
+      {row.usd == null || row.partial ? <Pulse className="home-stat__tick" /> : null}
+    </span>
+  );
+}
+
 export default function Home() {
   const wash = useMemo(() => pickWash(), []);
   const plates = useMemo(() => BENEFITS.map(() => pickWash()), []);
   const [counts, setCounts] = useState<HomeCounts | null>(null);
+  const [easyVolume, setEasyVolume] = useState<VolumeRead>(EMPTY_VOLUME);
+  const [flexVolume, setFlexVolume] = useState<VolumeRead>(EMPTY_VOLUME);
   const [dominance, setDominance] = useState<number | null | undefined>(undefined);
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -393,6 +406,11 @@ export default function Home() {
     void loadHomeCounts().then((row) => {
       if (live) setCounts(row);
     });
+    void loadHomeVolumes((kind, row) => {
+      if (!live) return;
+      if (kind === "easy") setEasyVolume(row);
+      else setFlexVolume(row);
+    });
     void loadEasyDominance().then((ratio) => {
       if (live) setDominance(ratio);
     });
@@ -436,25 +454,27 @@ export default function Home() {
           </div>
           <div className="home-dash__stats">
             <div className="home-stat">
-              <div className="home-stat__label">30 day transactions</div>
+              <div className="home-stat__label">EASY volume</div>
               <div className="home-stat__value">
-                {counts ? countText(counts.tx30) : <Pulse className="mt-1 h-7 w-14" />}
-              </div>
-            </div>
-            <div className="home-stat home-stat--gauge">
-              <div className="home-stat__label">EASY dominance on Alcor</div>
-              <div className="home-stat__value">
-                {dominance === undefined ? (
-                  <Pulse className="mt-1 h-14 w-24" />
-                ) : (
-                  <ShareGauge ratio={dominance} label="EASY dominance on Alcor" />
-                )}
+                <VolumeFigure row={easyVolume} />
               </div>
             </div>
             <div className="home-stat">
-              <div className="home-stat__label">Volume</div>
+              <div className="home-stat__label">Flex volume</div>
               <div className="home-stat__value">
-                {counts ? <Amount value={counts.volumeUsd ?? 0} kind="usd" /> : <Pulse className="mt-1 h-7 w-16" />}
+                <VolumeFigure row={flexVolume} />
+              </div>
+            </div>
+            <div className="home-stat home-stat--gauge">
+              <div className="home-stat__label">EASY volume on Alcor vs all other tokens combined</div>
+              <div className="home-stat__value">
+                {dominance == null ? (
+                  <span className="home-stat__figure">
+                    <Pulse className="home-stat__tick" />
+                  </span>
+                ) : (
+                  <ShareGauge ratio={dominance} label="EASY volume on Alcor vs all other tokens combined" />
+                )}
               </div>
             </div>
             <div className="home-stat">

@@ -257,7 +257,7 @@
 }
 
 .home-stat__label {
-  min-height: 3.2em;
+  min-height: 3.6em;
   color: var(--home-dim);
   font-size: 0.72rem;
   font-weight: 400;
@@ -272,6 +272,19 @@
   font-weight: 600;
   line-height: 1;
   color: var(--home-ink);
+}
+
+.home-stat__figure {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28em;
+  min-height: 1em;
+}
+
+.home-stat__tick {
+  width: 1.15em;
+  height: 0.38em;
+  flex: none;
 }
 
 .home-stat__pair {
@@ -630,6 +643,10 @@
   .home-dash__stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     row-gap: 18px;
+  }
+
+  .home-stat--gauge {
+    min-width: 0;
   }
 
   .home-pool {

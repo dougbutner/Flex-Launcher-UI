@@ -1,7 +1,7 @@
 import { flexAccount, QUOTE_PRESETS, type FlexProgram } from "@/config/launch";
 import { emptyDraft, type LaunchDraft } from "@/hooks/useLaunchDraft";
 import { emptyManagerToken, type ManagerToken } from "@/services/managerStore";
-import { validImageUrl } from "@/services/tokenLogo";
+import { imageSrc } from "@/services/tokenLogo";
 
 const QUOTE_IDS = new Set(QUOTE_PRESETS.map((q) => q.id));
 
@@ -21,7 +21,7 @@ export function managerFromDraft(issuer: string, draft: LaunchDraft, extra: Part
     twitter: draft.twitter.trim(),
     telegram: draft.telegram.trim(),
     farcaster: draft.farcaster.trim(),
-    imageUrl: validImageUrl(draft.imageUrl) ? draft.imageUrl.trim() : "",
+    imageUrl: imageSrc(draft.imageUrl),
     maxSupply: draft.maxSupply.trim(),
     quoteId: draft.quoteId,
     xtokenSymbol: draft.xtokenSymbol,

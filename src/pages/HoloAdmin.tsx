@@ -87,11 +87,6 @@ function when(local: string): string {
   return new Date(unix * 1000).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-function publicUrl(path: string): string {
-  if (typeof window === "undefined") return path;
-  return new URL(path, window.location.origin).href;
-}
-
 async function chainTx(
   token: HoloToken,
   quotePrecision: number
@@ -294,7 +289,7 @@ export default function HoloAdmin() {
       quotePrecision,
       txs: row?.txs,
       band: row?.band,
-      logoUrl: publicUrl(token.logo),
+      logoUrl: token.logo,
     });
   }, [insider, launch, proof.id, quotePrecision, quoteUsd, row?.band, row?.txs, save.fees, token]);
 
