@@ -86,24 +86,17 @@ const BENEFITS = [
   },
 ] as const;
 
-const SWIMMERS = [
-  { x: 230, delay: "0s", body: "#22c55e", head: "#ffe566", lift: -18 },
-  { x: 390, delay: "-0.6s", body: "#d4af37", head: "#fff1a8", lift: -8 },
-  { x: 560, delay: "-1.3s", body: "#8b5cf6", head: "#f4f7f4", lift: -14 },
-  { x: 740, delay: "-0.2s", body: "#22c55e", head: "#ffe566", lift: -6 },
-] as const;
-
 /** Site logos, the same files the rest of the app shows. */
 const RAIN = [
-  { src: "/tokens/easy.png", x: 128, y: 140, s: 46, delay: "0s", dur: "4.6s" },
-  { src: "/tokens/eosio.token/XPR.png", x: 448, y: 108, s: 34, delay: "-1.2s", dur: "5.2s" },
-  { src: "/tokens/xtokens/XBTC.png", x: 668, y: 138, s: 40, delay: "-2.4s", dur: "4.2s" },
-  { src: "/tokens/meme.png", x: 848, y: 168, s: 30, delay: "-0.8s", dur: "5.6s" },
-  { src: "/tokens/won.png", x: 280, y: 186, s: 32, delay: "-3s", dur: "4.8s" },
-  { src: "/tokens/grams.png", x: 300, y: 292, s: 36, delay: "-1.6s", dur: "5.4s" },
-  { src: "/tokens/fl3x/GEASY.png", x: 482, y: 278, s: 42, delay: "-0.4s", dur: "4.4s" },
-  { src: "/tokens/won.png", x: 644, y: 300, s: 30, delay: "-2.8s", dur: "5s" },
-  { src: "/tokens/easy.png", x: 800, y: 304, s: 34, delay: "-1.4s", dur: "4.9s" },
+  { src: "/tokens/easy.png", x: 150, y: 58, s: 42, delay: "0s", dur: "4.6s" },
+  { src: "/tokens/eosio.token/XPR.png", x: 292, y: 36, s: 32, delay: "-1.2s", dur: "5.2s" },
+  { src: "/tokens/xtokens/XBTC.png", x: 648, y: 44, s: 36, delay: "-2.4s", dur: "4.2s" },
+  { src: "/tokens/meme.png", x: 800, y: 86, s: 28, delay: "-0.8s", dur: "5.6s" },
+  { src: "/tokens/won.png", x: 400, y: 96, s: 30, delay: "-3s", dur: "4.8s" },
+  { src: "/tokens/grams.png", x: 330, y: 258, s: 28, delay: "-1.6s", dur: "5.4s" },
+  { src: "/tokens/fl3x/GEASY.png", x: 430, y: 220, s: 30, delay: "-0.4s", dur: "4.4s" },
+  { src: "/tokens/won.png", x: 548, y: 248, s: 26, delay: "-2.8s", dur: "5s" },
+  { src: "/tokens/easy.png", x: 690, y: 236, s: 28, delay: "-1.4s", dur: "4.9s" },
 ] as const;
 
 const HOLO_MARKS: Record<string, readonly string[]> = {
@@ -164,24 +157,40 @@ function pickHoloSlides(rand: () => number = Math.random): HoloSlide[] {
 
 function LiquidityScene() {
   return (
-    <svg className="home-pool" viewBox="0 0 1000 420" preserveAspectRatio="xMinYMid meet" aria-hidden>
-      <g className="home-pool__cloud home-pool__cloud--a">
-        <ellipse cx="120" cy="58" rx="46" ry="18" />
-        <ellipse cx="156" cy="48" rx="34" ry="20" />
-        <ellipse cx="190" cy="60" rx="40" ry="16" />
+    <svg className="home-pool" viewBox="0 0 1000 420" preserveAspectRatio="xMidYMid meet" aria-hidden>
+      <defs>
+        <clipPath id="home-pool-water-clip">
+          <ellipse cx="500" cy="246" rx="244" ry="66" />
+        </clipPath>
+        <clipPath id="home-pool-swimmers">
+          <rect x="250" y="88" width="500" height="158" />
+          <ellipse cx="500" cy="246" rx="250" ry="72" />
+        </clipPath>
+      </defs>
+
+      <ellipse cx="500" cy="286" rx="470" ry="128" fill="#101614" />
+      <ellipse cx="220" cy="26" rx="46" ry="8" fill="#ffe566" opacity="0.16" />
+      <ellipse cx="500" cy="18" rx="70" ry="10" fill="#f4f7f4" opacity="0.1" />
+      <ellipse cx="790" cy="28" rx="40" ry="8" fill="#ffe566" opacity="0.14" />
+
+      <g>
+        <path d="M70 196h96" stroke="#d4af37" strokeWidth="8" strokeLinecap="round" />
+        <rect x="66" y="204" width="104" height="72" rx="8" fill="#f6f1e6" />
+        <image className="home-pool__guest" href="/home/peeps/lounge-a.svg" x="48" y="156" width="140" height="140" />
+        <rect x="46" y="268" width="144" height="26" rx="8" fill="#f6f1e6" />
+        <rect x="46" y="268" width="144" height="7" rx="3" fill="#d4af37" />
+        <path d="M58 294v26M178 294v26" stroke="#a6843d" strokeWidth="4" strokeLinecap="round" />
       </g>
-      <g className="home-pool__cloud home-pool__cloud--b">
-        <ellipse cx="470" cy="42" rx="52" ry="18" />
-        <ellipse cx="512" cy="30" rx="36" ry="20" />
-        <ellipse cx="548" cy="44" rx="42" ry="16" />
-      </g>
-      <g className="home-pool__cloud home-pool__cloud--c">
-        <ellipse cx="800" cy="70" rx="44" ry="16" />
-        <ellipse cx="836" cy="58" rx="32" ry="18" />
-        <ellipse cx="868" cy="72" rx="36" ry="14" />
+      <g>
+        <path d="M834 196h96" stroke="#d4af37" strokeWidth="8" strokeLinecap="round" />
+        <rect x="830" y="204" width="104" height="72" rx="8" fill="#f6f1e6" />
+        <image className="home-pool__guest" href="/home/peeps/lounge-b.svg" x="812" y="156" width="140" height="140" style={{ animationDelay: "-0.8s" }} />
+        <rect x="810" y="268" width="144" height="26" rx="8" fill="#f6f1e6" />
+        <rect x="810" y="268" width="144" height="7" rx="3" fill="#d4af37" />
+        <path d="M822 294v26M942 294v26" stroke="#a6843d" strokeWidth="4" strokeLinecap="round" />
       </g>
 
-      {RAIN.filter((drop) => drop.y < 250).map((drop) => (
+      {RAIN.filter((drop) => drop.y < 200).map((drop) => (
         <image
           key={`${drop.src}-${drop.x}`}
           className="home-pool__ball"
@@ -193,39 +202,46 @@ function LiquidityScene() {
           style={{ animationDelay: drop.delay, animationDuration: drop.dur }}
         />
       ))}
+      <g className="home-pool__ball" style={{ animationDelay: "-0.7s", animationDuration: "5s" }}>
+        <path d="M530 90 L530 56 A34 34 0 0 1 559 73 Z" fill="#ef4444" />
+        <path d="M530 90 L559 73 A34 34 0 0 1 559 107 Z" fill="#ffe566" />
+        <path d="M530 90 L559 107 A34 34 0 0 1 530 124 Z" fill="#f4f7f4" />
+        <path d="M530 90 L530 124 A34 34 0 0 1 501 107 Z" fill="#3b82f6" />
+        <path d="M530 90 L501 107 A34 34 0 0 1 501 73 Z" fill="#22c55e" />
+        <path d="M530 90 L501 73 A34 34 0 0 1 530 56 Z" fill="#f4f7f4" />
+        <circle cx="530" cy="90" r="7" fill="#f7f4ea" />
+      </g>
 
-      <ellipse cx="500" cy="318" rx="430" ry="72" fill="#14532d" />
-      <ellipse cx="500" cy="308" rx="390" ry="48" fill="#166534" />
+      <ellipse cx="500" cy="268" rx="300" ry="108" fill="#1c1914" />
+      <ellipse cx="500" cy="262" rx="286" ry="96" fill="#c4a035" />
+      <ellipse cx="500" cy="256" rx="268" ry="84" fill="#0e2418" />
+      <g className="home-pool__water">
+        <ellipse cx="500" cy="246" rx="252" ry="70" fill="#166534" />
+        <ellipse cx="430" cy="226" rx="88" ry="14" fill="#86efac" opacity="0.35" />
+        <ellipse cx="590" cy="268" rx="54" ry="9" fill="#052e16" opacity="0.28" />
+      </g>
+      <ellipse cx="500" cy="246" rx="252" ry="70" fill="none" stroke="#e8d48b" strokeWidth="3" opacity="0.75" />
 
-      {SWIMMERS.map((swimmer) => (
-        <g key={swimmer.x} className="home-pool__person" style={{ animationDelay: swimmer.delay }}>
-          <circle cx={swimmer.x} cy={252} r="13" fill={swimmer.head} />
-          <rect x={swimmer.x - 12} y={264} width="24" height="72" rx="10" fill={swimmer.body} />
-          <path
-            d={`M${swimmer.x - 12} 278l-16 ${swimmer.lift}M${swimmer.x + 12} 278l16 ${swimmer.lift + 6}`}
-            fill="none"
-            stroke={swimmer.head}
-            strokeWidth="3"
-            strokeLinecap="round"
+      <g clipPath="url(#home-pool-water-clip)">
+        {RAIN.filter((drop) => drop.y >= 200).map((drop) => (
+          <image
+            key={`${drop.src}-${drop.x}`}
+            className="home-pool__ball"
+            href={drop.src}
+            x={drop.x}
+            y={drop.y}
+            width={drop.s}
+            height={drop.s}
+            style={{ animationDelay: drop.delay, animationDuration: drop.dur }}
           />
-        </g>
-      ))}
+        ))}
+      </g>
 
-      <ellipse cx="500" cy="340" rx="430" ry="52" fill="#166534" />
-      <ellipse cx="500" cy="328" rx="360" ry="22" fill="#22c55e" opacity="0.35" />
-
-      {RAIN.filter((drop) => drop.y >= 250).map((drop) => (
-        <image
-          key={`${drop.src}-${drop.x}`}
-          className="home-pool__ball"
-          href={drop.src}
-          x={drop.x}
-          y={drop.y}
-          width={drop.s}
-          height={drop.s}
-          style={{ animationDelay: drop.delay, animationDuration: drop.dur }}
-        />
-      ))}
+      <g clipPath="url(#home-pool-swimmers)">
+        <image className="home-pool__guest" href="/home/peeps/pool-a.svg" x="328" y="118" width="112" height="112" />
+        <image className="home-pool__guest" href="/home/peeps/pool-b.svg" x="442" y="156" width="120" height="120" style={{ animationDelay: "-1.2s" }} />
+        <image className="home-pool__guest" href="/home/peeps/pool-c.svg" x="568" y="114" width="112" height="112" style={{ animationDelay: "-2.1s" }} />
+      </g>
     </svg>
   );
 }

@@ -178,25 +178,9 @@
   pointer-events: none;
 }
 
-.home-pool__cloud {
-  fill: rgba(244, 247, 244, 0.16);
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: home-cloud-drift 16s ease-in-out infinite alternate;
-}
-
-.home-pool__cloud--b {
-  animation-duration: 20s;
-  animation-delay: -6s;
-}
-
-.home-pool__cloud--c {
-  animation-duration: 24s;
-  animation-delay: -11s;
-}
-
 .home-pool__ball,
-.home-pool__person {
+.home-pool__water,
+.home-pool__guest {
   transform-box: fill-box;
   transform-origin: center;
 }
@@ -206,8 +190,12 @@
   animation: home-rain 4.6s ease-in-out infinite;
 }
 
-.home-pool__person {
-  animation: home-person-bob 3.1s ease-in-out infinite;
+.home-pool__water {
+  animation: home-water 6.5s ease-in-out infinite;
+}
+
+.home-pool__guest {
+  animation: home-guest-bob 3.6s ease-in-out infinite;
 }
 
 .home-dash {
@@ -513,12 +501,23 @@
   }
 }
 
-@keyframes home-cloud-drift {
-  from {
-    transform: translateX(0);
+@keyframes home-water {
+  0%,
+  100% {
+    transform: translateY(0);
   }
-  to {
-    transform: translateX(26px);
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@keyframes home-guest-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
   }
 }
 
@@ -598,16 +597,6 @@
   background: rgba(244, 247, 244, 0.06);
 }
 
-@keyframes home-person-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
 @keyframes home-mark-float {
   0%,
   100% {
@@ -676,9 +665,9 @@
   .home-field,
   .home-glow,
   .home-hero__mark,
-  .home-pool__cloud,
   .home-pool__ball,
-  .home-pool__person {
+  .home-pool__water,
+  .home-pool__guest {
     animation: none;
   }
 
