@@ -13,7 +13,7 @@ import { TokenListingCard } from "@/components/token/TokenListingCard";
 import { TokenTitleStats } from "@/components/token/TokenMarket";
 import { HolderPrefs } from "@/components/token/HolderPrefs";
 import { TokenPageSkeleton } from "@/components/ui/PageSkeletons";
-import { alcorAnalyticsUrl, coreLiquidOf, coreTokenOf, explorerAccount, flexMeta, hasAngelChannels, isFlexContractActor, programFromAccount } from "@/config/launch";
+import { alcorTokenId, coreLiquidOf, coreTokenOf, explorerAccount, flexMeta, hasAngelChannels, isFlexContractActor, programFromAccount } from "@/config/launch";
 import { useWallet } from "@/hooks/useWallet";
 import { assetAmountNumber, parseAsset } from "@/services/assets";
 import { fetchTopSwapPool, poolCounterparty } from "@/services/alcorMarket";
@@ -454,7 +454,7 @@ export default function Token() {
           <div className="min-w-0 md:col-span-2">
             <iframe
               title={`${sym} Alcor analytics`}
-              src={alcorAnalyticsUrl(sym, code)}
+              src={`https://alcor.exchange/embed/token/xpr/${encodeURIComponent(alcorTokenId(sym, code))}`}
               className="h-[100dvh] max-h-[100dvh] w-full border border-border bg-background"
               allow="clipboard-write"
             />
