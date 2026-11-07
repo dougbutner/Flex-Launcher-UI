@@ -6,7 +6,7 @@ import { TokenGlyph } from "@/components/TokenGlyph";
 import { TokenTile } from "@/components/token/TokenTile";
 import { clubDateEvents, dayKey, loadCalendarEvents, type CalEvent } from "@/services/launchEvents";
 import { loadBoardTokens, type BoardToken } from "@/services/leaderboardStore";
-import { alcorAnalyticsUrl } from "@/config/launch";
+import { alcorTokenId } from "@/config/launch";
 import type { LaunchRoom } from "@/services/mechanicsLive";
 import { EventsSkeleton, TilesRowSkeleton } from "@/components/ui/PageSkeletons";
 import {
@@ -323,7 +323,7 @@ export function CalendarPanel({ title = "Drop Calendar" }: { title?: string }) {
                 {histPick ? (
                   <iframe
                     title={`${histPick.symbol} Alcor analytics`}
-                    src={alcorAnalyticsUrl(histPick.symbol, histPick.contract)}
+                    src={`https://alcor.exchange/embed/token/xpr/${encodeURIComponent(alcorTokenId(histPick.symbol, histPick.contract))}`}
                     className="mt-4 h-[520px] w-full border border-border bg-background"
                     allow="clipboard-write"
                   />

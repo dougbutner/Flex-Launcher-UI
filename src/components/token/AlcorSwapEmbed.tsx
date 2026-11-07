@@ -1,4 +1,4 @@
-import { alcorSwapUrl, alcorSwapWidgetUrl } from "@/config/launch";
+import { alcorSwapUrl, alcorTokenId } from "@/config/launch";
 
 export function AlcorSwapEmbed({
   quoteSymbol,
@@ -14,7 +14,7 @@ export function AlcorSwapEmbed({
   if (!quoteSymbol) {
     return <p className="text-sm text-muted-foreground">Swap appears after the launch pair is on Alcor.</p>;
   }
-  const src = alcorSwapWidgetUrl(quoteSymbol, quoteContract, symbol, contract);
+  const src = `https://alcor.exchange/embed/token/xpr/${encodeURIComponent(alcorTokenId(symbol, contract))}`;
   const href = alcorSwapUrl(quoteSymbol, quoteContract, symbol, contract);
   return (
     <>

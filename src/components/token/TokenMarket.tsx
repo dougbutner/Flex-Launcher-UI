@@ -3,6 +3,7 @@ import {
   alcorAnalyticsUrl,
   alcorChartWidgetUrl,
   alcorSwapUrl,
+  alcorTokenId,
 } from "@/config/launch";
 import { Amount, DecimalText } from "@/components/Amount";
 import { GoldPriceChart } from "@/components/token/GoldPriceChart";
@@ -242,7 +243,7 @@ export function TokenMarket({
           ) : view === "alcor" && chartSrc ? (
             <iframe
               title="Alcor chart"
-              src={chartSrc}
+              src={`https://alcor.exchange/embed/token/xpr/${encodeURIComponent(alcorTokenId(symbol, contract))}`}
               className="h-[420px] w-full border-0 bg-background"
               allow="clipboard-write"
             />
