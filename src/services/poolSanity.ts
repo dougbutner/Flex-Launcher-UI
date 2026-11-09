@@ -614,11 +614,18 @@ export async function loadCoreSanity(args: {
 }): Promise<SanityView> {
   const spec = coreLiquidOf(args.contract, args.symbol);
   if (!spec) throw new Error("Backing pools are not set for this token.");
-  const [acct, listed, tokenUsd, nests] = await Promise.all([
+  const [acct, listed, tokenUsd, nests, held] = await Promise.all([
     readAccounts(args.contract, SWAP_ALCOR, args.symbol),
     fetchSwapPoolsForToken(args.symbol, args.contract).catch(() => null as AlcorPoolRow[] | null),
     fetchAlcorUsdPrice(args.contract, args.symbol).catch(() => 0),
     Promise.all(spec.owners.map((owner) => fetchAccountPositions(owner))),
+    args.symbol.toUpperCase() === "EASY"
+      ? Promise.all(
+          ["bridge.strx", "escrowhold", "hands.mon3y"].map((owner) =>
+            readAccounts(args.contract, owner, args.symbol)
+          )
+        )
+      : Promise.resolve([]),
   ]);
   const prices = new Map<string, number>();
   await Promise.all(
@@ -675,8 +682,15 @@ export async function loadCoreSanity(args: {
     settled: { lockedTokens: summed.tokens, lockedQuote },
     midQuote,
   });
+  const printSupply = Math.max(
+    0,
+    args.maxSupply -
+      held.reduce((sum, row) => sum + assetAmountNumber(String(pick(row.rows[0], "balance") ?? "0")), 0)
+  );
   return {
     ...view,
+    fullPrintUsd: view.midUsd != null ? view.midUsd * printSupply : null,
+    backingOverFull: posDiv(view.lockedQuote, view.midQuote > 0 ? view.midQuote * printSupply : 0),
     hardBackingUsd: spec.bare ? null : view.hardBackingUsd,
     backing,
     poolBook,
